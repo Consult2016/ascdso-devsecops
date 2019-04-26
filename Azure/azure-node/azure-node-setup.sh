@@ -108,7 +108,7 @@ COSMOS_DB_ENDPOINT=$(az cosmosdb create \
   --name $COSMOS_DB_NAME \
   --query documentEndpoint \
   --output tsv)
-   # Exit if blank
+   # Assert: Exit if blank
    if ! [[ -z "${COSMOS_DB_ENDPOINT// }" ]]; then  #it's blank
       echo "Blank COSMOS_DB_ENDPOINT. Aborting..."
       exit
@@ -123,7 +123,7 @@ COSMOS_DB_MASTERKEY=$(az cosmosdb list-keys \
   --name $COSMOS_DB_NAME \
   --query primaryMasterKey \
   --output tsv) 
-   # Exit if blank
+   # Assert: Exit if blank
    if ! [[ -z "${COSMOS_DB_MASTERKEY// }" ]]; then  #it's blank
       echo "Blank COSMOS_DB_MASTERKEY. Aborting..."
       exit
