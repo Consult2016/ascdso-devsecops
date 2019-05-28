@@ -8,10 +8,6 @@
 
 # This implements the LinuxAcademy.com course "DevOps Monitoring Deep Dive" by Elle.
 
-function fancy_echo() {
-  local fmt="$1"; shift
-  printf "\\n>>> $fmt\\n" "$@"
-}
 # From https://gist.github.com/somebox/6b00f47451956c1af6b4
 function echo_ok { echo -e '\033[1;32m'"$1"'\033[0m'; }
 function echo_warn { echo -e '\033[1;33m'"$1"'\033[0m'; }
@@ -34,9 +30,9 @@ else
    echo "$0 starting with logging to file:" >$LOGFILE  # new file
 fi
 echo "$LOGFILE ..."      >>$LOGFILE
-fancy_echo "sw_vers ::"     >>$LOGFILE
+echo "sw_vers ::"     >>$LOGFILE
  echo -e "$(sw_vers)"       >>$LOGFILE
-fancy_echo "uname -a ::"    >>$LOGFILE
+echo "uname -a ::"    >>$LOGFILE
  echo -e "$(uname -a)"      >>$LOGFILE
 
 exit
