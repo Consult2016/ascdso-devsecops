@@ -18,16 +18,11 @@ FREE_DISKBLOCKS_START="$(df | sed -n -e '2{p;q}' | cut -d' ' -f 6)"
 LOG_PREFIX=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 LOGFILE="$0.$LOG_PREFIX.log"
 if [ ! -z $1 ]; then  # not empty
-   echo "$0 $1 starting with logging to file:" >$LOGFILE  # new file
+   echo "$0 $1 starting with logging to file:"  # new file
 else
-   echo "$0 starting with logging to file:" >$LOGFILE  # new file
+   echo "$0 starting with logging to file:"   # new file
 fi
-echo "$LOGFILE ..."      >>$LOGFILE
-    echo "sw_vers ::"     >>$LOGFILE
-echo -e "$(sw_vers)"       >>$LOGFILE
-     echo "uname -a ::"    >>$LOGFILE
-echo -e "$(uname -a)"      >>$LOGFILE
-
+echo "$LOGFILE ..." 
 exit
 
 ######### Bash utility functions:
