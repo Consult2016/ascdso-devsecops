@@ -39,30 +39,6 @@ exit
 
 ######### Bash utility functions:
 
-
-function cleanup() {
-    err=$?
-    echo "At cleanup() LOGFILE=$LOGFILE"
-    open -a "TextEdit" $LOGFILE
-    #nano $LOGFILE
-    trap '' EXIT INT TERM
-    exit $err 
-}
-
-cleanup2() {
-    err=$?
-    echo "At cleanup() LOGFILE=$LOGFILE"
-    # pico $LOGFILE
-    trap '' EXIT INT TERM
-    exit $err 
-}
-sig_cleanup() {
-    trap '' EXIT # some shells will call EXIT after the INT handler
-    false # sets $?
-    cleanup
-}
-
-
 # Read first parameter from command line supplied at runtime to invoke:
 MY_RUNTYPE="$1"
 if [[ "${MY_RUNTYPE,,}" == *"upgrade"* ]]; then # variable made lower case.
