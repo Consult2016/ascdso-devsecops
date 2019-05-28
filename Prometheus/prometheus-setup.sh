@@ -81,22 +81,31 @@ echo -e "$(bash --version | grep 'bash')"
 # Confirm the creation of the existing Docker image:
    docker image list
       # The response lists "forethought" as a Docker image.
+      # REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+      # forethought         latest              532cf27aa4eb        3 months ago        74MB
+      # node                10-alpine           fe6ff768f798        3 months ago        70.7MB
+
 
 
 # Create the alertmanager system user:
- sudo useradd --no-create-home --shell /bin/false alertmanager
+  sudo useradd --no-create-home --shell /bin/false alertmanager
 
 # Create the /etc/alertmanager directory:
- sudo mkdir /etc/alertmanager
+  sudo mkdir /etc/alertmanager
 
 # Download Alertmanager from the Prometheus downloads page:
- cd /tmp/
- wget https://github.com/prometheus/alertmanager/releases/download/v0.16.1/alertmanager-0.16.1.linux-amd64.tar.gz
+  cd /tmp/
+  wget https://github.com/prometheus/alertmanager/releases/download/v0.16.1/alertmanager-0.16.1.linux-amd64.tar.gz
+     # Saving to: ‘alertmanager-0.16.1.linux-amd64.tar.gz’
+     # alertmanager-0.16.1.linux-amd 100%[==============================================>]  18.19M  16.9MB/s    in 1.1s    
+     # 2019-05-28 05:51:19 (16.9 MB/s) - ‘alertmanager-0.16.1.linux-amd64.tar.gz’ saved [19070056/19070056]
 
 # Extract the files:
- tar -xvf alertmanager-0.16.1.linux-amd64.tar.gz
+  tar -xvf alertmanager-0.16.1.linux-amd64.tar.gz
 # ADDED:    
   cd /tmp/alertmanager-0.16.1.linux-amd64/
+  ls -al
+     # LICENSE  NOTICE  alertmanager  alertmanager.yml  amtool
 
 # Move the binaries:
  sudo mv alertmanager /usr/local/bin/
@@ -118,24 +127,21 @@ echo -e "$(bash --version | grep 'bash')"
 
 # Save and exit.
 # Stop Prometheus, and then update the Prometheus configuration file to use Alertmanager:
-sudo systemctl stop prometheus
-sudo $EDITOR /etc/prometheus/prometheus.yml
+ sudo systemctl stop prometheus
+ wget https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Prometheus/prometheus-alertering.yml
+ prometheus-alertering
+ # INSTEAD OF sudo $EDITOR /etc/prometheus/prometheus.yml
 
-alerting:
-  alertmanagers:
-  - static_configs:
-    - targets:
-      - localhost:9093
-Reload systemd, and then start the prometheus and alertmanager services:
-sudo systemctl daemon-reload
-sudo systemctl start prometheus
-sudo systemctl start alertmanager
-Make sure alertmanager starts on boot:
-sudo systemctl enable alertmanager
+# Reload systemd, and then start the prometheus and alertmanager services:
+   sudo systemctl daemon-reload
+   sudo systemctl start prometheus
+   sudo systemctl start alertmanager
+
+# Make sure alertmanager starts on boot:
+   sudo systemctl enable alertmanager
 
 # Visit PUBLICIP:9093 in your browser to confirm Alertmanager is working.
-# Visit Prometheus in your web browser at PUBLICIP:9090.  ADD: 
-   RESPONSE=$( curl http://localhost:9090 )
+   RESPONSE=$( curl http://localhost:9093 )
       # <a href="/graph">Found</a>.
 
 ## ADDED: Verify the response $RESPONSE.
