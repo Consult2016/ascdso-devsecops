@@ -10,27 +10,11 @@
 
 ######### Starting time stamp, OS versions, command attributes:
 
-exit
-
 ######### Bash utility functions:
 
-
 ######### bash completion:
-
 echo -e "$(bash --version | grep 'bash')"
-
-# BREW_VERSION="$(brew --version)"
-# TODO: Completion of bash commands on MacOS:
-# See https://kubernetes.io/docs/tasks/tools/install-kubectl/#on-macos-using-bash
-# Also see https://github.com/barryclark/bashstrap
-
-# TODO: Extract 4 from $BASH_VERSION
       # GNU bash, version 4.4.19(1)-release (x86_64-apple-darwin17.3.0)
-
-## or, if running Bash 4.1+
-#brew install bash-completion@2
-## If running Bash 3.2 included with macOS
-#brew install bash-completion
 
 exit
 
