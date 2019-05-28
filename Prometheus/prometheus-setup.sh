@@ -8,11 +8,6 @@
 
 # This implements the LinuxAcademy.com course "DevOps Monitoring Deep Dive" by Elle.
 
-# From https://gist.github.com/somebox/6b00f47451956c1af6b4
-function echo_ok { echo -e '\033[1;32m'"$1"'\033[0m'; }
-function echo_warn { echo -e '\033[1;33m'"$1"'\033[0m'; }
-function echo_error  { echo -e '\033[1;31mERROR: '"$1"'\033[0m'; }
-
 
 ######### Starting time stamp, OS versions, command attributes:
 
