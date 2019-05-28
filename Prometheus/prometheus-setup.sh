@@ -39,6 +39,7 @@ fancy_echo "sw_vers ::"     >>$LOGFILE
 fancy_echo "uname -a ::"    >>$LOGFILE
  echo -e "$(uname -a)"      >>$LOGFILE
 
+exit
 
 ######### Bash utility functions:
 
