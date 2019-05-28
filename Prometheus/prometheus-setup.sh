@@ -3,22 +3,10 @@
 # prometheus-setup.sh in https://github.com/wilsonmar/DevSecOps/Prometheus
 # This downloads and installs all the utilities related to use of Prometheus
 # described at https://wilsonmar.github.io/prometheus
-#
-# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/???/master/macos-install-all.sh)"
+# When an enviornment is opened:
+# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Prometheus/prometheus-setup.sh)"
 
-# This is inspired by the LinuxAcademy.com course "DevOps Monitoring Deep Dive" by Elle.
-
-# set -o nounset -o pipefail -o errexit  # "strict mode"
-# set -u  # -uninitialised variable exits script.
-# set -e  # -exit the script if any statement returns a non-true return value.
-# set -a  # Mark variables which are modified or created for export. Each variable or function that is created or modified is given the export attribute and marked for export to the environment of subsequent commands. 
-# set -v  # -verbose Prints shell input lines as they are read.
-#bar=${MY_RUNTYPE:-none} # :- sets undefine value. See http://redsymbol.net/articles/unofficial-bash-strict-mode/
-IFS=$'\n\t'  # Internal Field Separator for word splitting is line or tab, not spaces.
-#trap 'ret=$?; test $ret -ne 0 && printf "failed\n\n" >&2; exit $ret' EXIT
-trap cleanup EXIT
-trap sig_cleanup INT QUIT TERM
-
+# This implements the LinuxAcademy.com course "DevOps Monitoring Deep Dive" by Elle.
 
 function fancy_echo() {
   local fmt="$1"; shift
