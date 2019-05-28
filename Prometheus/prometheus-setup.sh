@@ -124,13 +124,15 @@ echo -e "$(bash --version | grep 'bash')"
 # Create the alertmanager.service file for systemd:
 # INSTEAD OF: sudo $EDITOR /etc/systemd/system/alertmanager.service
  wget https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Prometheus/alertmanager.service.txt
+   # 2019-05-28 05:54:04 (51.4 MB/s) - ‘alertmanager.service.txt’ saved [327/327]
 
 # Save and exit.
 # Stop Prometheus, and then update the Prometheus configuration file to use Alertmanager:
  sudo systemctl stop prometheus
- wget https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Prometheus/prometheus-alertering.yml
- prometheus-alertering
  # INSTEAD OF sudo $EDITOR /etc/prometheus/prometheus.yml
+ wget https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Prometheus/prometheus-alertering.yml
+ prometheus-alertering.yml >> /etc/prometheus/prometheus.yml
+   ### ERROR: permission denied
 
 # Reload systemd, and then start the prometheus and alertmanager services:
    sudo systemctl daemon-reload
