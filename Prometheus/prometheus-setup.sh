@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/bash #for bash v4
 
 # prometheus-setup.sh in https://github.com/wilsonmar/DevSecOps/Prometheus
 # This downloads and installs all the utilities related to use of Prometheus
