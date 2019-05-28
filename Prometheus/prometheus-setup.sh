@@ -8,13 +8,7 @@
 
 # This implements the LinuxAcademy.com course "DevOps Monitoring Deep Dive" by Elle.
 
-echo "hello"
-
-exit
-
-
 ######### Starting time stamp, OS versions, command attributes:
-
 
 # For Git on Windows, see http://www.rolandfg.net/2014/05/04/intellij-idea-and-git-on-windows/
 TIME_START="$(date -u +%s)"
@@ -29,10 +23,10 @@ else
    echo "$0 starting with logging to file:" >$LOGFILE  # new file
 fi
 echo "$LOGFILE ..."      >>$LOGFILE
-echo "sw_vers ::"     >>$LOGFILE
- echo -e "$(sw_vers)"       >>$LOGFILE
-echo "uname -a ::"    >>$LOGFILE
- echo -e "$(uname -a)"      >>$LOGFILE
+    echo "sw_vers ::"     >>$LOGFILE
+echo -e "$(sw_vers)"       >>$LOGFILE
+     echo "uname -a ::"    >>$LOGFILE
+echo -e "$(uname -a)"      >>$LOGFILE
 
 exit
 
