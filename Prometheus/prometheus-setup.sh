@@ -8,6 +8,10 @@
 
 # This implements the LinuxAcademy.com course "DevOps Monitoring Deep Dive" by Elle.
 
+echo "hello"
+
+exit
+
 
 ######### Starting time stamp, OS versions, command attributes:
 
