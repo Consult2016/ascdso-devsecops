@@ -75,8 +75,7 @@ echo -e "$(bash --version | grep 'bash')"
 # Visit Prometheus in your web browser at PUBLICIP:9090.  ADD: 
    RESPONSE=$( curl http://localhost:9090 )
       # <a href="/graph">Found</a>.
-
-## ADDED: Verify the response $RESPONSE.
+## TODO: ADDED: Verify the response $RESPONSE.
 
 # Confirm the creation of the existing Docker image:
    docker image list
@@ -108,36 +107,42 @@ echo -e "$(bash --version | grep 'bash')"
      # LICENSE  NOTICE  alertmanager  alertmanager.yml  amtool
 
 # Move the binaries:
- sudo mv alertmanager /usr/local/bin/
- sudo mv amtool /usr/local/bin/
+   sudo mv alertmanager /usr/local/bin/
+   sudo mv amtool /usr/local/bin/
 
 # Set the ownership of the binaries:
- sudo chown alertmanager:alertmanager /usr/local/bin/alertmanager
- sudo chown alertmanager:alertmanager /usr/local/bin/amtool
+   sudo chown alertmanager:alertmanager /usr/local/bin/alertmanager
+   sudo chown alertmanager:alertmanager /usr/local/bin/amtool
 
 # Move the configuration file into the /etc/alertmanager directory:
- sudo mv alertmanager.yml /etc/alertmanager/
+   sudo mv alertmanager.yml /etc/alertmanager/
 
 # Set the ownership of the /etc/alertmanager directory:
- sudo chown -R alertmanager:alertmanager /etc/alertmanager/
+   sudo chown -R alertmanager:alertmanager /etc/alertmanager/
 
 # Create the alertmanager.service file for systemd:
 # INSTEAD OF: sudo $EDITOR /etc/systemd/system/alertmanager.service
- wget https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Prometheus/alertmanager.service.txt
+   wget https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Prometheus/alertmanager.service.txt
    # 2019-05-28 05:54:04 (51.4 MB/s) - ‘alertmanager.service.txt’ saved [327/327]
 
 # Save and exit.
 # Stop Prometheus, and then update the Prometheus configuration file to use Alertmanager:
- sudo systemctl stop prometheus
+   sudo systemctl stop prometheus
+
  # INSTEAD OF sudo $EDITOR /etc/prometheus/prometheus.yml
- wget https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Prometheus/prometheus-alertering.yml
- prometheus-alertering.yml >> /etc/prometheus/prometheus.yml
-   ### ERROR: permission denied
+   wget https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Prometheus/prometheus-alertering.yml
+   # TODO: Uncomment text in file per 9:16 into https://linuxacademy.com/cp/courses/lesson/course/4049/lesson/3/module/329
+   # like: sed -i '/^#.* 2001 /s/^#//' file  # https://stackoverflow.com/questions/24889346/how-to-uncomment-a-line-that-contains-a-specific-string-using-sed/24889374
+   # prometheus-alertering.yml >> /etc/prometheus/prometheus.yml
+   ### TODO: ERROR: permission denied
 
 # Reload systemd, and then start the prometheus and alertmanager services:
    sudo systemctl daemon-reload
    sudo systemctl start prometheus
    sudo systemctl start alertmanager
+# ADDED: per video
+   sudo systemctl status prometheus | grep "Main PID:"
+      # Extract PID from "Main PID: 1858 (prometheus)"
 
 # Make sure alertmanager starts on boot:
    sudo systemctl enable alertmanager
