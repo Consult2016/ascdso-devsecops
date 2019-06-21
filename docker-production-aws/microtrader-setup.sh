@@ -20,6 +20,7 @@
 
 INSTALL_UTILITIES="no"  # or yes
 WORK_FOLDER="docker-production-aws"  # as specified in course materials.
+REMOVE_AT_END="yes"  # or no
 
 ### 2. Context: Starting time stamp, OS versions, command attributes:
 
@@ -301,3 +302,8 @@ docker ps
 ### [1:16] https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m3&clip=9&mode=live
 make clean
 
+
+if [[ "$REMOVE_AT_END" == "yes" ]]; then
+   echo "/n>>> Removing WORK_REPO=$WORK_REPO"
+   rm -rf "$WORK_REPO"
+fi

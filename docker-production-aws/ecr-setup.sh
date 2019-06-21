@@ -141,3 +141,16 @@ tree  # requires brew install tree
 
 echo "PWD=$PWD"
 
+
+# after ssh Inside a container:
+# 3:30 into https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m6&clip=7&mode=live
+# Configure host networking mode for the container by setting the --net flag to "host":
+# so that Vert.x binds to eth0 network interface rather than docker0 
+# docker run -it --rm --net-hotst alphine ifconfig
+
+
+
+if [[ "$REMOVE_AT_END" == "yes" ]]; then
+   echo "/n>>> Removing WORK_REPO=$WORK_REPO"
+   rm -rf "$WORK_REPO"
+fi
