@@ -20,6 +20,7 @@
 
 INSTALL_UTILITIES="no"  # or yes
 WORK_FOLDER="docker-production-aws"  # as specified in course materials.
+REMOVE_AT_END="yes"  # or no
 
 ### 2. Context: Starting time stamp, OS versions, command attributes:
 

@@ -71,8 +71,26 @@ command_exists() {  # in /usr/local/bin/... if installed by brew
   command -v "$@" > /dev/null 2>&1
 }
 
+### 4. Delete local repository if it's there (for idempotency):
 
-### 4. Pre-requisites installation
+cd "$HOME"
+   echo "\n>>> Creating folder $HOME/projects if it's not there:"
+   if [ ! -d "projects" ]; then # NOT found:
+      mkdir projects
+   fi
+         cd projects
+   echo "PWD=$PWD"
+
+   if [ ! -d "$WORK_FOLDER" ]; then # NOT found:
+      echo "\n>>> Creating folders $HOME/project/$WORK_FOLDER if it's not there:"
+      mkdir "$WORK_FOLDER"
+   fi
+          cd "$WORK_FOLDER"
+
+echo "PWD=$PWD"
+
+
+### 5. Pre-requisites installation
 
 if [[ "$INSTALL_UTILITIES" == "yes" ]]; then
 
@@ -118,24 +136,6 @@ if [[ "$INSTALL_UTILITIES" == "yes" ]]; then
    pip install ansible awscli boto3 netaddr
 
 fi
-
-### 5. Delete local repository if it's there (for idempotency):
-
-cd "$HOME"
-   echo "\n>>> Creating folder $HOME/projects if it's not there:"
-   if [ ! -d "projects" ]; then # NOT found:
-      mkdir projects
-   fi
-         cd projects
-   echo "PWD=$PWD"
-
-   if [ ! -d "$WORK_FOLDER" ]; then # NOT found:
-      echo "\n>>> Creating folders $HOME/project/$WORK_FOLDER if it's not there:"
-      mkdir "$WORK_FOLDER"
-   fi
-          cd "$WORK_FOLDER"
-
-echo "PWD=$PWD"
 
 
 ### 6. Fork and Download dependencies
@@ -238,16 +238,6 @@ echo $(ps aux | grep 'microtrader-quote' | awk '{print $2}' | head -n 1 )
 open localhost:35000
 
 exit
-
-# Start Dashboard
-java -jar "build/jars/$DASHBOARD_JAR" --cluster &
-# TODO: Open localhost:8000
-
-
-# Start Portfolio service to manage the stocks traded by each trader:
-java -jar "build/jars/$PORTFOLIO_JAR" --cluster &
-# View portfolio pane on dashboard localhost:8500 to verify
-
 
 ####    creating HSQLDB schema within ./audit-db.* for Audit service:
 # 4:20 into https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m2&clip=4&mode=live
