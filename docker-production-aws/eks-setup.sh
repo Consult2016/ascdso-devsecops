@@ -22,10 +22,8 @@ INSTALL_UTILITIES="reinstall"  # no or yes or reinstall
 WORK_FOLDER="docker-production-aws"  # as specified in course materials.
 WORK_REPO="eks-setup"
 BINARY_STORE_PATH="/usr/local/bin"
-REMOVE_AT_END="yes"  # or no
 # TODO: Add operating system detection:
 OS="mac"  # "mac" or "linux"
-
       # CAUTION: Identify your cluster's Kubernetes version from Amazon S3 so you can 
       # get the corresponding version of kubectl from:
       # https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
@@ -33,6 +31,7 @@ OS="mac"  # "mac" or "linux"
                  # 1.12.9/2019-06-21
                  # 1.11.10/2019-06-21
                  # 1.10.13/2019-06-21
+REMOVE_AT_END="no"  # or no
 
 ### 2. Context: Starting time stamp, OS versions, command attributes:
 
@@ -99,11 +98,19 @@ cd "$HOME"
    fi
           cd "$WORK_FOLDER"
 
+   if [  -d "$WORK_REPO" ]; then # found:
+      echo "\n>>> Removing ~/projects/$WORK_FOLDER/$WORK_REPO from previous run:"
+      rm -rf "$WORK_REPO"
+   fi
    if [ ! -d "$WORK_REPO" ]; then # NOT found:
-      echo "\n>>> Creating folder $HOME/project/$WORK_REPO if it's not there:"
       mkdir "$WORK_REPO"
    fi
           cd "$WORK_REPO"
+
+   if [[ "$REMOVE_AT_END" != "yes" ]]; then
+      echo "\n>>> Downloading eks-setup.sh (this shell script) ..."
+      curl -o eks-setup.sh "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker-production-aws/eks-setup.sh"
+   fi
 
 echo "PWD=$PWD"
 
@@ -117,10 +124,13 @@ install_eksctl() {
    # So download directly:
       echo ">>> Downloading eksctl from weaveworks: see https://eksctl.io ..."
       # Read https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html
-      # No publisher hash is provided.
       curl --location "https://github.com/weaveworks/eksctl/releases/download/latest_release/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+      # No publisher hash is provided.
          # Not --silent 
+
+      curl -o eksctl.sha256 "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/linux/amd64/eksctl.sha256"
       # 95 MB from ls -al  /tmp/eksctl  # -rwxr-xr-x  1 wilsonmar  wheel  95775792 Jun 21 03:34 /tmp/eksctl 
+
       if [ ! -f "/tmp/eksctl" ]; then # NOT found:
          echo ">>> eksctl file download failed. Exiting..."
          exit
@@ -169,9 +179,9 @@ install_aws_iam_authenticator(){
       else
          echo ">>> Downloading aws-iam-authenticator.sha256 (publisher's hash) ..."  # 
          if [[ "$OS" == "mac" ]]; then  # darwin
-            curl -o aws-iam-authenticator.sha256 https://amazon-eks.s3-us-west-2.amazonaws.com/1.13.7/2019-06-11/bin/darwin/amd64/aws-iam-authenticator.sha256
+            curl -o aws-iam-authenticator.sha256 "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/darwin/amd64/aws-iam-authenticator.sha256"
          else  # linux:
-            curl -o aws-iam-authenticator.sha256 https://amazon-eks.s3-us-west-2.amazonaws.com/1.13.7/2019-06-11/bin/linux/amd64/aws-iam-authenticator.sha256
+            curl -o aws-iam-authenticator.sha256 "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/linux/amd64/aws-iam-authenticator.sha256"
          fi
          # ls -al aws-iam-authenticator.sha256  # 
          if [ ! -f aws-iam-authenticator.sha256 ]; then # NOT found:
@@ -227,7 +237,7 @@ else  # new or reinstall:
          install_aws_iam_authenticator
       #fi
    else
-      echo "\n>>> Using $( aws-iam-authenticator version ) " 
+      echo "\n>>> Using existing version:" 
    fi
 fi
 echo ">>> aws-iam-authenticator ==> $( aws-iam-authenticator version )"
@@ -303,7 +313,7 @@ if ! command_exists kubectl ; then  # not exist:
       #   echo "\n>>> Brew Installing kubectl ..."
       #   brew install kubectl
       #else
-         echo "\n>>> Installing kubectl ..."
+         echo "\n>>> Installing kubectl new ..."
          install_kubectl
             # Downloading https://homebrew.bintray.com/bottles/kubernetes-cli-1.15.0.mojave.bottle.tar.gz
             # 🍺  /usr/local/Cellar/kubectl/0.4.0: 5 files, 31.1MB
@@ -317,11 +327,10 @@ else  # new or reinstall:
          install_kubectl
       #fi
    else
-      echo "\n>>> Using $( kubectl version ) " 
+      echo "\n>>> Using existing version:" 
    fi
 fi
-echo ">>> kubectl ==> $( kubectl version )"
-         # {"Version":"v0.4.0","Commit":"c141eda34ad1b6b4d71056810951801348f8c367"}
+echo ">>> kubectl ==> $( kubectl version --short --client )"  # Client Version: v1.13.7-eks-c57ff8
 
 
 
@@ -334,7 +343,7 @@ echo ">>> kubectl ==> $( kubectl version )"
 
 
 if [[ "$REMOVE_AT_END" == "yes" ]]; then
-   echo "\n>>> Removing WORK_REPO=$WORK_REPO"
+   echo "\n>>> Removing WORK_REPO=$WORK_REPO in $PWD"
    rm -rf "$WORK_REPO"
 fi
 
