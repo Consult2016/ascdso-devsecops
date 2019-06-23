@@ -6,7 +6,10 @@
 # This script installs utilities for using Kubernetes within AWS.
 # Content is based partly on David Clinton's course released 10 May 2016 on Pluralsight at:
 # https://app.pluralsight.com/library/courses/using-docker-aws/table-of-contents
+
 # But here rather than installing to ~/bin, I install to /usr/local/bin.
+# And version codes are more recent than the 1.12.7 in https://bootstrap-it.com/docker4aws/#install-kube
+# Plus, sha256sum is used instead of openssl.
 
 # This script is run by this command on MacOS/Linux Terminal:
 # sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker-production-aws/eks-setup.sh)"
@@ -22,8 +25,6 @@ INSTALL_UTILITIES="reinstall"  # no or yes or reinstall
 WORK_FOLDER="docker-production-aws"  # as specified in course materials.
 WORK_REPO="eks-setup"
 BINARY_STORE_PATH="/usr/local/bin"
-# TODO: Add operating system detection:
-OS="mac"  # "mac" or "linux"
       # CAUTION: Identify your cluster's Kubernetes version from Amazon S3 so you can 
       # get the corresponding version of kubectl from:
       # https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
@@ -50,6 +51,26 @@ echo ">>> $LOGFILE"
 echo "$TO_PRINT"  # to screen
 uname -a  # operating sytem
 echo ">>> INSTALL_UTILITIES=\"$INSTALL_UTILITIES\" (no or yes or reinstall)"
+
+### OS detection to PLATFORM variable:
+PLATFORM='unknown'
+unamestr=$( uname )
+if [ "$unamestr" == 'Darwin' ]; then
+             PLATFORM='macos'
+elif [ "$unamestr" == 'Linux' ]; then
+             PLATFORM='linux'
+elif [ "$unamestr" == 'FreeBSD' ]; then
+             PLATFORM='freebsd'
+elif [ "$unamestr" == 'Windows' ]; then
+             PLATFORM='windows'
+fi
+if [ $PLATFORM != 'macos' ]; then
+   echo ">>> This script is not designed for $unamestr = $PLATFORM."
+   exit
+else
+   echo ">>> Platform = \"$PLATFORM\" "
+fi
+
 
 ### 3. Shell utility functions:
 
@@ -123,10 +144,10 @@ echo "PWD=$PWD"
 
 install_eksctl(){
    # This is the alternatative to download directly instead of brew install:
-      # Based on ?:?? into https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=b874bb63-9ca2-4fa3-8d52-853c70953d8a&clip=1&mode=live
+      # Based on 0:00 into https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=b874bb63-9ca2-4fa3-8d52-853c70953d8a&clip=1&mode=live
       echo ">>> Obtaining eksctl for latest K8S_VERSION=$K8S_VERSION..."
       # CAUTION: Get latest version from https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html
-      if [[ "$OS" == "mac" ]]; then  # uname -a = darwin:
+      if [[ "$PLATFORM" == "macos" ]]; then  # uname -a = darwin:
          curl --location "https://github.com/weaveworks/eksctl/releases/download/latest_release/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
       else  # "linux"
          curl --location "https://github.com/weaveworks/eksctl/releases/download/latest_release/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
@@ -136,7 +157,7 @@ install_eksctl(){
          exit
       else
          echo ">>> Downloading eksctl.sha256 (publisher's hash) ..."  # 
-         if [[ "$OS" == "mac" ]]; then  # darwin
+         if [[ "$PLATFORM" == "macos" ]]; then  # darwin
             curl -o eksctl.sha256 "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/darwin/amd64/eksctl.sha256"
          else  # linux:
             curl -o eksctl.sha256 "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/linux/amd64/eksctl.sha256"         
@@ -158,7 +179,7 @@ if ! command_exists eksctl ; then  # not exist:
       exit
    fi
       # brew search No formula or cask found for "eksctl", so brew not used:
-      #if [[ "$OS" == "mac" ]]; then
+      #if [[ "$PLATFORM" == "macos" ]]; then
       #   echo "\n>>> Brew Installing eksctl ..."  # 
       #   brew install eksctl
       #else
@@ -168,7 +189,7 @@ if ! command_exists eksctl ; then  # not exist:
 else  # new or reinstall:
    if [[ "$INSTALL_UTILITIES" == "reinstall" ]]; then
       echo "\n>>> Reinstalling eksctl ..."
-      #if [[ "$" == "mac" ]]; then
+      #if [[ "$PLATFORM" == "macos" ]]; then
       #   brew upgrade eksctl
       #else
          install_eksctl
@@ -187,7 +208,7 @@ install_aws_iam_authenticator(){
       # Based on 3:22 into https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=b874bb63-9ca2-4fa3-8d52-853c70953d8a&clip=1&mode=live
       echo ">>> Obtaining aws-iam-authenticator for K8S_VERSION=$K8S_VERSION..."
       # CAUTION: Get latest version from https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html
-      if [[ "$OS" == "mac" ]]; then  # uname -a = darwin:
+      if [[ "$PLATFORM" == "macos" ]]; then  # uname -a = darwin:
          curl -o aws-iam-authenticator "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/darwin/amd64/aws-iam-authenticator"
               #% Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
               #  Dload  Upload   Total   Spent    Left  Speed
@@ -200,7 +221,7 @@ install_aws_iam_authenticator(){
          exit
       else
          echo ">>> Downloading aws-iam-authenticator.sha256 (publisher's hash) ..."  # 
-         if [[ "$OS" == "mac" ]]; then  # darwin
+         if [[ "$PLATFORM" == "macos" ]]; then  # darwin
             curl -o aws-iam-authenticator.sha256 "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/darwin/amd64/aws-iam-authenticator.sha256"
          else  # linux:
             curl -o aws-iam-authenticator.sha256 "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/linux/amd64/aws-iam-authenticator.sha256"
@@ -244,7 +265,7 @@ if ! command_exists aws-iam-authenticator ; then  # not exist:
       exit
    fi
       # brew version of aws-iam-authenticator displays "unversioned", so not used:
-      #if [[ "$OS" == "mac" ]]; then
+      #if [[ "$PLATFORM" == "macos" ]]; then
       #   echo "\n>>> Brew Installing aws-iam-authenticator ..."
       #   brew install aws-iam-authenticator
       #else
@@ -256,7 +277,7 @@ if ! command_exists aws-iam-authenticator ; then  # not exist:
 else  # new or reinstall:
    if [[ "$INSTALL_UTILITIES" == "reinstall" ]]; then
       echo "\n>>> Reinstalling aws-iam-authenticator ..."
-      #if [[ "$" == "mac" ]]; then
+      #if [[ "$" == "macos" ]]; then
       #   brew upgrade aws-iam-authenticator
       #else
          install_aws_iam_authenticator
@@ -286,7 +307,7 @@ install_kubectl(){
                  # 1.12.9/2019-06-21
                  # 1.11.10/2019-06-21
                  # 1.10.13/2019-06-21
-      if [[ "$OS" == "mac" ]]; then  # uname -a = darwin:
+      if [[ "$PLATFORM" == "macos" ]]; then  # uname -a = darwin:
          curl -o kubectl "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/darwin/amd64/kubectl"
       else  # "linux"
          curl -o kubectl "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/linux/amd64/kubectl"
@@ -296,7 +317,7 @@ install_kubectl(){
          exit
       else
          echo ">>> Downloading kubectl.sha256 (publisher's hash) ..."  # 
-         if [[ "$OS" == "mac" ]]; then  # darwin
+         if [[ "$PLATFORM" == "macos" ]]; then  # darwin
             curl -o kubectl.sha256 "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/darwin/amd64/kubectl.sha256"
          else  # linux:
             curl -o kubectl.sha256 "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/linux/amd64/kubectl.sha256"
@@ -334,7 +355,7 @@ if ! command_exists kubectl ; then  # not exist:
       exit
    fi
       # brew version of kubectl displays "unversioned", so not used:
-      #if [[ "$OS" == "mac" ]]; then
+      #if [[ "$PLATFORM" == "macos" ]]; then
       #   echo "\n>>> Brew Installing kubectl ..."
       #   brew install kubectl
       #else
@@ -346,7 +367,7 @@ if ! command_exists kubectl ; then  # not exist:
 else  # new or reinstall:
    if [[ "$INSTALL_UTILITIES" == "reinstall" ]]; then
       echo "\n>>> Reinstalling kubectl ..."
-      #if [[ "$" == "mac" ]]; then
+      #if [[ "$" == "macos" ]]; then
       #   brew upgrade kubectl
       #else
          install_kubectl
