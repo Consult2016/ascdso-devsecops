@@ -117,45 +117,67 @@ echo "PWD=$PWD"
 
 ### 5. Pre-requisites installation
 
-### 5.1 install eksctl
 # Based on course: https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=b874bb63-9ca2-4fa3-8d52-853c70953d8a&clip=1&mode=live
-install_eksctl() {
-   # "brew search eksctl" yields "No formula or cask found for"
-   # So download directly:
-      echo ">>> Downloading eksctl from weaveworks: see https://eksctl.io ..."
-      # Read https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html
-      curl --location "https://github.com/weaveworks/eksctl/releases/download/latest_release/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-      # No publisher hash is provided.
-         # Not --silent 
 
-      curl -o eksctl.sha256 "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/linux/amd64/eksctl.sha256"
-      # 95 MB from ls -al  /tmp/eksctl  # -rwxr-xr-x  1 wilsonmar  wheel  95775792 Jun 21 03:34 /tmp/eksctl 
+### 5.1 install eksctl
 
+install_eksctl(){
+   # This is the alternatative to download directly instead of brew install:
+      # Based on ?:?? into https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=b874bb63-9ca2-4fa3-8d52-853c70953d8a&clip=1&mode=live
+      echo ">>> Obtaining eksctl for latest K8S_VERSION=$K8S_VERSION..."
+      # CAUTION: Get latest version from https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html
+      if [[ "$OS" == "mac" ]]; then  # uname -a = darwin:
+         curl --location "https://github.com/weaveworks/eksctl/releases/download/latest_release/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+      else  # "linux"
+         curl --location "https://github.com/weaveworks/eksctl/releases/download/latest_release/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+      fi
       if [ ! -f "/tmp/eksctl" ]; then # NOT found:
          echo ">>> eksctl file download failed. Exiting..."
          exit
       else
-         echo ">>> Moving eksctl file from tmp. Password input required here..."
-         sudo mv /tmp/eksctl /usr/local/bin  # so it can be called from anywhere.
+         echo ">>> Downloading eksctl.sha256 (publisher's hash) ..."  # 
+         if [[ "$OS" == "mac" ]]; then  # darwin
+            curl -o eksctl.sha256 "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/darwin/amd64/eksctl.sha256"
+         else  # linux:
+            curl -o eksctl.sha256 "https://amazon-eks.s3-us-west-2.amazonaws.com/$K8S_VERSION/bin/linux/amd64/eksctl.sha256"         
+         fi
+         cat eksctl.sha256 
+         echo "/n"
+         # Comparison of hash cut out.
+
+         # ls -al eksctl # 20.5M from ls -al /tmp/eksctl  # 
+         echo ">>> Moving eksctl file to $BINARY_STORE_PATH. Password required here..."
+         sudo mv /tmp/eksctl "$BINARY_STORE_PATH"  # so it can be called from anywhere.
+         ls -al   "$BINARY_STORE_PATH/eksctl"
+         chmod +x "$BINARY_STORE_PATH/eksctl"
       fi
-      echo ">>> Installed: $( eksctl version ) " # [i]  version.Info{BuiltAt:"", GitCommit:"", GitTag:"0.1.38"}
-      ls -al /usr/local/bin/eksctl
 }
 if ! command_exists eksctl ; then  # not exist:
    if [[ "$INSTALL_UTILITIES" == "no" ]]; then
       echo "\n>>> eksctl not installed but INSTALL_UTILITIES=/"no/". Exiting..."
       exit
    fi
-      echo "\n>>> Installing eksctl ..."
-      install_eksctl
+      # brew search No formula or cask found for "eksctl", so brew not used:
+      #if [[ "$OS" == "mac" ]]; then
+      #   echo "\n>>> Brew Installing eksctl ..."  # 
+      #   brew install eksctl
+      #else
+         echo "\n>>> Installing eksctl ..."
+         install_eksctl
+      #fi
 else  # new or reinstall:
    if [[ "$INSTALL_UTILITIES" == "reinstall" ]]; then
       echo "\n>>> Reinstalling eksctl ..."
-      install_eksctl
+      #if [[ "$" == "mac" ]]; then
+      #   brew upgrade eksctl
+      #else
+         install_eksctl
+      #fi
    else
-      echo "\n>>> Using $( eksctl version ) " # [i]  version.Info{BuiltAt:"", GitCommit:"", GitTag:"0.1.38"}
+      echo "\n>>> Using existing version:" 
    fi
 fi
+echo ">>> eksctl ==> $( eksctl version )"  # [ℹ]  version.Info{BuiltAt:"", GitCommit:"", GitTag:"0.1.38"}
 
 
 ### 5.2 install aws-iam-authenticator
@@ -206,7 +228,10 @@ install_aws_iam_authenticator(){
             fi
          fi
 
-         # ls -al aws-iam-authenticator # 20.5M from ls -al /tmp/aws-iam-authenticator  # 
+         echo ">>> Moving kubectl file to $BINARY_STORE_PATH. Password required here..."
+         sudo mv kubectl "$BINARY_STORE_PATH"  # so it can be called from anywhere.
+         ls -al   "$BINARY_STORE_PATH/kubectl"
+         chmod +x "$BINARY_STORE_PATH/kubectl"
          echo ">>> Moving aws-iam-authenticator file to $BINARY_STORE_PATH. Password required here..."
          sudo mv aws-iam-authenticator "$BINARY_STORE_PATH"  # so it can be called from anywhere.
          ls -al   "$BINARY_STORE_PATH/aws-iam-authenticator"
