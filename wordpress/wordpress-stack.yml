@@ -1,5 +1,3 @@
-# 040 into https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live
-
 version: '3.1'
 
 services:

@@ -107,6 +107,8 @@ cd "$HOME"
    curl -o wp-docker.sh        "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/wordpress/wp-docker.sh"
    echo "\n>>> Downloading wordpress-stack.yml from GitHub ..."
    curl -o wordpress-stack.yml "https://github.com/wilsonmar/DevSecOps/blob/master/wordpress/wordpress-stack.yml"
+   echo "\n>>> Downloading docker-compose.yml from GitHub ..."
+   curl -o docker-compose.yml "https://github.com/wilsonmar/DevSecOps/blob/master/wordpress/docker-compose.yml"
    echo "PWD=$PWD"
    ls -al
 
@@ -115,30 +117,48 @@ cd "$HOME"
    if ! command_exists git ; then
       if [[ "$PLATFORM" == "macos" ]]; then  # uname -a = darwin:
          brew install git
-      else if [[ "$PLATFORM" == "yum" ]]; then  # uname -a = darwin:
-         yum install git
-      else if [[ "$PLATFORM" == "apt-get" ]]; then  # uname -a = darwin:
-         apt-get install git
+      #else if [[ "$PLATFORM" == "yum" ]]; then  # uname -a = darwin:
+      #   yum install git
+      #else if [[ "$PLATFORM" == "apt-get" ]]; then  # uname -a = darwin:
+      #   apt-get install git
       fi
    fi
 
 ### 6. 
 
-STACKNAME="mywordpress"
-docker swarm init
-   # Swarm initialized: current node (x3t9fal0if4a84mn7o5y1o6mf) is now a manager.
-   # To add a worker to this swarm, run the following command:
-   # docker swarm join --token SWMTKN-1-0l1x7cjd605n2m1uo3w2il86kngdb2q0otzzhf2du2idshr0xw-0otui67aoq7r7tf7h3meqk6g1 192.168.65.3:2377
-   # To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+STACK_YML="wordpress-stack.yml"
+STACK_NAME="mywordpress"
 
-docker stack deploy -c wordpress-stack.yml  "$STACKNAME"
+echo "\n>>> Remove manager from prior run: docker swarm leave --force ..."
+   docker swarm leave --force
+      #RESPONSE: Node left the swarm.
 
-docker stack services "$STACKNAME"
+echo "\n>>> docker swarm init ..."
+   docker swarm init
+      # Swarm initialized: current node (x3t9fal0if4a84mn7o5y1o6mf) is now a manager.
+      # To add a worker to this swarm, run the following command:
+      # docker swarm join --token SWMTKN-1-0l1x7cjd605n2m1uo3w2il86kngdb2q0otzzhf2du2idshr0xw-0otui67aoq7r7tf7h3meqk6g1 192.168.65.3:2377
+      # To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+
+echo "\n>>> docker stack deploy -c wordpress-stack.yml $STACK_NAME ..."
+   docker stack deploy -c "$STACK_YML"  "$STACK_NAME"
+   if [ $? -ne 0 ]; then
+      echo "\n>>> RETURN=$? (1 = bad/STOP, 0 = good)"
+   fi
+
+echo "\n>>> docker stack services $STACK_NAME ..."
+   docker stack services "$STACK_NAME"
    # ID NAME MODE REPLICAS IMAGE PORTS
-   # borgpfoca74q mywordpress_wordpress replicated 1/1 wordpress:latest *:80->80/tcp
-   # qwcg0hy2mca4 mywordpress_db replicated 1/1 mysql:5.7
+   # ID                  NAME                    MODE                REPLICAS            IMAGE               PORTS
+   # hqecugqy68we        mywordpress_db          replicated          1/1                 mysql:latest
+   # ytlni7w589pf        mywordpress_wordpress   replicated          1/1                 wordpress:latest    *:80->80/tcp
+   if [ $? -ne 0 ]; then
+      echo "\n>>> RETURN=$? (1 = bad/STOP, 0 = good)"
+   fi
 
-# Get IP address:
+#yaml: line 607: mapping values are not allowed in this context
+
+echo "\n>>> Get IP address ..."
    ip a
       # lo0: flags=8049<UP,LOOPBACK,RUNNING,MULTICAST> mtu 16384
       # 	inet 127.0.0.1/8 lo0
@@ -148,12 +168,10 @@ docker stack services "$STACKNAME"
       # 	ether 8c:85:90:2b:ad:e9
       # 	inet6 fe80::10e1:325e:a565:1a27/64 secured scopeid 0x8
       # 	inet 192.168.0.195/24 brd 192.168.0.255 en0
-WORK_URL="192.168.0.195"  # TODO: Capture from output
-
-# Verify HTML returned (using HTTP because no SSL used during testing):
+# TODO: Capture from output
+echo "\n>>> Verify http://$WORK_URL (such as 192.168.0.195)  ..."
+   # Verify HTML returned (using HTTP because no SSL used during testing):
    curl -s "http://$WORK_URL" | tail -4
-
-exit
 
 
 ### 9. 
