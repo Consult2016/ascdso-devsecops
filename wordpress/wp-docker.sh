@@ -236,11 +236,16 @@ printf ">>> Verify http://%s using curl of first 4 HTML lines ...\n" "$WORK_IP"
 
 ### 9. 
 
-printf "\n>>> docker swarm leave --force ...\n"
+if [ "$REMOVE_AT_END" = "yes" ]; then
+   
+   printf "\n>>> docker swarm leave --force ...\n"
    docker swarm leave --force
 
+   docker stack rm "$STACK_NAME"
+      # Removing service mywordpress_db
+      # Removing service mywordpress_wordpress
+      # Removing network mywordpress_default
 
-if [ "$REMOVE_AT_END" = "yes" ]; then
    printf "\n>>> Removing WORK_REPO=%s in %s \n" "$WORK_REPO" "$PWD"
    rm -rf "$WORK_REPO"
 fi
