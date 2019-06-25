@@ -1,7 +1,7 @@
 #!/bin/sh #for POSIX-compliant Bourne shell that runs cross-platform
 
 # microtrader-setup.sh in https://github.com/wilsonmar/DevSecOps/docker-production-aws
-# as described in https://wilsonmar.github.io/docker-production-aws.
+# as described in https://wilsonmar.github.io/docker-production-aws
 
 # This script builds from source the microtrader sample app used in 
 # Justin Menga's course released 10 May 2016 on Pluralsight at:
@@ -9,7 +9,7 @@
 # which shows how to install a "microtraders" Java app in aws using Docker, ECS, CloudFormation, etc.
 
 # This script is run by this command on MacOS/Linux Terminal:
-# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker-production-aws/docker-production-aws-setup.sh)"
+# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker-production-aws/microtrader-setup.sh)"
 
 # This is free software; see the source for copying conditions. There is NO
 # warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -21,6 +21,7 @@
 INSTALL_UTILITIES="no"  # or yes
 WORK_FOLDER="docker-production-aws"  # as specified in course materials.
 REMOVE_AT_END="yes"  # or no
+
 
 ### 2. Context: Starting time stamp, OS versions, command attributes:
 
@@ -39,6 +40,24 @@ echo ">>> $LOGFILE"
 echo "$TO_PRINT"  # to screen
 uname -a  # operating sytem
 
+### OS detection to PLATFORM variable:
+PLATFORM='unknown'
+unamestr=$( uname )
+if [ "$unamestr" == 'Darwin' ]; then
+             PLATFORM='macos'
+elif [ "$unamestr" == 'Linux' ]; then
+             PLATFORM='linux'
+elif [ "$unamestr" == 'FreeBSD' ]; then
+             PLATFORM='freebsd'
+elif [ "$unamestr" == 'Windows' ]; then
+             PLATFORM='windows'
+fi
+if [ $PLATFORM != 'macos' ]; then
+   echo ">>> This script is not designed for $unamestr = $PLATFORM."
+   exit
+else
+   echo ">>> Platform = \"$PLATFORM\" "
+fi
 
 ### 3. Shell utility functions:
 
@@ -261,7 +280,7 @@ exit
 echo "\n>>> Running mocha tests on JavaScript:"
 mocha --exit
    if [ $? -ne 0 ]; then
-      echo "/n>>> RETURN=$? (1 = bad/STOP, 0 = good)"
+      echo "\n>>> RETURN=$? (1 = bad/STOP, 0 = good)"
    fi
 
 exit
@@ -293,7 +312,12 @@ docker ps
 make clean
 
 
+# https://github.com/jmenga/packer-ecs  # final branch
+# provides a Packer build script for creating Amazon Machine Images (AMIs) for running custom AWS EC2 Container Service (ECS) Container Instance images, as described in the Pluralsight course Docker in Production using AWS.
+
+
+
 if [[ "$REMOVE_AT_END" == "yes" ]]; then
-   echo "/n>>> Removing WORK_REPO=$WORK_REPO"
+   echo "\n>>> Removing WORK_REPO=$WORK_REPO"
    rm -rf "$WORK_REPO"
 fi
