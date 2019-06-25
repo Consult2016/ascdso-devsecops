@@ -16,7 +16,8 @@
 # This is free software; see the source for copying conditions. There is NO
 # warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-# CURRENT STATUS: under construction, with TODO items.
+# CURRENT STATUS: under construction, "Error establishing a database connection"
+
 
 ### 1. Run Parameters controlling this run:
 
@@ -171,14 +172,33 @@ printf "\n>>> docker swarm init ...\n"
       # To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
 
 printf "\n>>> docker stack deploy -c wordpress-stack.yml %s ...\n" "$STACK_NAME"
+   # https://docs.docker.com/engine/reference/commandline/stack_deploy/
+   # -c compose_file
    docker stack deploy -c "$STACK_YML"  "$STACK_NAME"
+      # Creating network mywordpress_default
+      # Creating service mywordpress_wordpress
+      # Creating service mywordpress_db   
+
    # shellcheck disable=SC2181
    if [ $? -ne 0 ]; then
       printf "\n>>> RETURN=%s (1 = bad/STOP, 0 = good)\n" "$?"
    fi
 
+printf "\n>>> docker stack ls ...\n"
+   docker stack ls 
+      # NAME                SERVICES            ORCHESTRATOR
+      # mywordpress         2                   Swarm
+
+printf "\n>>> docker stack ps ...\n"
+   docker stack ps  "$STACK_NAME"
+      # ID                  NAME                      IMAGE               NODE                    DESIRED STATE       CURRENT STATE                    ERROR                       PORTS
+      # znvpmturjgvq        mywordpress_db.1          mysql:latest        linuxkit-025000000001   Running             Running less than a second ago
+      # l2rzavb6qz16         \_ mywordpress_db.1      mysql:latest        linuxkit-025000000001   Shutdown            Failed 6 seconds ago             "task: non-zero exit (1)"
+      # 1ym9l82soqbn         \_ mywordpress_db.1      mysql:latest        linuxkit-025000000001   Shutdown            Failed 13 seconds ago            "task: non-zero exit (1)"
+      # 5d5u11w0s6ul        mywordpress_wordpress.1   wordpress:latest    linuxkit-025000000001   Running             Running 14 seconds ago
+
 # The EC2 Launch type requires a docker-compose.yml file.   
-printf "\n>>> Loop so the services can take up to 5 minutes to get ready...\n"
+printf "\n>>> Pause so the services can take up to 5 minutes to get ready...\n"
    # loop
 printf ">>> docker stack services %s ..." "$STACK_NAME"
    docker stack services "$STACK_NAME"
@@ -198,12 +218,27 @@ printf "\n>>> Get IP address ...\n"  # Instead of "ip a" shown in video:
       # 	inet 192.168.0.195/24 brd 192.168.0.255 en0
    WORK_IP=$( ifconfig en0 | grep inet | grep -v inet6 | awk '{print $2}' )
    #TODO: WORK_PORT is extracted from specification in yml file.
+
 printf ">>> Verify http://%s using curl of first 4 HTML lines ...\n" "$WORK_IP"
    # Verify HTML returned (using HTTP because no SSL used during testing):
    curl -s "http://$WORK_IP:80" | tail -4
+      # RESPONSE: Error establishing a database connection
 
+      # <!DOCTYPE html>
+      # <html xmlns="http://www.w3.org/1999/xhtml" dir='ltr'>
+      # <head>
+      # 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+      # 	<meta name="viewport" content="width=device-width">
+      # 			<title>Database Error</title>
+      # ....
+      # <body id="error-page">
+      # 	<p><h1>Error establishing a database connection</h1></p></body>
 
 ### 9. 
+
+printf "\n>>> docker swarm leave --force ...\n"
+   docker swarm leave --force
+
 
 if [ "$REMOVE_AT_END" = "yes" ]; then
    printf "\n>>> Removing WORK_REPO=%s in %s \n" "$WORK_REPO" "$PWD"
