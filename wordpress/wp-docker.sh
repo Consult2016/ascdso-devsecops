@@ -118,7 +118,7 @@ cd "$HOME"  || exit
    printf "\n>>> Downloading wordpress-stack.yml from GitHub .../n"
    curl -o wordpress-stack.yml "https://github.com/wilsonmar/DevSecOps/blob/master/wordpress/wordpress-stack.yml"
    
-   printf "\n>>> Downloading docker-compose.yml from GitHub .../n"
+   printf "\n>>> Downloading docker-compose.yml from GitHub (see course Discussions).../n"
    curl -o docker-compose.yml "https://github.com/wilsonmar/DevSecOps/blob/master/wordpress/docker-compose.yml"
    
    printf "PWD=%s" "$PWD"
@@ -138,6 +138,21 @@ cd "$HOME"  || exit
       fi
    fi
 
+# Per 3:46 into https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live
+
+   if ! command_exists awscli ; then
+      # See https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI_installation.html
+      if [ "$PLATFORM" == "macos" ]; then  # uname = "Darwin":
+         brew install awscli
+      else  # Based on https://askubuntu.com/questions/459402/how-to-know-if-the-running-platform-is-ubuntu-or-centos-with-help-of-a-bash-scri
+         if [ -f /etc/redhat-release ]; then
+            PLATFORM="yum"      # yum update
+         elif [ -f /etc/lsb-release ]; then
+            PLATFORM="apt-get"  # apt-get update
+         fi
+      fi
+   fi
+
 ### 6. 
 
 STACK_YML="wordpress-stack.yml"
@@ -147,6 +162,7 @@ printf "\n>>> Remove manager from prior run: docker swarm leave --force ...\n"
    docker swarm leave --force
       #RESPONSE: Node left the swarm.
 
+# Per 3:39 into https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live
 printf "\n>>> docker swarm init ...\n"
    docker swarm init
       # Swarm initialized: current node (x3t9fal0if4a84mn7o5y1o6mf) is now a manager.
@@ -154,7 +170,6 @@ printf "\n>>> docker swarm init ...\n"
       # docker swarm join --token SWMTKN-1-0l1x7cjd605n2m1uo3w2il86kngdb2q0otzzhf2du2idshr0xw-0otui67aoq7r7tf7h3meqk6g1 192.168.65.3:2377
       # To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
 
-# Per 0:49 into https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live
 printf "\n>>> docker stack deploy -c wordpress-stack.yml %s ...\n" "$STACK_NAME"
    docker stack deploy -c "$STACK_YML"  "$STACK_NAME"
    # shellcheck disable=SC2181
