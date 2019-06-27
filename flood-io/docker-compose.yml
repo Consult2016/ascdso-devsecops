@@ -1,0 +1,10 @@
+nginx:
+    build: .
+    ports:
+        - "443:443"
+    volumes:
+        - ./nginx.key:/etc/nginx/ssl/nginx.key
+        - ./nginx.crt:/etc/nginx/ssl/nginx.crt
+        - ./nginx.conf:/etc/nginx/conf.d/example.conf
+    env_file:
+        - ./secrets.env
