@@ -4,6 +4,8 @@ This repository (docker4aws) contains files copied from <a target="_blank" href=
 
 Scripts here automate the create of a WordPress image in Dockerhub (<a target="_blank" href="https://hub.docker.com">https://hub.docker.com</a>).
 
+<img width="20" height="20" src="https://wilsonmar.github.io/images/Video-icon-800x800.svg"> A link to the specific video making use of the file is provided.
+But know you need a subscription to Pluralsight to see the video.
 
 ### Script for installing Docker on Ubuntu
 
