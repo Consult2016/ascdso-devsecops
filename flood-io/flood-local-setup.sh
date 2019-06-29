@@ -23,14 +23,18 @@
 
 # CURRENT STATUS: under construction. ERROR: BAD signature in ecs-cli.asc from Amazon ECS
 
-### 1. Run Parameters controlling this run:
+### 1. Collect parameters controlling the run:
 
 INSTALL_UTILITIES="reinstall"  # no or reinstall (yes)
 INSTALL_USING_BREW="no"  # no or yes
 WORK_FOLDER="projects"  # as specified in course materials.
 WORK_REPO="flood-local-setup"
 BINARY_STORE_PATH="/usr/local/bin"
-REMOVE_AT_END="no"  # or no
+
+SCRIPT_PATH="04-Challenging_DOM.ts"
+#SCRIPT_PATH="./element/fiori/example.ts"
+
+REMOVE_AT_END="no"  # yes or no
 
 ### 2. Context: Starting time stamp, OS versions, command attributes:
 
@@ -139,6 +143,7 @@ cd "$HOME"  || exit
 
 
 ### 5. Pre-requisites installation
+
 if [ "$PLATFORM" = "macos" ]; then
 
    if ! command_exists brew ; then
@@ -149,11 +154,13 @@ if [ "$PLATFORM" = "macos" ]; then
 
 fi
 
-### 6. install ecs-cli
+### 6. install cli
+
+if [ REMOVE_AT_END = "no" ]; then 
 
 install_element_cli(){
    # Based on https://element.flood.io/docs/1.0/install
-      printf "\n>>> Obtaining element-cli for latest K8S_VERSION=%s...\n" "$K8S_VERSION"
+      printf "\n>>> Obtaining element-cli ...\n" 
       if [ "$PLATFORM" = "macos" ]; then  # uname -a = darwin:
          npm install -g @flood/element-cli
       else  # "linux"
@@ -208,19 +215,30 @@ fi
 printf ">>> element-cli ==> %s\n" "$( element --version )" # 1.0.5
 element  help
 
+fi  # REMOVE_AT_END
 
-### 7. clone a sample script 
 
+### 7. Clone script from GitHub
+
+# Because its parent folder is deleted before/after use:
 
 git clone https://github.com/daeep/Flood_Element && cd Flood_Element
 
-
-### 8. Run a sample script locally
-
-element run 04-Challenging_DOM.ts --no-headless
+SCRIPT_PATH="04-Challenging_DOM.ts"
+#SCRIPT_PATH="./element/fiori/example.ts"
 
 
-### 999.
+### 8. Run the script
+
+if [ REMOVE_AT_END = "no" ]; then 
+   printf "\n>>> npx running script %s \n" "$SCRIPT_PATH"
+   npx @flood/element-cli run "$SCRIPT_PATH" --no-headless
+else
+   printf "\n>>> element running script %s \n" "$SCRIPT_PATH"
+   element run "$SCRIPT_PATH" --no-headless
+fi
+
+### 9. Clean up
 
 if [ "$REMOVE_AT_END" = "yes" ]; then
    printf "\n>>> Removing WORK_REPO=%s in %s \n" "$WORK_REPO" "$PWD"
