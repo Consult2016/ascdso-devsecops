@@ -16,6 +16,13 @@
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/gcp/gcp-python-hello.sh)"
 # by WilsonMar@gmail.com
 
+
+# MANUAL: 
+# MANUAL: Search for "Google App Engine Admin API"
+# MANUAL: Click "MANAGE" (even though it says "ENABLE" in the docs)
+
+# MANUAL: Activate cloud shell
+
 git clone https://github.com/GoogleCloudPlatform/python-docs-samples
 cd python-docs-samples/appengine/standard/hello_world
 pwd
@@ -25,10 +32,11 @@ pwd
 
 # MANUAL: https://console.cloud.google.com/apis/library/appengine.googleapis.com?q=App%20Engine&id=a634ba3f-b36e-4e22-93a1-e80a2e817178&project=qwiklabs-gcp-c7c0bd38b9e58b96&authuser=2
 
-# Open in background:
-nohup dev_appserver.py app.yaml 
+# Cannot Open in background:
+dev_appserver.py app.yaml 
+   # nohup: ignoring input and appending output to 'nohup.out'
    # MANUAL: Web preview > Preview on port 8080 to see "hello world".
-
+# MANUAL: Press Ctrl+C to exit.
 
 # MANUAL: open a new command line session - pwClick the + next to your Cloud Shell tab to 
 
@@ -42,7 +50,7 @@ cd python-docs-samples/appengine/standard/hello_world
 ls app.yaml
 gcloud app deploy
 
-# MANUAL: Specify number for us-central or whatever region you want.
+# TODO: MANUAL: Specify number for us-central or whatever region you want.
 # Enter Y to continue
    # 	Beginning deployment of service [default]...
    # ╔════════════════════════════════════════════════════════════╗
@@ -51,10 +59,15 @@ gcloud app deploy
    # File upload done.
    # Updating service [default]...done.
 
-
 # To launch your browser enter the following command, then click on the link it provides.
 gcloud app browse
    # Did not detect your browser. Go to this link to view your app:
    # https://qwiklabs-gcp-c7c0bd38b9e58b96.appspot.com
 
 # MANUAL: Outside 
+
+exit
+
+# MANUAL: Sign out from Google.
+# MANUAL: Click "Check my progress".
+# MANUAL: Click "All of them", then "Submit".
