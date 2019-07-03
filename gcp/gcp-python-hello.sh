@@ -1,13 +1,20 @@
 #!/bin/bash
 
-# python-hello-gcp.sh
-
-# 20 minutes
-# https://www.qwiklabs.com/focuses/1014
+# python-hello-gcp.sh in https://github.com/wilsonmar/DevSecOps/blob/master/gcp/gcp-python-hello.sh
+# This script automates instructions 20 minute Qwik Start -Python on GCP
+# at https://www.qwiklabs.com/focuses/1014 which is a part of the Quest
+# https://google.qwiklabs.com/quests/37
+# The hands-on lab shows you how to create a small App Engine application that displays a short message
+# Resources:
 # https://www.youtube.com/watch?v=s0-pfuXj1aA&feature=youtu.be
       # Build Apps at Scale with Google App Engine | Google Cloud Labs
 # https://cloud.google.com/appengine/docs/about-the-standard-environment#index_of_features
 # https://cloud.google.com/products/
+
+# USAGE:
+# Instead of typing, copy this command to run in the console within the cloud:
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/gcp/gcp-python-hello.sh)"
+# by WilsonMar@gmail.com
 
 git clone https://github.com/GoogleCloudPlatform/python-docs-samples
 cd python-docs-samples/appengine/standard/hello_world
