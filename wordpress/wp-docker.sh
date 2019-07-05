@@ -3,7 +3,9 @@
 
 # wp-docker.sh in https://github.com/wilsonmar/DevSecOps/wordpress
 # This shell script installs a WordPress instance (with a MySQL database) within Docker.
-# Content here is based mostly on David Clinton's (https://hackernoon.com/@dbclin) 
+# Content here is based mostly on Brian Travesy's 
+# https://www.youtube.com/watch?v=pYhLEV-sRpY&list=PLillGF-Rfqbb6vZqT-Lzi9Al_noaY5LAs&index=3
+# Docker Swarm is covered by David Clinton's (https://hackernoon.com/@dbclin) 
 # course released 10 May 2016 on Pluralsight at:
 # https://app.pluralsight.com/library/courses/using-docker-aws/table-of-contents
 # with code adapted from https://bootstrap-it.com/docker4aws/
@@ -32,7 +34,7 @@ WORK_REPO="wordpress"
                  # 1.12.9/2019-06-21
                  # 1.11.10/2019-06-21
                  # 1.10.13/2019-06-21
-REMOVE_AT_END="no"  # "yes" or "no"
+REMOVE_AT_END="yes"  # "yes" or "no"
 
 
 ### 2. Context: Starting time stamp, OS versions, command attributes:
