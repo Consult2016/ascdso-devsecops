@@ -1,13 +1,51 @@
 ---
+# Based on https://www.youtube.com/watch?v=pYhLEV-sRpY&list=PLillGF-Rfqbb6vZqT-Lzi9Al_noaY5LAs&index=3
+# Run using https://github.com/wilsonmar/DevSecOps/blob/master/wordpress/wp-docker.sh
+# CAUTION: Secure before production usage. This is setup for ease of testing.
 version: '3'
 services:
-  wordpress:
-    image: wordpress
-    ports:
-      - "80:80"
-    links:
-      - mysql
+  # Database
   mysql:
     image: mysql:5.7
     environment:
-      MYSQL_ROOT_PASSWORD:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: password
+      MYSQL_PASSWORD: password
+    networks:
+      - wpsite
+  #phpmyadmin to view contents of WordPress database tables
+  # https://hub.docker.com/phpmyadmin/phpmyadmin
+  phpnyadmin:
+    depends_on:
+      - db
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - '8080:80'
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: password
+    networks:
+      - wpsite
+  # CMS
+  wordpress:
+    depends_on:
+      - db
+    image: wordpress:latest
+    ports:
+      - "8000:80"
+    links:
+      - mysql
+    restart: always
+    volumes: ['./:/var/www/html']
+    environment:
+      WORDPRESS_DB_HOST: db:3306  
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+    networks:
+      - wpsite
+networks:
+  wpsite:
+volumes:
+  db_data:
