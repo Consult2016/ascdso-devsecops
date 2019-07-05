@@ -1,8 +1,9 @@
 #!/bin/sh 
 #for POSIX-compliant Bourne shell that runs cross-platform
 
-# wp-docker.sh in https://github.com/wilsonmar/DevSecOps/wordpress
-# This shell script installs a WordPress instance (with a MySQL database) within Docker.
+# wp-docker-swarm.sh in https://github.com/wilsonmar/DevSecOps/wordpress
+# This shell script installs a WordPress instance (with a MySQL database and phpmyadmin) 
+# within Docker Swarm (to cluster for HA).
 # Content here is based mostly on Brian Travesy's 
 # https://www.youtube.com/watch?v=pYhLEV-sRpY&list=PLillGF-Rfqbb6vZqT-Lzi9Al_noaY5LAs&index=3
 # Docker Swarm is covered by David Clinton's (https://hackernoon.com/@dbclin) 
@@ -12,6 +13,7 @@
 
 # This script is run by this command on MacOS/Linux Terminal:
 # sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/wordpress/wp-docker.sh)"
+# Alternately, run single instance locally by running "docker-swarm up -d".
 
 # Coding of shell/bash scripts is described at https://wilsonmar.github.io/bash-coding
 
