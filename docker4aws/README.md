@@ -84,7 +84,7 @@ ping 172.18.0.2  # substitute from "IPAddress": "172.18.0.2",
 ping 172.17.0.2  # substitute from "IPAddress": "172.17.0.2",
    </pre>
 
-1. Create or navigate to a folder "simple" and download the Dockerfile <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=5c32300b-f24d-452b-80ac-36c6cf2985fd&clip=4&mode=live">0:10</a>
+1. Create or navigate to a folder "simple" and download the Dockerfile <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=5c32300b-f24d-452b-80ac-36c6cf2985fd&clip=4&mode=live"><img width="20" height="20" src="https://wilsonmar.github.io/images/Video-icon-800x800.svg">0:10</a>
 
    <pre>
    cd simple  # in repo for Dockerfile inside
@@ -106,7 +106,7 @@ cd ..
 
 ### Build and run wordpress locally
 
-1. Create wordpress with one command: <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=5c32300b-f24d-452b-80ac-36c6cf2985fd&clip=5&mode=live">1:12</a>
+1. Create wordpress with one command: <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=5c32300b-f24d-452b-80ac-36c6cf2985fd&clip=5&mode=live"><img width="20" height="20" src="https://wilsonmar.github.io/images/Video-icon-800x800.svg">1:12</a>
 
    <pre>docker run -it wordpress /bin/bash  # for root@a2c20e10a430  substituted
    exit
@@ -118,24 +118,44 @@ cd ..
 
 ### WordPress stack.yml file for local deployment
 
-1. Instantiate wordpress and mysql 5.7 locally <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live">*</a>
+1. Instantiate wordpress and mysql 5.7 locally <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live"><img width="20" height="20" src="https://wilsonmar.github.io/images/Video-icon-800x800.svg">*</a>
 
    <pre>curl -O https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker4aws/stack.yml
-   docker stack deploy -c stack.yml mywordpress
    </pre>
 
    NOTE: The image of the stack.yml file on the video does not show the "---" on the first line which defines yml files.
    
    NOTE: Credentials inside yml files are insecure.
 
-1. Use a more secure approach
+1. To avoid "this node is not a swarm manager. Use "docker swarm init" or "docker swarm join" to connect this node to swarm and try again"<a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live"><img width="20" height="20" src="https://wilsonmar.github.io/images/Video-icon-800x800.svg">2:21</a>
 
-   <strong>wordpress-stack.yml</strong>
+   <pre>docker swarm init
+   docker stack deploy -c stack.yml mywordpress
+   </pre>
 
+1. Get IP address for "en0" : http://192.168.1.16 for "Welcome to my website"
+
+   <pre>ip a</pre>   
+
+1. NOT IN THE VIDEO: Use a more secure approach
+
+   <strong>curl -O https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker4aws/wordpress-stack.yml
+   docker stack deploy -c stack.yml mywordpress
+   </strong>
 
 ### Prepare an EC2 launch type
 
-<strong>ecs-ec2-launch.yml</strong>
+1. Get an AWS account.
+
+1. Install AWS-CLI and ECS-CLI on your machine:<a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live"><img width="20" height="20" src="https://wilsonmar.github.io/images/Video-icon-800x800.svg">3:40</a>
+
+   <a target="_blank" href="https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI_installation.html">https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI_installation.html</a>
+
+   <pre>curl -O https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker4aws/ecs-cli-config.sh
+   chmod +x ecs-cli-config.sh
+   <strong>./ecs-cli-config.sh</strong></pre>
+
+   <strong>ecs-ec2-launch.yml</strong>
 
 ### docker-compose.yml for EC2 launch
 
