@@ -81,20 +81,34 @@ ping 172.18.0.2  # substitute from "IPAddress": "172.18.0.2",
 ping 172.17.0.2  # substitute from "IPAddress": "172.17.0.2",
    </pre>
 
-1. Automate<a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=5c32300b-f24d-452b-80ac-36c6cf2985fd&clip=4&mode=live">0:10</a>
+1. Download the Dockerfile <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=5c32300b-f24d-452b-80ac-36c6cf2985fd&clip=4&mode=live">0:10</a>
 
    <pre>
+   curl -o 
+   </pre>
+
+
+
 cd simple  # in repo for Dockerfile inside
-docker build -t "webserver" .
+
+   <pre>
+DOCKER_SERVER_NAME="webserver"
+DOCKER_SERVER_PORT="80"
+docker build -t "$DOCKER_SERVER_NAME" .
 docker images
-docker run -d -p 80:80 webserver /usr/sbin/apache2ctl -D FOREGROUND
-curl localhost
+# specify -p after -d :
+docker run -d -p "$DOCKER_SERVER_PORT:80" "$DOCKER_SERVER_NAME" /usr/sbin/apache2ctl -D FOREGROUND
+curl localhost  # RESPONSE="Welcome to my web site"
    </pre>
 
 
 ### Build and run a container
 
-<a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=5c32300b-f24d-452b-80ac-36c6cf2985fd&clip=5&mode=live">1:12</a >
+1. Create wordpress container <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=5c32300b-f24d-452b-80ac-36c6cf2985fd&clip=5&mode=live">1:12</a>
+
+   <pre>docker run -it wordpress /bin/bash  # for root@a2c20e10a430  substituted
+   exit
+   </pre>
 
 <strong>docker-container-build.sh</strong>
 
