@@ -1,8 +1,11 @@
-This repository (docker4aws) contains files copied from the <a target="_blank" href="https://bootstrap-it.com/docker4aws/">https://bootstrap-it.com/docker4aws</a> web page created by David Clinton as part of his video class on Pluralsight <a target="_blank" href="https://app.pluralsight.com/library/courses/using-docker-aws/description">"Using Docker on AWS"</a>. The description for the class is:
+This README.md page at https://github.com/wilsonmar/DevSecOps/blob/master/docker4aws/README.md
+describes the repository https://github.com/wilsonmar/DevSecOps/master/docker4aws
+
+This repository (docker4aws) contains files copied from the <a target="_blank" href="https://bootstrap-it.com/docker4aws/">https://bootstrap-it.com/docker4aws</a> web page created by David Clinton as part of his 12 June 2019 video class on Pluralsight <a target="_blank" href="https://app.pluralsight.com/library/courses/using-docker-aws/description">"Using Docker on AWS"</a>. The description for the class is:
 
 > "Get yourself up to speed running your Docker workloads on AWS. Learn the CLI tools you'll need to manage containers using ECS - including Amazon's managed container launch type, Fargate - and Kubernetes (EKS) and the ECR image repo service."
 
-The class (and thus scripts here) automate the creation of a WordPress image from Dockerhub at <a target="_blank" href="https://hub.docker.com/_/wordpress/">https://hub.docker.com/_/wordpress/</a>
+The scripts here automate the creation of a WordPress image from DockerHub at <a target="_blank" href="https://hub.docker.com/_/wordpress/">https://hub.docker.com/_/wordpress/</a>
 
 <img width="20" height="20" src="https://wilsonmar.github.io/images/Video-icon-800x800.svg">
 Links to the specific video making use of the file is provided.
@@ -81,15 +84,14 @@ ping 172.18.0.2  # substitute from "IPAddress": "172.18.0.2",
 ping 172.17.0.2  # substitute from "IPAddress": "172.17.0.2",
    </pre>
 
-1. Download the Dockerfile <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=5c32300b-f24d-452b-80ac-36c6cf2985fd&clip=4&mode=live">0:10</a>
+1. Create or navigate to a folder "simple" and download the Dockerfile <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=5c32300b-f24d-452b-80ac-36c6cf2985fd&clip=4&mode=live">0:10</a>
 
    <pre>
-   curl -o 
+   cd simple  # in repo for Dockerfile inside
+   curl -O https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker4aws/simple/Dockerfile
    </pre>
 
-
-
-cd simple  # in repo for Dockerfile inside
+1. Instantiate a webserver:
 
    <pre>
 DOCKER_SERVER_NAME="webserver"
@@ -99,22 +101,37 @@ docker images
 # specify -p after -d :
 docker run -d -p "$DOCKER_SERVER_PORT:80" "$DOCKER_SERVER_NAME" /usr/sbin/apache2ctl -D FOREGROUND
 curl localhost  # RESPONSE="Welcome to my web site"
+cd ..
    </pre>
 
+### Build and run wordpress locally
 
-### Build and run a container
-
-1. Create wordpress container <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=5c32300b-f24d-452b-80ac-36c6cf2985fd&clip=5&mode=live">1:12</a>
+1. Create wordpress with one command: <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=5c32300b-f24d-452b-80ac-36c6cf2985fd&clip=5&mode=live">1:12</a>
 
    <pre>docker run -it wordpress /bin/bash  # for root@a2c20e10a430  substituted
    exit
    </pre>
 
+1. Instatiate
+
 <strong>docker-container-build.sh</strong>
 
 ### WordPress stack.yml file for local deployment
 
-<strong>stack.yml</strong>
+1. Instantiate wordpress and mysql 5.7 locally <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live">*</a>
+
+   <pre>curl -O https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker4aws/stack.yml
+   docker stack deploy -c stack.yml mywordpress
+   </pre>
+
+   NOTE: The image of the stack.yml file on the video does not show the "---" on the first line which defines yml files.
+   
+   NOTE: Credentials inside yml files are insecure.
+
+1. Use a more secure approach
+
+   <strong>wordpress-stack.yml</strong>
+
 
 ### Prepare an EC2 launch type
 
