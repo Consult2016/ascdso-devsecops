@@ -11,7 +11,7 @@
 # This script is idempotent because it makes a work folder and deletes it on reruns.
 #
 # USAGE: This script is run by this command on MacOS/Linux Terminal or within Git Bash on Windows:
-# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Azure/azure-locust-perftest.sh)"
+# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Azure/azure-locust-perftest/azure-locust-perftest.sh)"
 #
 # Coding techniques in this shell/bash script is described at https://wilsonmar.github.io/bash-coding
 #
