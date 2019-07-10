@@ -22,7 +22,7 @@
 
 ### 1. Collect parameters controlling the run:
 
-INSTALL_UTILITIES="no"  # no or reinstall (yes)
+INSTALL_UTILITIES="reininstall"  # no or reinstall (=yes)
 INSTALL_USING_BREW="no"  # no or yes
 WORK_FOLDER="projects"  # as specified in course materials.
 WORK_REPO="azure-locust-perftest"  # same as script name
@@ -233,7 +233,7 @@ if ! command_exists tree ; then  # not exist:
    fi
       if [ "$PLATFORM" = "macos" ]; then
             printf "\n>>> pip install tree on macOS ...\n"
-            brew install tree
+            pip install tree
       else  # linux
          printf "\n>>> Installing tree on ...\n"
          # install_tree
@@ -243,6 +243,27 @@ else
 fi
 printf ">>> %s\n" "$( tree --version )" 
    # tree v1.8.0 (c) 1996 - 2018 by Steve Baker, Thomas Moore, Francesc Rocher, Florian Sesser, Kyosuke Tokoro
+
+
+### 6.5 install locustio
+
+if ! command_exists locustio ; then  # not exist:
+   if [ "$INSTALL_UTILITIES" = "no" ]; then
+      printf "\n>>> locustio not installed but INSTALL_UTILITIES=\"no\". Exiting...\n"
+      exit
+   fi
+      if [ "$PLATFORM" = "macos" ]; then
+            printf "\n>>> pip install locustio on macOS ...\n"
+            pip install locustio
+      else  # linux
+         printf "\n>>> Installing locustio on ...\n"
+         # install_locustio
+      fi
+else
+      printf ">>> Using existing version:\n" 
+fi
+printf ">>> %s\n" "$( locustio --version )" 
+   # locustio v1.8.0 (c) 1996 - 2018 by Steve Baker, Thomas Moore, Francesc Rocher, Florian Sesser, Kyosuke Tokoro
 
 
 ### 7. Clone script 
@@ -256,10 +277,29 @@ wget -O .gitignore "https://github.com/github/gitignore/blob/master/Python.gitig
    printf "\n>>> Construct app/app.py ...\n"
 touch __init__.py
 
-mkdir app
-touch app/__init__.py
-wget -O .gitignore "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Azure/azure-locust-perftest/app.py" 2> templog
-   ls
+mkdir app && cd app
+touch __init__.py
+# wget
+curl -o app.py "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Azure/azure-locust-perftest/app.py"
+
+tree
+##### here is where I'm stuck. The curl command above does not result in a downloaded file.
+
+exit
+
+### 8. Run script 
+
+   printf "\n>>> Run python app/app.py &  # in background ...\n"
+python app/app.py  &
+   # * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+   # * Restarting with stat
+   # * Debugger is active!
+   # * Debugger PIN: 450-716-582
+
+   printf "\n>>> Verify curl for json response ...\n"
+curl -X GET http://127.0.0.1:5000/tests
+   # "description": "testing individual units of source code", 
+   # "name": "unit testing"
 
 exit
 

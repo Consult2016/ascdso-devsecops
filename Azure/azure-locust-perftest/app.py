@@ -1,7 +1,5 @@
 # app.py
-# Used by https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Azure/azure-locust-perftest.sh
-# get_tests : Used to get the list of tests from the testing_types dictionary
-# add_tests : Used to add a test to the testing_types dictionary
+# Used by https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Azure/azure-locust-perftest/azure-locust-perftest.sh
 
 from flask import Flask, jsonify, request
 
@@ -11,14 +9,18 @@ testing_types = [
   { 'name': 'unit testing', 'description': 'testing individual units of source code' }
 ]
 
+
 @app.route('/tests')
 def get_tests():
   return jsonify(testing_types)
+
 
 @app.route('/tests', methods=['POST'])
 def add_test():
   testing_types.append(request.get_json())
   return '', 204
-
+  
+  
+  
 if __name__ == '__main__':
     app.run(debug=True)  
