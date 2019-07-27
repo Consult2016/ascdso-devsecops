@@ -1,6 +1,6 @@
 #!/bin/sh #for POSIX-compliant Bourne shell that runs cross-platform
 
-# microtrader-setup.sh in https://github.com/wilsonmar/DevSecOps/docker-production-aws
+# MICROTRADER_setup.sh in https://github.com/wilsonmar/DevSecOps/docker-production-aws
 # as described in https://wilsonmar.github.io/docker-production-aws
 
 # This script builds from source the microtrader sample app used in 
@@ -9,7 +9,7 @@
 # which shows how to install a "microtraders" Java app in aws using Docker, ECS, CloudFormation, etc.
 
 # This script is run by this command on MacOS/Linux Terminal:
-# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker-production-aws/microtrader-setup.sh)"
+# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker-production-aws/MICROTRADER_setup.sh)"
 
 # This is free software; see the source for copying conditions. There is NO
 # warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -18,9 +18,12 @@
 
 ### 1. Run Parameters controlling this run:
 
-INSTALL_UTILITIES="no"  # or yes
+set -e  # stop when $? returned non-zero.
+set -o pipefail
+
+FEATURE_INSTALL_UTILITIES="no"  # or yes
 WORK_FOLDER="docker-production-aws"  # as specified in course materials.
-REMOVE_AT_END="yes"  # or no
+FEATURE_REMOVE_AT_END="yes"  # or no
 
 
 ### 2. Context: Starting time stamp, OS versions, command attributes:
@@ -35,10 +38,10 @@ LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 LOGFILE="$HOME/$THISPGM.$LOG_DATETIME.log"
 SSH_USER="$USER@$( uname -n )"  # computer node name.
 #TO_PRINT="$THISPGM on machine $USER starting with logging to file:"
-echo ">>> $LOGFILE"
+#echo ">>> $LOGFILE"
 #echo "$TO_PRINT" >$LOGFILE  # single > for new file
 echo "$TO_PRINT"  # to screen
-uname -a  # operating sytem
+# uname -a  # operating sytem
 
 ### OS detection to PLATFORM variable:
 PLATFORM='unknown'
@@ -93,15 +96,15 @@ command_exists() {  # in /usr/local/bin/... if installed by brew
 ### 4. Delete local repository if it's there (for idempotency):
 
 cd "$HOME"
-   echo "\n>>> Creating folder $HOME/projects if it's not there:"
    if [ ! -d "projects" ]; then # NOT found:
+      echo "\n>>> Creating folder $HOME/projects since it's not there:"
       mkdir projects
    fi
          cd projects
    echo "PWD=$PWD"
 
    if [ ! -d "$WORK_FOLDER" ]; then # NOT found:
-      echo "\n>>> Creating folders $HOME/project/$WORK_FOLDER if it's not there:"
+      echo "\n>>> Creating folders $HOME/project/$WORK_FOLDER ..."
       mkdir "$WORK_FOLDER"
    fi
           cd "$WORK_FOLDER"
@@ -111,7 +114,7 @@ echo "PWD=$PWD"
 
 ### 5. Pre-requisites installation
 
-if [[ "$INSTALL_UTILITIES" == "yes" ]]; then
+if [[ "$FEATURE_INSTALL_UTILITIES" == "yes" ]]; then
 
    # Install OSX
 
@@ -178,15 +181,40 @@ echo "PWD=$PWD"
 
 ### 7. Build fat jars and run tests 
 
+GRADLE_VERSION="$( gradle --version | grep Gradle | awk '{print $2}' | head -n 1 )"
+if [ "$GRADLE_VERSION" = "4.10.2" ]; then
+   echo "\n>>> Using gradle version $GRADLE_VERSION ..."
+else
+   echo "\n>>> Install Wrapping gradle to 4.10.2 to avoid version issues at too new gradle 5.4.1 built 019-04-26 08:14:42 UTC"
+   # https://sdkman.io/install to /.sdkman folder:
+   if ! command_exists sdk ; then
+      curl -s "https://get.sdkman.io" | bash
+      source "$HOME/.sdkman/bin/sdkman-init.sh"
+      SDK_VERSION=$(sdk version)  # SDKMAN 5.7.3+337
+      # sdk list gradle 
+   fi
+   sdk install gradle 4.10.2
+   sdk default gradle 4.10.2
+      # Setting gradle 4.10.2 as default.
+
+   # Did not work: #gradle wrapper --gradle-version 4.10.2
+      # This updates gradle/wrapper/gradle-wrapper.properties
+   chmod +x gradlew
+   echo "$(gradle --version)"
+fi
+
+echo "\n>>> ./gradlew clean test shadowJar"
 # 1:17 into https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m2&clip=3&mode=live
-./gradlew clean test shadowJar
+./gradlew clean test shadowJar -Xlint:deprecation
+      # SAMPLE RESPONSE:
       # Downloading https://services.gradle.org/distributions/gradle-4.10.2-bin.zip
       # BUILD SUCCESSFUL in 32s
-      # In build-grade, function borwser
+      # In build-grade, function browser
+      # results at: file:///Users/wilsonmar/projects/docker-production-aws/microtrader/build/test-results/junit/
    # 4:05 into https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m2&clip=3&mode=live
       # output from within build.gradle:
    # TODO: Python capture output into an array for individual files:
-echo ">>> TODO: Stop if RETURN=$? (1 = bad/STOP, 0 = good)"
+echo ">>> set -e  # Stop if RETURN=$? (1 = bad/STOP, 0 = good)"
 
 
 ### 8. Get rid of processes (run creates new ones):"
@@ -194,16 +222,20 @@ echo ">>> TODO: Stop if RETURN=$? (1 = bad/STOP, 0 = good)"
 echo "\n>>> Remove disowned processes running from previous run (run creates new ones):"
 jobs  # list processes disowned.
 kill_microtrader_pids() {
-   # ps -al yields: PID 32874 for CMD: /usr/bin/java -jar build/jars/microtrader-quote-2019042115340
+   # ps -al yields: PID 32874 for CMD: /usr/bin/java -jar build/jars/MICROTRADER_quote-2019042115340
    echo "\n>>> Killing microtrader processes running in background from previous run:"
    ps -al | grep "microtrader"
-   kill $(ps aux | grep 'microtrader-quote' | awk '{print $2}' | head -n 1 )
-   kill $(ps aux | grep 'microtrader-dashboard' | awk '{print $2}' | head -n 1 )
-   kill $(ps aux | grep 'microtrader-portfolio' | awk '{print $2}' | head -n 1 )
-   kill $(ps aux | grep 'microtrader-audit' | awk '{print $2}' | head -n 1 )
+   MICROTRADER_QUOTE_PSID=$(ps aux | grep 'MICROTRADER_quote' | awk '{print $2}' | head -n 1 )
+   if [ -z ${MICROTRADER_QUOTE_PSID+x} ]; then kill "$MICROTRADER_QUOTE_PSID"; fi
+   MICROTRADER_DASHBOARD_PSID=$(ps aux | grep 'MICROTRADER_dashboard' | awk '{print $2}' | head -n 1 )
+   if [ -z ${MICROTRADER_QUOTE_PSID+x} ]; then kill "$MICROTRADER_DASHBOARD_PSID"; fi
+   MICROTRADER_PORTFOLIO_PSID=$(ps aux | grep 'MICROTRADER_portfolio' | awk '{print $2}' | head -n 1 )
+   if [ -z ${MICROTRADER_QUOTE_PSID+x} ]; then kill  "$MICROTRADER_PORTFOLIO_PSID"; fi
+   MICROTRADER_AUDIT_PSID=$(ps aux | grep 'MICROTRADER_audit' | awk '{print $2}' | head -n 1 )
+   if [ -z ${MICROTRADER_QUOTE_PSID+x} ]; then kill "$MICROTRADER_AUDIT_PSID"; fi
 }
 kill_microtrader_pids
-
+   # "No such process" is expected when run the first time.
 
 ### 9. Prepare path to each Fat Jar in a different instance in & background: 
 
@@ -217,30 +249,46 @@ MAKE_VERSION=$( echo "${MAKE_VERSION%??}" )
 echo "\n>>> MAKE_VERSION=$MAKE_VERSION"  # example: 20190421153402.a295436
 
 # Prepare variables containing 
-   AUDIT_JAR="microtrader-audit-$MAKE_VERSION-fat.jar"          # 21,775,871
-   DASHBOARD_JAR="microtrader-dashboard-$MAKE_VERSION-fat.jar"  # 17,972,432
-   PORTFOLIO_JAR="microtrader-portfolio-$MAKE_VERSION-fat.jar"  # 17,722,025
-   QUOTE_JAR="microtrader-quote-$MAKE_VERSION-fat.jar"          # 16,723,780
+   AUDIT_JAR="MICROTRADER-audit-$MAKE_VERSION-fat.jar"          # 21,775,871
+   DASHBOARD_JAR="MICROTRADER-dashboard-$MAKE_VERSION-fat.jar"  # 17,972,432
+   PORTFOLIO_JAR="MICROTRADER-portfolio-$MAKE_VERSION-fat.jar"  # 17,722,025
+   QUOTE_JAR="MICROTRADER-quote-$MAKE_VERSION-fat.jar"          # 16,723,780
 
-ls -l build/jars
-      # -rw-r--r--  1 wilsonmar  staff  21775871 Jun 19 18:55 microtrader-audit-20190421153402.a295436-fat.jar
+echo "\n>>> ls -l build/jars  ..."
+echo "$PWD ..."
+ls build/jars
+      # SAMPLE RESPONSE:
+      # -rw-r--r--  1 wilsonmar  staff  21775871 Jun 19 18:55 MICROTRADER_audit-20190421153402.a295436-fat.jar
       # where "20190421153402" is Git's commitTimestamp and ".a295436" is the commitId (hash).
 
 
-### 10. Run microtrader apps in & background: 
+echo "\n>>> ### 10. Run microtrader apps in & background: "
 
 # Referenced: https://www.maketecheasier.com/run-bash-commands-background-linux/
+# Described in Chapter 3: Creating the Sample App:
 # 0 into https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m2&clip=4&mode=live
-# Start Quote Generator in background (through nohup)
-chmod +s "build/jars/$QUOTE_JAR" 
 
+echo "\n>>> Creating HSQLDB schema within ./audit-db.* for Audit service:"
+# 4:29 into https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m2&clip=4&mode=live
+#chmod +s "build/jars/$AUDIT_JAR" 
+java -cp "build/jars/$AUDIT_JAR" com.pluralsight.dockerproductionaws.admin.Migrate
+   # SAMPLE RESPONSE:
+   # Jul 26, 2019 6:57:39 AM org.flywaydb.core.internal.util.VersionPrinter printVersion
+   # INFO: Flyway 4.2.0 by Boxfuse
+# The above is supposed to create audit-db.script/.tmp/.log/.properties in root:
+echo "\n>>> ls audit-db.*  ..."
+ls audit-db.*
+
+echo ">>> Start Quote Generator in background (through nohup)"
+# PROTIP: Background programs are invoked together in one command combined with continuation character \ :
+ chmod +s "build/jars/$QUOTE_JAR" 
 java -jar "build/jars/$QUOTE_JAR" --cluster & \
 java -jar "build/jars/$DASHBOARD_JAR" --cluster & \
 java -jar "build/jars/$PORTFOLIO_JAR" --cluster & \
-java -jar "build/jars/$AUDIT_JAR" com.pluralsight.dockerproductionaws.admin.Migrate & \
-open localhost:35000 \
-fg  # fg=foreground
-
+java -jar "build/jars/$AUDIT_JAR" com.pluralsight.dockerproductionaws.admin.Migrate & 
+### This will keep generating Bought and Sold lines. 
+# Every 3 seconds by default.
+   # SAMPLE RESPONSE:
    # responses: $ Jun 20, 2019 2:13:32 AM io.vertx.core.impl.launcher.commands.RunCommand
    # Jun 20, 2019 7:51:06 AM com.hazelcast.internal.partition.impl.PartitionStateManager
    # INFO: [127.0.0.1]:5701 [dev] [3.10.5] Initializing cluster partition table arrangement...
@@ -250,74 +298,27 @@ fg  # fg=foreground
    # Quotes (Rest endpoint) service published : true
    # Server started
    # appending output to nohup.out
+# Ocassionally:
+# D'oh, failed to buy 6 of Black Coat : (RECIPIENT_FAILURE,-1) Cannot buy 6 of Black Coat - not enough money, need 4242.0, has 4074.0
 
-echo $(ps aux | grep 'microtrader-quote' | awk '{print $2}' | head -n 1 )
+echo "\n>>> Lines below are not invoked because --cluster tells vert.x to restart automatically."
+echo $(ps aux | grep 'MICROTRADER_quote' | awk '{print $2}' | head -n 1 )
+echo "\n>>> So control+C doesn't work. Manually close terminal session by clicking on the green icon."
 
-### Verify current stock prices appear in JSON: on MacOS:
-open localhost:35000
+### Manually verify current stock prices appear in JSON: on MacOS:
+# open http://localhost:35000
 
-exit
+# fg  # fg=foreground
+   # ./MICROTRADER_setup.sh: line 274: fg: no job control
 
-####    creating HSQLDB schema within ./audit-db.* for Audit service:
-# 4:20 into https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m2&clip=4&mode=live
-java -jar "build/jars/$AUDIT_JAR" com.pluralsight.dockerproductionaws.admin.Migrate &
-      # within Migrate.jar in microtrader-audit/src/main/java/com/pluralsight/dockerproductionaws/admin/...
-      # Start Audit service using HSQLDB within ./audit-db.*
-    # Oct 11, 2018 5:11:24 AM org.flywaydb.core.internal.util.VersionPrinter printVersion
-    # INFO: Flyway 4.2.0 by Boxfuse
-# TODO: Open localhost:8500 to verify
+if [[ "$FEATURE_REMOVE_AT_END" == "yes" ]]; then
+   echo "\n>>> Killing processes..."
+   kill_microtrader_pids
 
-# Circuit breaker pattern in 7:05 into https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m2&clip=4&mode=live
-
-### 11. Context: Starting time stamp, OS versions, command attributes:
-
-echo "\n>>> passed"  # DEBUGGING.
-exit
-
-
-### 13. 
-
-echo "\n>>> Running mocha tests on JavaScript:"
-mocha --exit
-   if [ $? -ne 0 ]; then
-      echo "\n>>> RETURN=$? (1 = bad/STOP, 0 = good)"
-   fi
-
-exit
-
-
-### 14. cd microtrader-specs  # contains package.json test
-
-
-
-### Test - see https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m3&clip=5&mode=live
-   # using task copyDeps in the build.gradle file.
-make test
-
-### Clean-up with make clean [1:29]
-
-### See https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m3&clip=8&mode=live
-make release
-   # Quote REST endpoint is running at <a href="http://localhost:32770/quote/">http://localhost:32770/quote/</a>
-   # Audit REST endpoint is running at <a href="http://localhost:32768/audit/">http://localhost:32768/audit/</a>
-   # Trader dashboard is running at <a href="http://localhost:32771">http://localhost:32771</a>
-
-### [1:53] into https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m3&clip=8&mode=live
-docker ps
-
-### [0:13] https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m3&clip=9&mode=live
-# Makefile has: make tag latest $(APP_VERSION) $(COMMIT_ID) $(COMMIT_TAG)
-
-### [1:16] https://app.pluralsight.com/player?course=docker-production-using-amazon-web-services&author=justin-menga&name=docker-production-using-amazon-web-services-m3&clip=9&mode=live
-make clean
-
-
-# https://github.com/jmenga/packer-ecs  # final branch
-# provides a Packer build script for creating Amazon Machine Images (AMIs) for running custom AWS EC2 Container Service (ECS) Container Instance images, as described in the Pluralsight course Docker in Production using AWS.
-
-
-
-if [[ "$REMOVE_AT_END" == "yes" ]]; then
    echo "\n>>> Removing WORK_REPO=$WORK_REPO"
+   ls -al
    rm -rf "$WORK_REPO"
 fi
+
+echo "\n>>> Done."
+#exit 

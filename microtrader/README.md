@@ -1,5 +1,4 @@
 README.md
 
-This set of files is described in my blog at
-
-<a target="_blank" href="https://wilsonmar.github.io/docker-production-aws">https://wilsonmar.github.io/docker-production-aws</a>
+This set of files is described in my blog at:
+<a target="_blank" href="https://wilsonmar.github.io/microtrader">https://wilsonmar.github.io/microtrader</a>
