@@ -5,7 +5,7 @@
 #    https://www.qwiklabs.com/focuses/1044
 
 # Instead of typing, copy this command to run in the console within the cloud:
-# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/gcp/gcp-helm-GSP052.sh)"
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/gcp/gcp-helm-GSP052.sh)"
 
 # The script, by Wilson Mar and others,
 # adds steps to grep values into variables for variation and verification,
@@ -46,64 +46,23 @@ echo ">>> REGION=$REGION"
 GCP_ZONE="us-central1-c"
 echo ">>> GCP_ZONE=$GCP_ZONE"
 
+# ---------------------------------- exit
+
+echo ">>> create my-cluster:"
+gcloud container clusters create my-cluster \
+--scopes "https://www.googleapis.com/auth/projecthosting,storage-rw"
+   # Created [https://container.googleapis.com/v1/projects/qwiklabs-gcp-0286d80b4438f082/zones/us-central1-a/clusters/my-cluster].
+   # kubeconfig entry generated for my-cluster.
+   # NAME        ZONE           MASTER_VERSION  MASTER_IP       MACHINE_TYPE   NODE_VERSION  NUM_NODES  STATUS
+   # my-cluster  us-central1-f  1.9.7-gke.3           35.188.161.231  n1-standard-1  1.9.7         3          RUNNING
+
+
 exit
 
 
-# Create a new instance:
-gcloud compute instances create gcelab --zone $GCP_ZONE
-   # NAME       ZONE           MACHINE_TYPE  PREEMPTIBLE INTERNAL_IP EXTERNAL_IP    STATUS
-   # gcelab us-central1-c n1-standard-1             10.240.X.X  X.X.X.X        RUNNING
 
-# Create a new persistent disk:
-gcloud compute disks create mydisk --size=200GB --zone $GCP_ZONE
-   # NAME   ZONE          SIZE_GB TYPE        STATUS
-   # mydisk us-central1-c 200     pd-standard READY
 
-# Attach a persistent disk to the virtual machine instance gcelab:
-gcloud compute instances attach-disk gcelab \
-   --device-name mydevice1 \
-   --disk mydisk --zone $GCP_ZONE
-   # Updated [https://www.googleapis.com/compute/v1/projects/qwiklabs-gcp-d12e3215bb368ac5/zones/us-central1-c/instances/gcelab].
-   # NOTE: If device-name is not specified, default is like "scsi-0Google_PersistentDisk_persistent-disk-1
-   
-# SSH in the virtual machine:
-echo Y | gcloud compute ssh gcelab --zone $GCP_ZONE
-   # WARNING: The public SSH key file for gcloud does not exist.
-   # WARNING: The private SSH key file for gcloud does not exist.
-   # WARNING: You do not have an SSH key for gcloud.
-   # WARNING: SSH keygen will be executed to generate a key.
-   # This tool needs to create the directory
-   # [/home/gcpstaging8246_student/.ssh] before being able to generate SSH keys.
-   # Do you want to continue (Y/n)?  y
 
-# Find the disk device:
-ls -l /dev/disk/by-id/
-   # lrwxrwxrwx 1 root root  9 Feb 27 02:25 google-persistent-disk-1 -> ../../sdb
 
-# To Formatting and mounting the persistent disk:
-   # First, Make a mount point:
-   sudo mkdir /mnt/mydisk
 
-   # Next, format the disk with a single ext4 filesystem using the mkfs tool. This command deletes all data from the specified disk:
-   sudo mkfs.ext4 -F -E lazy_itable_init=0,lazy_journal_init=0,discard /dev/disk/by-id/scsi-0Google_PersistentDisk_persistent-disk-1
-      # Last lines of the output:
-      # Allocating group tables: done     
-      # Writing inode tables: done     
-      # Creating journal (262144 blocks): done
-      # Writing superblocks and filesystem accounting information: done
-
-   # Mount the disk to the instance with the discard option enabled:
-   sudo mount -o discard,defaults /dev/disk/by-id/scsi-0Google_PersistentDisk_persistent-disk-1 /mnt/mydisk
-
-# Automatically mount the disk on restart by editing file /etc/fstab 
-# TODO: Add the following below the line that starts with "UUID=..."
-sed -i "/dev/disk/by-id/scsi-0Google_PersistentDisk_persistent-disk-1 /mnt/mydisk ext4 defaults 1 1"
-   # in file /etc/fstab
-
-# Alternately, It's usually better to use the UUID in the /etc/fstab rather than /dev/anything .. 
-# and you can just append it in the /etc/fstab rather than using a sed.
-
-# For fast local SSDs on Linux images that supports NVMe,
-# see https://cloud.google.com/compute/docs/disks/local-ssd#create_a_local_ssd
-
-# Congratulations.
+echo ">>> Congratulations."
