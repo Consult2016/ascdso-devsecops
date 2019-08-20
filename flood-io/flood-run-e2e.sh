@@ -17,7 +17,7 @@ set -e  # exit script if any command returnes a non-zero exit code.
 FLOOD_PROJECT="Default"  # "the-internet-dev01"
 TYPESCRIPT_URL="https://raw.githubusercontent.com/flood-io/element/master/examples/internet-herokuapp/14-Dynamic_Loading.ts"
 FLOOD_REGION="ap-southeast-2"
-FLOOD_INST_TYPE="m4.xlarge"
+FLOOD_INST_TYPE="m5.xlarge"
 meta=""  # QUESTION: What goes in this?
 
 # Verify availability of Typescript file:
@@ -82,11 +82,10 @@ fi
 
 # TODO: Create project "the-internet-dev01" on Flood GUI
 
-
 echo -e "\n>>> At $PWD"
 
 # Start a flood - see https://docs.flood.io/floods/post-floods
-echo -e "\n>>> [$(date +%FT%T)+00:00] Starting flood for uuid response:"
+echo -e "\n>>> [$(date +%FT%T)+00:00] create $TYPESCRIPT_URL"
 curl "$TYPESCRIPT_URL" -H 'Connection: keep-alive' \
 -H 'Pragma: no-cache' -H 'Cache-Control: no-cache' \
 -H 'Upgrade-Insecure-Requests: 1' \
@@ -106,7 +105,8 @@ else
 fi
 
 echo -e "\n>>> [$(date +%FT%T)+00:00] run flood_uuid"
-flood_uuid=$(curl -u "$FLOOD_USER" -X POST https://api.flood.io/grids \
+flood_uuid=$(curl -u "$FLOOD_USER" \
+ -X POST https://api.flood.io/grids \
  -H "Accept: application/vnd.flood.v2+json" \
  -F "flood[tool]=flood-chrome" \
  -F "flood[project]=$FLOOD_PROJECT" \
@@ -114,13 +114,12 @@ flood_uuid=$(curl -u "$FLOOD_USER" -X POST https://api.flood.io/grids \
  -F "flood[privacy]=public" \
  -F "flood[name]=ElementTest" \
  -F "flood[tag_list]=shakout" \
- -F "flood[meta]=$meta" \
  -F "flood_files[]=@$SCRIPT_FULL_PATH" \
  -F "flood[grids][][infrastructure]=demand" \
  -F "flood[grids][][instance_quantity]=1" \
  -F "flood[grids][][region]=$FLOOD_REGION" \
  -F "flood[grids][][instance_type]=$FLOOD_INST_TYPE" \
- -F "flood[grids][][stop_after]=60" | jq -r ".uuid" )
+ -F "flood[grids][][stop_after]=12" | jq -r ".uuid" )
 
 # https://api.flood.io/floods
 
