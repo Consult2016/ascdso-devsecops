@@ -14,11 +14,10 @@ set -e  # exit script if any command returnes a non-zero exit code.
 # set -x  # display every command.
 
 # Default run parameters:
-FLOOD_PROJECT="Default"  # "the-internet-dev01"
+FLOOD_PROJECT="default"  # "the-internet-dev01"
 TYPESCRIPT_URL="https://raw.githubusercontent.com/flood-io/element/master/examples/internet-herokuapp/14-Dynamic_Loading.ts"
-FLOOD_REGION="ap-southeast-2"
+FLOOD_REGION="us-east-1"
 FLOOD_INST_TYPE="m5.xlarge"
-meta=""  # QUESTION: What goes in this?
 
 # Verify availability of Typescript file:
 if wget --spider "$TYPESCRIPT_URL" 2>/dev/null; then
@@ -37,10 +36,12 @@ fi
 # rm "$SCRIPT_FULL_PATH"
 
 ## Obtain secrets from flood-run-e2e.var or other mechanism
-source ~/.flood-secrets.env  # QUESTON: Where is this when invoked within Jenkins?
+#source ~/.flood-secrets.env  # QUESTON: Where is this when invoked within Jenkins?
 # PROTIP: use environment variables to pass links to where the secret is really stored: use an additional layer of indirection.
 # From https://app.flood.io/account/user/security
-if [ -z "${FLOOD_API_TOKEN}" ]; then
+FLOOD_API_TOKEN="flood_live_2da17a993632dbdfd4d1c905f26f249c17c869b0bd"
+FLOOD_USER=$FLOOD_API_TOKEN+":x"
+if [ -z "$FLOOD_API_TOKEN" ]; then
    echo -e "\n>>> FLOOD_API_TOKEN not available. Exiting..."
    exit 9
 else
@@ -86,16 +87,7 @@ echo -e "\n>>> At $PWD"
 
 # Start a flood - see https://docs.flood.io/floods/post-floods
 echo -e "\n>>> [$(date +%FT%T)+00:00] create $TYPESCRIPT_URL"
-curl "$TYPESCRIPT_URL" -H 'Connection: keep-alive' \
--H 'Pragma: no-cache' -H 'Cache-Control: no-cache' \
--H 'Upgrade-Insecure-Requests: 1' \
--H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.100 Safari/537.36' \
--H 'Sec-Fetch-Mode: navigate' -H 'Sec-Fetch-User: ?1' \
--H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3' \
--H 'Sec-Fetch-Site: none' \
--H 'Accept-Encoding: gzip, deflate, br' \
--H 'Accept-Language: en-US,en;q=0.9,es;q=0.8' \
---compressed >$SCRIPT_FULL_PATH
+curl $TYPESCRIPT_URL > $SCRIPT_FULL_PATH
 
 if [ ! -f "$SCRIPT_FULL_PATH" ]; then
    echo -e "\n>>> SCRIPT_FULL_PATH not available. Exiting..."
@@ -105,21 +97,21 @@ else
 fi
 
 echo -e "\n>>> [$(date +%FT%T)+00:00] run flood_uuid"
-flood_uuid=$(curl -u "$FLOOD_USER" \
- -X POST https://api.flood.io/grids \
- -H "Accept: application/vnd.flood.v2+json" \
- -F "flood[tool]=flood-chrome" \
- -F "flood[project]=$FLOOD_PROJECT" \
- -F "flood[threads]=1" \
- -F "flood[privacy]=public" \
- -F "flood[name]=ElementTest" \
- -F "flood[tag_list]=shakout" \
- -F "flood_files[]=@$SCRIPT_FULL_PATH" \
- -F "flood[grids][][infrastructure]=demand" \
- -F "flood[grids][][instance_quantity]=1" \
- -F "flood[grids][][region]=$FLOOD_REGION" \
- -F "flood[grids][][instance_type]=$FLOOD_INST_TYPE" \
- -F "flood[grids][][stop_after]=12" | jq -r ".uuid" )
+flood_uuid=$( curl -u $FLOOD_API_TOKEN: \
+-X POST https://api.flood.io/floods \
+-F "flood[tool]=flood-chrome" \
+-F "flood[threads]=1" \
+-F "flood[rampup]=1" \
+-F "flood[duration]=360" \
+-F "flood[privacy]=public" \
+-F "flood[project]=$FLOOD_PROJECT" \
+-F "flood[name]=Element_Test" \
+-F "flood_files[]=@$SCRIPT_FULL_PATH" \
+-F "flood[grids][][infrastructure]=demand" \
+-F "flood[grids][][instance_quantity]=1" \
+-F "flood[grids][][region]=$FLOOD_REGION" \
+-F "flood[grids][][instance_type]=$FLOOD_INST_TYPE" \
+-F "flood[grids][][stop_after]=12" | jq -r ".uuid" )
 
 # https://api.flood.io/floods
 
@@ -127,19 +119,25 @@ echo -e "\n>>> [$(date +%FT%T)+00:00] Waiting for flood $flood_uuid"
 while [ $(curl --silent --user $FLOOD_API_TOKEN: https://api.flood.io/floods/$flood_uuid | \
   jq -r '.status == "finished"') = "false" ]; do
   echo -n "."
-  sleep 3
+  sleep 10
 done
 
 echo -e "\n>>> [$(date +%FT%T)+00:00] Get the summary report"
 flood_report=$(curl --silent --user $FLOOD_API_TOKEN: https://api.flood.io/floods/$flood_uuid/report | \
   jq -r ".summary")
 
-echo
 echo -e "\n>>> [$(date +%FT%T)+00:00] Detailed results at https://flood.io/$flood_uuid"
 echo "$flood_report"
 
 # Optionally store the CSV results
-echo
 echo -e "\n>>> [$(date +%FT%T)+00:00] Storing CSV results at results.csv"
 curl --silent --user $FLOOD_API_TOKEN: https://api.flood.io/floods/$flood_uuid/result.csv > result.csv
 
+if [ ! -f result.csv ]; then
+   echo -e "\n>>> result.csv not available. Exiting..."
+   exit 9
+else
+   echo -e "\n>>> result.csv ..."
+   head 1 result.csv
+      # {"error":"Sorry, we cannot find that resource. If you'd like assistance please contact support@flood.io"}
+fi
