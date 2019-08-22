@@ -18,6 +18,7 @@ FLOOD_PROJECT="default"  # "the-internet-dev01"
 TYPESCRIPT_URL="https://raw.githubusercontent.com/flood-io/element/master/examples/internet-herokuapp/14-Dynamic_Loading.ts"
 FLOOD_REGION="us-east-1"
 FLOOD_INST_TYPE="m5.xlarge"
+FLOOD_SLEEP_SECS="30"
 
 # Verify availability of Typescript file:
 if wget --spider "$TYPESCRIPT_URL" 2>/dev/null; then
@@ -36,10 +37,9 @@ fi
 # rm "$SCRIPT_FULL_PATH"
 
 ## Obtain secrets from flood-run-e2e.var or other mechanism
-#source ~/.flood-secrets.env  # QUESTON: Where is this when invoked within Jenkins?
+source ~/.flood-secrets.env  # QUESTON: Where is this when invoked within Jenkins?
 # PROTIP: use environment variables to pass links to where the secret is really stored: use an additional layer of indirection.
 # From https://app.flood.io/account/user/security
-FLOOD_API_TOKEN="flood_live_2da17a993632dbdfd4d1c905f26f249c17c869b0bd"
 FLOOD_USER=$FLOOD_API_TOKEN+":x"
 if [ -z "$FLOOD_API_TOKEN" ]; then
    echo -e "\n>>> FLOOD_API_TOKEN not available. Exiting..."
@@ -96,7 +96,7 @@ else
    echo -e "\n>>> SCRIPT_FULL_PATH = $SCRIPT_FULL_PATH..."
 fi
 
-echo -e "\n>>> [$(date +%FT%T)+00:00] run flood_uuid"
+echo -e "\n>>> [$(date +%FT%T)+00:00] assemble flood_uuid"
 flood_uuid=$( curl -u $FLOOD_API_TOKEN: \
 -X POST https://api.flood.io/floods \
 -F "flood[tool]=flood-chrome" \
@@ -115,23 +115,25 @@ flood_uuid=$( curl -u $FLOOD_API_TOKEN: \
 
 # https://api.flood.io/floods
 
-echo -e "\n>>> [$(date +%FT%T)+00:00] Waiting for flood $flood_uuid"
+echo -e "\n>>> [$(date +%FT%T)+00:00] See dashboard at https://api.flood.io/$flood_uuid while waiting:"
+echo "    (One dot every $FLOOD_SLEEP_SECS seconds:"
 while [ $(curl --silent --user $FLOOD_API_TOKEN: https://api.flood.io/floods/$flood_uuid | \
   jq -r '.status == "finished"') = "false" ]; do
   echo -n "."
-  sleep 10
+  sleep "$FLOOD_SLEEP_SECS"
 done
 
 echo -e "\n>>> [$(date +%FT%T)+00:00] Get the summary report"
 flood_report=$(curl --silent --user $FLOOD_API_TOKEN: https://api.flood.io/floods/$flood_uuid/report | \
   jq -r ".summary")
 
-echo -e "\n>>> [$(date +%FT%T)+00:00] Detailed results at https://flood.io/$flood_uuid"
-echo "$flood_report"
+echo -e "\n>>> [$(date +%FT%T)+00:00] Detailed results at https://api.flood.io/floods/$flood_uuid"
+echo "$flood_report"  # summary report
 
 # Optionally store the CSV results
-echo -e "\n>>> [$(date +%FT%T)+00:00] Storing CSV results at results.csv"
-curl --silent --user $FLOOD_API_TOKEN: https://api.flood.io/floods/$flood_uuid/result.csv > result.csv
+echo -e "\n>>> [$(date +%FT%T)+00:00] Storing CSV results in results.csv"
+curl --silent --user $FLOOD_API_TOKEN: https://api.flood.io/csv/$flood_uuid/$flood_uuid \
+   > result.csv
 
 if [ ! -f result.csv ]; then
    echo -e "\n>>> result.csv not available. Exiting..."
