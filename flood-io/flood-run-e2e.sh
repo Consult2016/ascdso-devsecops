@@ -18,7 +18,7 @@ FLOOD_PROJECT="default"  # "the-internet-dev01"
 TYPESCRIPT_URL="https://raw.githubusercontent.com/flood-io/element/master/examples/internet-herokuapp/14-Dynamic_Loading.ts"
 FLOOD_REGION="us-east-1"
 FLOOD_INST_TYPE="m5.xlarge"
-FLOOD_SLEEP_SECS="30"
+FLOOD_SLEEP_SECS="10"
 
 # Verify availability of Typescript file:
 if wget --spider "$TYPESCRIPT_URL" 2>/dev/null; then
@@ -113,20 +113,23 @@ flood_uuid=$( curl -u $FLOOD_API_TOKEN: \
 -F "flood[grids][][instance_type]=$FLOOD_INST_TYPE" \
 -F "flood[grids][][stop_after]=12" | jq -r ".uuid" )
 
-# https://api.flood.io/floods
+Login=$(curl -X POST https://api.flood.io/oauth/token -F 'grant_type=password' \
+   -F 'username=$FLOOD_USERNAME' -F 'password=$FLOOD_PASSWORD') #required username and password
+# echo $Login
+Token=$(echo $Login | jq -r '.access_token')
+Patch=$(curl -X PATCH https://api.flood.io/api/v3/floods/$flood_uuid/set-public -H 'Authorization: Bearer '$Token -H 'Content-Type: application/json')
 
 echo -e "\n>>> [$(date +%FT%T)+00:00] See dashboard at https://api.flood.io/$flood_uuid while waiting:"
-echo "    (One dot every $FLOOD_SLEEP_SECS seconds:"
-while [ $(curl --silent --user $FLOOD_API_TOKEN: https://api.flood.io/floods/$flood_uuid | \
-  jq -r '.status == "finished"') = "false" ]; do
+echo "    (One dot every $FLOOD_SLEEP_SECS seconds):"
+while [ $(curl --silent --user $FLOOD_API_TOKEN: -X GET https://api.flood.io/floods/$flood_uuid | jq -r '.status == "finished"') = "false" ]; do
   echo -n "."
   sleep "$FLOOD_SLEEP_SECS"
 done
+echo "   ERROR: Authentication required to view this Flood ???"
 
 echo -e "\n>>> [$(date +%FT%T)+00:00] Get the summary report"
-flood_report=$(curl --silent --user $FLOOD_API_TOKEN: https://api.flood.io/floods/$flood_uuid/report | \
-  jq -r ".summary")
-
+flood_report=$(curl --silent --user $FLOOD_API_TOKEN:  -X GET https://api.flood.io/floods/$flood_uuid/report \
+    | jq -r ".summary" )
 echo -e "\n>>> [$(date +%FT%T)+00:00] Detailed results at https://api.flood.io/floods/$flood_uuid"
 echo "$flood_report"  # summary report
 
