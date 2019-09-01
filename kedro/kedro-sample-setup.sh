@@ -203,31 +203,31 @@ if [ "$PACKAGE_INSTALLER" = "brew" ]; then
 
 fi  # brew
 
-get_latest_release() {
-  # Based on https://gist.github.com/lukechilds/a83e1d7127b78fef38c2914c4ececc3c
-  curl --silent "https://api.github.com/repos/$1/releases/latest" | # Get latest release from GitHub api
-    grep '"tag_name":' |                                            # Get tag line
-    sed -E 's/.*"([^"]+)".*/\1/'                                    # Pluck JSON value
-}
-   # Usage: $ get_latest_release "creationix/nvm"
-   # Example Response: v0.31.4
 
+### 6. install Kedro cli
+
+github_latest_release() {  # generic function:
+   # Based on https://gist.github.com/lukechilds/a83e1d7127b78fef38c2914c4ececc3c
+   # curl --silent "https://api.github.com/repos/$1/releases/latest" | # Get latest release from GitHub api
+   # grep '"tag_name":' |                                            # Get tag line
+   # sed -E 's/.*"([^"]+)".*/\1/'                                    # Pluck JSON value
+   # Alternative using jq utility if installed by brew:
+   curl --silent "https://api.github.com/repos/$1/releases/latest" | jq -r .tag_name
+}
+   KEDRO_LATEST_RELEASE=$( github_latest_release "$GITHUB_ACCOUNT/$GITHUB_REPO" )
+   printf "\n>>> %s latest release in GitHub ==> %s \n" "$GITHUB_ACCOUNT/$GITHUB_REPO" \
+      "$KEDRO_LATEST_RELEASE"
+   # Example Response: 0.15.0
 
 exit
 
 
-### 6. install Kedro cli
-
 # Based on https://github.com/quantumblacklabs/kedro
 install_kedro_cli(){
-    # TODO: Identify latest version of Kedro available in 
-    # https://github.com/quantumblacklabs/kedro/releases
-   KEDRO_VERSION="0.15.0"
-
       printf "\n>>> Obtaining kedro-cli ...\n" 
       if [ "$PACKAGE_INSTALLER" = "brew" ]; then 
          # NOTE: Here "pip3" is used instead of "pip" as shown in Kendro's documentation.
-         pip3 install kedro==$KEDRO_VERSION
+         pip3 install kedro==$KEDRO_LATEST_RELEASE
       else  # "linux"
          printf "\n>>> At this point, this script has only been written/tested on MacOS.\n" 
       fi
@@ -270,16 +270,12 @@ fi
 printf "\n>>> Kedro-cli %s ...\n" "$( kedro --version "v" )"
 # kedro -h
 
+exit
+
 
 ### 7. Clone script from GitHub
 
 # Because its parent folder is deleted before/after use:
-
-KEDRO_LATEST_RELEASE=$( get_latest_release "$GITHUB_ACCOUNT/$GITHUB_REPO" )
-   # curl --silent "https://api.github.com/repos/$1/releases/latest" | jq -r .tag_name
-printf "\n>>> Latest release in GitHub %s ...\n" "$GITHUB_ACCOUNT/$GITHUB_REPO"
-
-exit
 
          if [ ! -d "$GITHUB_ACCOUNT/$GITHUB_REPO" ]; then  # folder not there
             fancy_echo "Creating folder $GITHUB_ACCOUNT/$GITHUB_REPO ..."
