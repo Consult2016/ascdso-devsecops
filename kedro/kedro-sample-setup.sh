@@ -74,7 +74,6 @@ FREE_DISKBLOCKS_START="$(df | awk '{print $4}' | cut -d' ' -f 6)"
 #printf "$TO_PRINT" >$LOGFILE  # single > for new file
 #printf "$TO_PRINT \n"  # to screen
 printf ">>> INSTALL_UTILITIES=\"%s\" (no or yes or reinstall)\n" "$INSTALL_UTILITIES"
-printf ">>> Using shell \"%s\" . \n" "$SHELL"  # even if using #!/bin/sh
 
 h2 "1. Collect parameters controlling run:"
 
@@ -218,20 +217,7 @@ if [ "$PACKAGE_INSTALLER" = "brew" ]; then
 fi  # brew
 
 
-h2 "6. Initialize Conda to Bash shell:"
-
-   #printf ">>> Conda info: \n"
-   #conda info
-
-   conda env list
-
-   if [[ $SHELL == "/bin/bash" ]]; then
-      printf "\n>>> Instalizing Conda to the Linux shell being used: \n" "$SHELL"
-      conda init "bash"
-   fi
-
-
-h2 "7. Get latest Kedro release tag in GitHub (using jq):"
+h2 "6. Get latest Kedro release tag in GitHub (using jq):"
 
 github_latest_release() {  # generic function:
    # Based on https://gist.github.com/lukechilds/a83e1d7127b78fef38c2914c4ececc3c
@@ -247,35 +233,54 @@ github_latest_release() {  # generic function:
       "$KEDRO_LATEST_RELEASE"
 
 
-h2 "8. Create Conda env :"
+h2 "7. Create Conda env (every time):"
 
 RESPONSE=$( conda env list )
 if [[ $RESPONSE == *"$CONDA_ENV"* ]]; then
-   printf "\n>>> Conda env is already activated:\n%s\n" "$RESPONSE"
-   # conda deactivate "$CONDA_ENV"
-else
-   printf "\n>>> Create conda -n %s in /env/ at %s \n" "$CONDA_ENV" "$CONDA_PATH"
+   printf "\n>>> Conda env already created:\n%s\n" "$RESPONSE"
+   conda env list
+
+#   printf "\n>>> Removing Conda env %s ...\n%s\n" "$CONDA_ENV"
+#   conda env remove -n "$CONDA_ENV"
+fi
+
+   printf "\n>>> Creating conda -n %s in /env/ at %s... \n" "$CONDA_ENV" "$CONDA_PATH"
    yes | conda create --name "$CONDA_ENV" python=3.7
    # conda create -n tf36 anaconda::tensorflow-gpu python=3.6
 
    #      printf "\n>>> Resetting Terminal session (requires password):\n"
    #      source ~/.bash_profile
 
-   printf "\n>>> Put conda's base (root) environment on the search PATH...\n"
-   # See conda activate --help
+h2 "8. Initialize Conda to Bash shell:"
+
+printf ">>> Using shell \"%s\". \n" "$SHELL"  # "/bin/bash" even if using #!/bin/sh
+
+   if [[ $SHELL == "/bin/bash" ]]; then
+      printf ">>> Instalizing Conda to the Linux shell being used: \n" "$SHELL"
+      conda init "bash"
+   fi
+
+
+h2 "8. Activate conda's environment on the search PATH:"
+
    # See https://askubuntu.com/questions/849470/how-do-i-activate-a-conda-environment-in-my-bashrc
    # See https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html
-      # from which conda = "/usr/local/anaconda3/bin/conda"
-      CONDA_PATH="/usr/local/anaconda3/bin"
-      printf "\n>>> Activate conda env for Conda 4.6+ for $CONDA_ENV \n"
-      conda activate "$CONDA_ENV"
-         # Expected response: ("$CONDA_ENV") in parenthesis.
-fi
-printf "\n>>> List Conda environments activated: \n"   
-conda env list
+
+      RESPONSE="$( which conda )"  # for /usr/local/anaconda3/bin/conda"
+      CONDA_PATH="${RESPONSE%/*}"  # for /usr/local/anaconda3/bin"
+      printf ">>> Conda path=%s \n" "$CONDA_PATH"
+
+      printf "\n>>> Activate conda env for Conda 4.6+ for %s \n" "$CONDA_ENV"
+      #conda activate "$CONDA_ENV"
+      activate "$CONDA_ENV"
+         # Expected response: "$CONDA_ENV" in parenthesis, such as "(py37)"
+         # See conda activate --help
+
+printf "\n>>> Conda info: \n"   
+conda info
 
 
-h2 "9. install Kedro cli inside env:"
+h2 "9. install Kedro CLI inside env:"
 
 # Based on https://github.com/quantumblacklabs/kedro
 install_kedro_cli(){
@@ -372,6 +377,16 @@ popd >/dev/null
 
 
 h2 "15. Exit Conda env and clean up:"
+
+RESPONSE=$( conda env list )
+if [[ $RESPONSE == *"$CONDA_ENV"* ]]; then
+   printf "\n>>> Deactivating out Conda env %s ...\n%s\n" "$CONDA_ENV"
+   conda deactivate 
+
+   printf "\n>>> TODO: Removing Conda env %s ...\n%s\n" "$CONDA_ENV"
+   conda env remove -n "$CONDA_ENV"
+      # RESPONSE: Remove all packages in environment /usr/local/anaconda3/envs/py37:
+fi
 
 if [ "$REMOVE_AT_END" = "yes" ]; then
    printf "\n>>> Removing WORK_REPO=%s in %s \n" "$WORK_REPO" "$PWD"
