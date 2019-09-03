@@ -8,7 +8,7 @@
 # But this script adds automated checks not covered in manual commands described in the tutorial.
 
 # USAGE: This script is run by this command on MacOS/Linux Terminal:
-# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/kedro/kedro-sample-setup.sh)"
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/kedro/kedro-sample-setup.sh)"
 
 # Coding of shell/bash scripts is described at https://wilsonmar.github.io/bash-coding
    # At this point, this script has only been written/tested on MacOS.
@@ -73,12 +73,10 @@ FREE_DISKBLOCKS_START="$(df | awk '{print $4}' | cut -d' ' -f 6)"
 #TO_PRINT="$THISPGM on machine $USER starting with logging to file:"
 #printf "$TO_PRINT" >$LOGFILE  # single > for new file
 #printf "$TO_PRINT \n"  # to screen
-printf ">>> INSTALL_UTILITIES=\"%s\" (no or yes or reinstall)\n" "$INSTALL_UTILITIES"
 
 h2 "1. Collect parameters controlling run:"
 
 INSTALL_UTILITIES="yes"  # no or reinstall (yes)
-INSTALL_USING_BREW="no"  # no or yes
 
 BINARY_STORE_PATH="/usr/local/bin"
 BASHFILE="$HOME/.bash_profile"  # on Macs (alt .bashrc)
@@ -92,10 +90,11 @@ GITHUB_SCRIPT_REPO="kedro-examples"
 TEST_PATH="$HOME/projects/kedro-sample-setup/kedro-examples/kedro-tutorial/"
 SCRIPT_PATH="$HOME/projects/kedro-sample-setup/kedro-examples/kedro-tutorial/src/kedro_tutorial"
 
-#SCRIPT_PATH="./kedro/fiori/example.ts"
-
 REMOVE_AT_END="no"  # yes or no (during debugging)
 # TODO: Add invocation parameter override handling
+
+# Display variables:
+printf ">>> INSTALL_UTILITIES=\"%s\" (no or yes or reinstall)\n" "$INSTALL_UTILITIES"
 
 
 h2 "2. OS detection to set PACKAGE_INSTALLER variable:"
