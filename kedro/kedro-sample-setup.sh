@@ -90,8 +90,6 @@ GITHUB_SCRIPT_REPO="kedro-examples"
 TEST_PATH="$HOME/projects/kedro-sample-setup/kedro-examples/kedro-tutorial/"
 SCRIPT_PATH="$HOME/projects/kedro-sample-setup/kedro-examples/kedro-tutorial/src/kedro_tutorial"
 
-#SCRIPT_PATH="./kedro/fiori/example.ts"
-
 REMOVE_AT_END="no"  # yes or no (during debugging)
 # TODO: Add invocation parameter override handling
 
