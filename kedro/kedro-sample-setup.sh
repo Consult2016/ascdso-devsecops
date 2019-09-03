@@ -8,7 +8,7 @@
 # But this script adds automated checks not covered in manual commands described in the tutorial.
 
 # USAGE: This script is run by this command on MacOS/Linux Terminal:
-# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/kedro/kedro-sample-setup.sh)"
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/kedro/kedro-sample-setup.sh)"
 
 # Coding of shell/bash scripts is described at https://wilsonmar.github.io/bash-coding
    # At this point, this script has only been written/tested on MacOS.

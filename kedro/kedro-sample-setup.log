@@ -1,0 +1,207 @@
+  ~/gits/wilsonmar/DevSecOps/kedro
+$ ./kedro-sample-setup.sh
+>>> ./kedro-sample-setup.sh started 2019-09-03T09:30:40-0400-497
+
+>>> 1. Collect parameters controlling run:
+>>> INSTALL_UTILITIES="yes" (no or yes or reinstall)
+
+>>> 2. OS detection to set PACKAGE_INSTALLER variable:
+>>> MacOS       System Version: macOS 10.14.6 (18G87)
+      Kernel Version: Darwin 18.7.0
+
+>>> 3. Shell utility functions:
+
+>>> 4. Pre-requisites installation:
+
+>>> Python version installed ==> Python 3.7.4
+
+>>> Conda version installed ==> conda 4.7.11
+>>> Installed to /usr/local/anaconda3/bin/conda
+
+>>> 6. Get latest Kedro release tag in GitHub (using jq):
+
+>>> quantumblacklabs/kedro latest release in GitHub ==> 0.15.0
+
+>>> 7. Create Conda env (every time):
+
+>>> Conda env already created:
+# conda environments:
+#
+base                     /usr/local/anaconda3
+py37                  *  /usr/local/anaconda3/envs/py37
+# conda environments:
+#
+base                     /usr/local/anaconda3
+py37                  *  /usr/local/anaconda3/envs/py37
+
+
+>>> Creating conda -n py37 in /env/ at ...
+WARNING: A conda environment already exists at '/usr/local/anaconda3/envs/py37'
+Remove existing environment (y/[n])?
+Collecting package metadata (current_repodata.json): done
+Solving environment: done
+
+## Package Plan ##
+
+  environment location: /usr/local/anaconda3/envs/py37
+
+  added / updated specs:
+    - python=3.7
+
+
+The following NEW packages will be INSTALLED:
+
+  ca-certificates    pkgs/main/osx-64::ca-certificates-2019.5.15-1
+  certifi            pkgs/main/osx-64::certifi-2019.6.16-py37_1
+  libcxx             pkgs/main/osx-64::libcxx-4.0.1-hcfea43d_1
+  libcxxabi          pkgs/main/osx-64::libcxxabi-4.0.1-hcfea43d_1
+  libedit            pkgs/main/osx-64::libedit-3.1.20181209-hb402a30_0
+  libffi             pkgs/main/osx-64::libffi-3.2.1-h475c297_4
+  ncurses            pkgs/main/osx-64::ncurses-6.1-h0a44026_1
+  openssl            pkgs/main/osx-64::openssl-1.1.1c-h1de35cc_1
+  pip                pkgs/main/osx-64::pip-19.2.2-py37_0
+  python             pkgs/main/osx-64::python-3.7.4-h359304d_1
+  readline           pkgs/main/osx-64::readline-7.0-h1de35cc_5
+  setuptools         pkgs/main/osx-64::setuptools-41.0.1-py37_0
+  sqlite             pkgs/main/osx-64::sqlite-3.29.0-ha441bb4_0
+  tk                 pkgs/main/osx-64::tk-8.6.8-ha441bb4_0
+  wheel              pkgs/main/osx-64::wheel-0.33.4-py37_0
+  xz                 pkgs/main/osx-64::xz-5.2.4-h1de35cc_4
+  zlib               pkgs/main/osx-64::zlib-1.2.11-h1de35cc_3
+
+
+Proceed ([y]/n)?
+Preparing transaction: done
+Verifying transaction: done
+Executing transaction: done
+#
+# To activate this environment, use
+#
+#     $ conda activate py37
+#
+# To deactivate an active environment, use
+#
+#     $ conda deactivate
+
+
+>>> 8. Initialize Conda to Bash shell:
+>>> Using shell "/bin/bash".
+>>> Instalizing Conda to the Linux shell being used:
+no change     /usr/local/anaconda3/condabin/conda
+no change     /usr/local/anaconda3/bin/conda
+no change     /usr/local/anaconda3/bin/conda-env
+no change     /usr/local/anaconda3/bin/activate
+no change     /usr/local/anaconda3/bin/deactivate
+no change     /usr/local/anaconda3/etc/profile.d/conda.sh
+no change     /usr/local/anaconda3/etc/fish/conf.d/conda.fish
+no change     /usr/local/anaconda3/shell/condabin/Conda.psm1
+no change     /usr/local/anaconda3/shell/condabin/conda-hook.ps1
+no change     /usr/local/anaconda3/lib/python3.7/site-packages/xontrib/conda.xsh
+no change     /usr/local/anaconda3/etc/profile.d/conda.csh
+no change     /Users/wilsonmar/.bash_profile
+No action taken.
+
+>>> 8. Activate conda's environment on the search PATH:
+>>> Conda path=/usr/local/anaconda3/bin
+
+>>> Activate conda env for Conda 4.6+ for py37
+
+>>> Conda info:
+
+     active environment : py37
+    active env location : /usr/local/anaconda3/envs/py37
+            shell level : 1
+       user config file : /Users/wilsonmar/.condarc
+ populated config files :
+          conda version : 4.7.11
+    conda-build version : 3.18.8
+         python version : 3.7.3.final.0
+       virtual packages :
+       base environment : /usr/local/anaconda3  (writable)
+           channel URLs : https://repo.anaconda.com/pkgs/main/osx-64
+                          https://repo.anaconda.com/pkgs/main/noarch
+                          https://repo.anaconda.com/pkgs/r/osx-64
+                          https://repo.anaconda.com/pkgs/r/noarch
+          package cache : /usr/local/anaconda3/pkgs
+                          /Users/wilsonmar/.conda/pkgs
+       envs directories : /usr/local/anaconda3/envs
+                          /Users/wilsonmar/.conda/envs
+               platform : osx-64
+             user-agent : conda/4.7.11 requests/2.22.0 CPython/3.7.3 Darwin/18.7.0 OSX/10.14.6
+                UID:GID : 501:20
+             netrc file : /Users/wilsonmar/.netrc
+           offline mode : False
+
+
+>>> 9. install Kedro CLI inside env:
+>>> Using existing kedro version
+>>> Kedro version ==> kedro, version 0.15.0 ...
+/usr/local/bin/kedro
+
+>>> 10. TODO: Enter Conda environment:
+
+>>> 11. Delete local repository if it's there (for idempotency):
+
+>>> Removing ~/projects/kedro-sample-setup (from previous run)...
+>>> Creating folder ~/projects/kedro-sample-setup ...
+PWD=/Users/wilsonmar/projects/kedro-sample-setup
+
+>>> 12. Download sample project:
+
+>>> Creating folder quantumblacklabs/kedro-examples ...
+Cloning into 'kedro-examples'...
+remote: Enumerating objects: 55, done.
+remote: Counting objects: 100% (55/55), done.
+remote: Compressing objects: 100% (47/47), done.
+remote: Total 55 (delta 3), reused 29 (delta 0), pack-reused 0
+Unpacking objects: 100% (55/55), done.
+
+>>> 13. kedro test (expand screen):
+
+>>>  kedro test in /Users/wilsonmar/projects/kedro-sample-setup/kedro-examples/kedro-tutorial/ ...
+/usr/local/opt/python/bin/python3.7 -m pytest
+============================= test session starts ==============================
+platform darwin -- Python 3.7.4, pytest-3.10.1, py-1.8.0, pluggy-0.12.0
+rootdir: /Users/wilsonmar/projects/kedro-sample-setup/kedro-examples/kedro-tutorial, inifile: setup.cfg
+plugins: cov-2.7.1, mock-1.10.4
+collected 2 items
+
+src/tests/test_run.py ..                                                 [100%]
+
+---------- coverage: platform darwin, python 3.7.4-final-0 -----------
+Name                                           Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------------
+src/kedro_tutorial/__init__.py                     2      0   100%
+src/kedro_tutorial/io/__init__.py                  0      0   100%
+src/kedro_tutorial/io/xls_local.py                22     22     0%   5-95
+src/kedro_tutorial/nodes/__init__.py               0      0   100%
+src/kedro_tutorial/nodes/data_engineering.py      40     24    40%   20-26, 32, 36-38, 42, 56-60, 73-81, 97-105
+src/kedro_tutorial/nodes/price_prediction.py      21     11    48%   21-35, 49-51, 63-66
+src/kedro_tutorial/pipeline.py                     8      3    62%   72-108
+src/kedro_tutorial/run.py                         18      4    78%   52, 82-83, 87
+----------------------------------------------------------------------------
+TOTAL                                            111     64    42%
+
+
+=============================== warnings summary ===============================
+/usr/local/lib/python3.7/site-packages/jinja2/utils.py:485
+  /usr/local/lib/python3.7/site-packages/jinja2/utils.py:485: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated, and in 3.8 it will stop working
+    from collections import MutableMapping
+
+/usr/local/lib/python3.7/site-packages/jinja2/runtime.py:318
+  /usr/local/lib/python3.7/site-packages/jinja2/runtime.py:318: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated, and in 3.8 it will stop working
+    from collections import Mapping
+
+-- Docs: https://docs.pytest.org/en/latest/warnings.html
+===================== 2 passed, 2 warnings in 2.08 seconds =====================
+/Users/wilsonmar/projects/kedro-sample-setup/kedro-examples
+
+>>> 14. Run the script:
+
+>>> kedro run script from /Users/wilsonmar/projects/kedro-sample-setup/kedro-examples/kedro-tutorial/src/kedro_tutorial
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+AttributeError: module 'io' has no attribute 'OpenWrapper'
+
+Current thread 0x0000000110c2e5c0 (most recent call first):
+./kedro-sample-setup.sh: line 373: 26916 Abort trap: 6           kedro run
+(py37)
