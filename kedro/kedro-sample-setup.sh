@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/bash
    #sh for POSIX-compliant Bourne shell that runs cross-PACKAGE_INSTALLER
 
 # kedro-sample-setup.sh in https://github.com/wilsonmar/DevSecOps/kedro
@@ -39,6 +39,24 @@ blue="\e[34m"
 h2() {
   printf "\n${bold}>>> %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
+info() {
+  printf "${dim}➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+success() {
+  printf "${green}✔ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+error() {
+  printf "${red}${bold}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+warnError() {
+  printf "${red}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+warnNotice() {
+  printf "${blue}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+note() {
+  printf "\n${bold}${blue}Note:${reset} ${blue}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
 
 THISPGM="$0"
 TIME_START="$(date -u +%s)"
@@ -56,7 +74,7 @@ FREE_DISKBLOCKS_START="$(df | awk '{print $4}' | cut -d' ' -f 6)"
 #printf "$TO_PRINT" >$LOGFILE  # single > for new file
 #printf "$TO_PRINT \n"  # to screen
 printf ">>> INSTALL_UTILITIES=\"%s\" (no or yes or reinstall)\n" "$INSTALL_UTILITIES"
-
+printf ">>> Using shell \"%s\" . \n" "$SHELL"  # even if using #!/bin/sh
 
 h2 "1. Collect parameters controlling run:"
 
@@ -68,7 +86,7 @@ BASHFILE="$HOME/.bash_profile"  # on Macs (alt .bashrc)
 WORK_FOLDER="projects"  # as in ~/projects
 WORK_REPO="kedro-sample-setup"  # by default the same name as the script file.
 
-CONDA_ENV="Kedro1"
+CONDA_ENV="py37"
 GITHUB_ACCOUNT="quantumblacklabs"
 GITHUB_BASE_REPO="kedro"
 GITHUB_SCRIPT_REPO="kedro-examples"
@@ -112,7 +130,7 @@ else
 fi
 
 if [ $PACKAGE_INSTALLER != 'brew' ]; then
-   printf ">>> This script is not designed for %s  = %s.\n" "$unamestr" "$PACKAGE_INSTALLER"
+   printf ">>> This script is not designed for %s = %s.\n" "$unamestr" "$PACKAGE_INSTALLER"
    exit
 fi
 
@@ -145,7 +163,7 @@ cleanup() {
 }
 
 
-h2 "4. Pre-requisites installation utilities:"
+h2 "4. Pre-requisites installation:"
 command_exists() {  # in /usr/local/bin/... if installed by brew
   command -v "$@" > /dev/null 2>&1
 }
@@ -178,57 +196,92 @@ if [ "$PACKAGE_INSTALLER" = "brew" ]; then
       brew install jq
    fi
 
-   if ! command_exists conda ; then  # not exist:
-      printf "\n>>> Installing anaconda (v3)...\n"
-         brew cask install anaconda
-
-         # if successful:
-         # Initialize Conda to the Linux shell being used:
-         conda init bash
-
-         CONDA_PATH="/usr/local/anaconda3/bin"
-         if grep -q "$CONDA_PATH" "$BASHFILE" ; then
-            printf "\n>>> export $CONDA_PATH already in $BASHFILE \n"
-         else
-            printf "\n>>> Adding export $CONDA_PATH in $BASHFILE \n"
-            # GOHOME="$HOME/golang1"  # where you store custom go source code
-            # export GOHOME="$HOME/gits/wilsonmar/golang-samples"
-            source "$BASHFILE"  # to activate changes (on one session)
-         fi
+   if ! command_exists git ; then
+      printf "\n>>> Installing git client using Homebrew...\n"
+      brew install git
    fi
-   printf "\n>>> Conda version installed ==> %s \n" "$( conda --version)"
+
+   if ! command_exists conda ; then  # not exist:
+      printf "\n>>> Before Installing anaconda, remove folders (password needed)...\n"
+      sudo rm -rf /usr/local/anaconda3 
+      rm -rf ~/.condarc ~/.conda ~/.continuum ~/anaconda
+
+      printf "\n>>> brew cask install anaconda (password needed)...\n"
+      brew cask install anaconda
+         # anaconda was successfully installed!
+   # else
+      #brew cask reinstall anaconda
+   fi
+   printf "\n>>> Conda version installed ==> %s \n" "$( conda --version )"
+   printf ">>> Installed to %s \n" "$( which conda )"
 
 fi  # brew
 
 
-h2 "5. Create Kedro folder:"
+h2 "6. Initialize Conda to Bash shell:"
+
+   #printf ">>> Conda info: \n"
+   #conda info
+
+   conda env list
+
+   if [[ $SHELL == "/bin/bash" ]]; then
+      printf "\n>>> Instalizing Conda to the Linux shell being used: \n" "$SHELL"
+      conda init "bash"
+   fi
+
+
+h2 "7. Get latest Kedro release tag in GitHub (using jq):"
 
 github_latest_release() {  # generic function:
    # Based on https://gist.github.com/lukechilds/a83e1d7127b78fef38c2914c4ececc3c
-   # curl --silent "https://api.github.com/repos/$1/releases/latest" | # Get latest release from GitHub api
-   # grep '"tag_name":' |                                            # Get tag line
-   # sed -E 's/.*"([^"]+)".*/\1/'                                    # Pluck JSON value
+   #curl --silent "https://api.github.com/repos/$1/releases/latest" | # Get latest release from GitHub api
+   #grep '"tag_name":' |                                            # Get tag line
+   #sed -E 's/.*"([^"]+)".*/\1/'                                    # Pluck JSON value
+
    # Alternative using jq utility if installed by brew:
    curl --silent "https://api.github.com/repos/$1/releases/latest" | jq -r .tag_name
 }
    KEDRO_LATEST_RELEASE=$( github_latest_release "$GITHUB_ACCOUNT/$GITHUB_BASE_REPO" )
    printf "\n>>> %s latest release in GitHub ==> %s \n" "$GITHUB_ACCOUNT/$GITHUB_BASE_REPO" \
       "$KEDRO_LATEST_RELEASE"
-   # Example Response: 0.15.0
 
 
-h2 "6. install Kedro cli:"
+h2 "8. Create Conda env :"
+
+RESPONSE=$( conda env list )
+if [[ $RESPONSE == *"$CONDA_ENV"* ]]; then
+   printf "\n>>> Conda env is already activated:\n%s\n" "$RESPONSE"
+   # conda deactivate "$CONDA_ENV"
+else
+   printf "\n>>> Create conda -n %s in /env/ at %s \n" "$CONDA_ENV" "$CONDA_PATH"
+   yes | conda create --name "$CONDA_ENV" python=3.7
+   # conda create -n tf36 anaconda::tensorflow-gpu python=3.6
+
+   #      printf "\n>>> Resetting Terminal session (requires password):\n"
+   #      source ~/.bash_profile
+
+   printf "\n>>> Put conda's base (root) environment on the search PATH...\n"
+   # See conda activate --help
+   # See https://askubuntu.com/questions/849470/how-do-i-activate-a-conda-environment-in-my-bashrc
+   # See https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html
+      # from which conda = "/usr/local/anaconda3/bin/conda"
+      CONDA_PATH="/usr/local/anaconda3/bin"
+      printf "\n>>> Activate conda env for Conda 4.6+ for $CONDA_ENV \n"
+      conda activate "$CONDA_ENV"
+         # Expected response: ("$CONDA_ENV") in parenthesis.
+fi
+printf "\n>>> List Conda environments activated: \n"   
+conda env list
+
+
+h2 "9. install Kedro cli inside env:"
 
 # Based on https://github.com/quantumblacklabs/kedro
 install_kedro_cli(){
-      if [ "$PACKAGE_INSTALLER" = "brew" ]; then 
          printf "\n>>> Installing kedro using pip3 ...\n" 
          # NOTE: Here "pip3" is used instead of "pip" as shown in Kendro's documentation.
          pip3 install kedro==$KEDRO_LATEST_RELEASE
-      else  # "linux"
-         printf "\n>>> At this point, this script has only been written/tested on MacOS.\n"
-         exit
-      fi
 }
 if ! command_exists kedro ; then  # not exist:
    if [ "$INSTALL_UTILITIES" = "no" ]; then
@@ -250,16 +303,17 @@ printf ">>> Kedro version ==> %s ...\n" "$( kedro --version )"
 # kedro -h  # for help
 
 which kedro
+   # EXPECTED: /usr/local/bin/kedro
 
 #   printf "\n>>> pop-up docs webpage in default browser:\n"
 #   kedro docs
 
 
-h2 "7. TODO: Enter Conda environment:"
+h2 "10. TODO: Enter Conda environment:"
 
 
 
-h2 "8. Delete local repository if it's there (for idempotency):"
+h2 "11. Delete local repository if it's there (for idempotency):"
 
 cd "$HOME" || exit
    if [ ! -d "$WORK_FOLDER" ]; then # NOT found:
@@ -285,7 +339,7 @@ cd "$HOME" || exit
    # ls -al
 
 
-h2 "9. Download sample project:"
+h2 "12. Download sample project:"
 
          # Because its parent folder is deleted before/after use:
          if [ ! -d "$GITHUB_ACCOUNT/$GITHUB_SCRIPT_REPO" ]; then  # folder not there
@@ -297,7 +351,8 @@ h2 "9. Download sample project:"
             cd $GITHUB_SCRIPT_REPO
          fi
 
-h2 "10. kedro test (expand screen):"
+
+h2 "13. kedro test (expand screen):"
 pushd "$TEST_PATH" >/dev/null
    printf "\n>>>  kedro test in %s ...\n" "$TEST_PATH"
       # By default: SCRIPT_PATH="$HOME/projects/kedro-sample-setup/kedro-examples/kedro-tutorial/src/kedro_tutorial"
@@ -306,7 +361,7 @@ popd >/dev/null
 pwd
 
 
-h2 "11. Run the script:"
+h2 "14. Run the script:"
 
 pushd "$SCRIPT_PATH" >/dev/null
    printf "\n>>> kedro run script from %s \n" "$SCRIPT_PATH"
@@ -316,11 +371,14 @@ pushd "$SCRIPT_PATH" >/dev/null
 popd >/dev/null
 
 
-h2 "12. Exit Conda env and clean up:"
+h2 "15. Exit Conda env and clean up:"
 
 if [ "$REMOVE_AT_END" = "yes" ]; then
    printf "\n>>> Removing WORK_REPO=%s in %s \n" "$WORK_REPO" "$PWD"
    rm -rf "$WORK_REPO"
+
+   # TODO: Remove Conda executables
+   # brew cask uninstall conda
 else
    printf "\n>>> REMOVE_AT_END=\"%s\", files remain in %s \n" "$REMOVE_AT_END" "$PWD"
 fi
