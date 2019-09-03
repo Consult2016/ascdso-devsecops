@@ -73,12 +73,10 @@ FREE_DISKBLOCKS_START="$(df | awk '{print $4}' | cut -d' ' -f 6)"
 #TO_PRINT="$THISPGM on machine $USER starting with logging to file:"
 #printf "$TO_PRINT" >$LOGFILE  # single > for new file
 #printf "$TO_PRINT \n"  # to screen
-printf ">>> INSTALL_UTILITIES=\"%s\" (no or yes or reinstall)\n" "$INSTALL_UTILITIES"
 
 h2 "1. Collect parameters controlling run:"
 
 INSTALL_UTILITIES="yes"  # no or reinstall (yes)
-INSTALL_USING_BREW="no"  # no or yes
 
 BINARY_STORE_PATH="/usr/local/bin"
 BASHFILE="$HOME/.bash_profile"  # on Macs (alt .bashrc)
@@ -96,6 +94,9 @@ SCRIPT_PATH="$HOME/projects/kedro-sample-setup/kedro-examples/kedro-tutorial/src
 
 REMOVE_AT_END="no"  # yes or no (during debugging)
 # TODO: Add invocation parameter override handling
+
+# Display variables:
+printf ">>> INSTALL_UTILITIES=\"%s\" (no or yes or reinstall)\n" "$INSTALL_UTILITIES"
 
 
 h2 "2. OS detection to set PACKAGE_INSTALLER variable:"
