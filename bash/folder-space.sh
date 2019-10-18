@@ -5,7 +5,7 @@
 
 # This is https://github.com/wilsonmar/DevSecOps/blob/master/bash/folder-space.sh
 # Adapted from https://unix.stackexchange.com/questions/53841/how-to-use-a-timer-in-bash
-# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/folder-space.sh)"
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/folder-space.sh ~/var)"
 
 # This is free software; see the source for copying conditions. There is NO
 # warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
