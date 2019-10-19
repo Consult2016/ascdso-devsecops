@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# mac-dock-remove.sh
+# mac-dock-remove.sh in https://github.com/wilsonmar/macos-install-all
 # Removes alias icons on the MacOS Dock (at the bottom of the screen by default)
 #    based on names provided in call argument
 #    instead of manually dragging icons and dropping it outside the Dock.
@@ -17,6 +17,46 @@
 # warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 
+### 0. Set display utilities:
+# clear  # screen and history?
+
+# Capture starting timestamp:
+   start=$(date +%s)
+
+### Set color variables (based on aws_code_deploy.sh): 
+bold="\e[1m"
+dim="\e[2m"
+underline="\e[4m"
+blink="\e[5m"
+reset="\e[0m"
+red="\e[31m"
+green="\e[32m"
+blue="\e[34m"
+
+h2() {
+  printf "\n${bold}>>> %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+info() {
+  printf "${dim}➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+success() {
+  printf "${green}✔ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+error() {
+  printf "${red}${bold}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+warnError() {
+  printf "${red}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+warnNotice() {
+  printf "${blue}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+note() {
+  printf "\n${bold}${blue}Note:${reset} ${blue}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+
+
+# Pre-requisite utility functions:
 command_exists() {  # in /usr/local/bin/... if installed by brew.
   command -v "$@" > /dev/null 2>&1
 }
@@ -27,14 +67,14 @@ if ! command_exists dockutil ; then  # not exist:
    # ==> Downloading from https://codeload.github.com/kcrawford/dockutil/tar.gz/2.0.5
    # into /usr/local/bin/dockutil
 fi
-echo ">>> dockutil --version = " $( dockutil --version )  # 2.0.5 
+note ">>> dockutil --version = " $( dockutil --version )  # 2.0.5 
 
 
 # Remove anything that matches keywords in the string:
 REMOVE="$1"
 # currentUser=$(ls -l /dev/console | awk '{print $3}')
 # userHome=$(dscl . read /Users/$currentUser NFSHomeDirectory | awk '{print $2}')
-echo ">>> REMOVE=\"$REMOVE\" from Dock for $HOME"
+note ">>> REMOVE=\"$REMOVE\" from Dock for $HOME"
 
 
 #NOTE: should probably check if current user is logged in.  
@@ -48,14 +88,14 @@ IFS=$'\n'
 apps=()
 apps=($(dockutil --list --homeloc $userHome | grep $REMOVE \
 	| awk -F'file:' '{print $1}' | awk 'BEGIN{ RS = "" ; FS = "\n" }{print $0}'))
-echo ">>> apps=\"$apps\" to be deleted ..."
+info ">>> apps=\"$apps\" to be deleted ..."
 
 # If we don't find anything, don't do anything:
 if [ ! -z "$apps" ]; then
    for x in ${apps[@]}; do
       #Remove trailing spaces:
       x="$(echo -e "$x" | sed -e 's/[[:space:]]*$//')"
-      echo ">>> Removing Dock icon \"$x\"."
+      success ">>> Removing Dock icon \"$x\"."
       RemoveDockIcon $x
       # TODO: Remove application too?
    done
@@ -66,4 +106,4 @@ if [ ! -z "$apps" ]; then
    exit 0
 fi
 # Drop to here if not exited:
-echo ">>> Nothing was removed."
+error ">>> Nothing was removed."
