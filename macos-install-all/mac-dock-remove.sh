@@ -8,17 +8,16 @@
 # Adapted from https://www.jamf.com/jamf-nation/discussions/29939/mass-remove-dock-icons-dockutil-script
 
 # This was tested on Mojave.
-# USAGE: ./mac-dock-remove.sh "XXX" 
+# USAGE: ./mac-dock-remove.sh "Siri News" 
 #   If you're using Gmail, also:    "Contacts Mail Calendar Reminders"
 #   If you're using Microsoft, also "Pages Numbers Keynote"
 #   For less distractions, also     "News iTunes"
-# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/mac-dock-remove.sh)"
 
 # This is free software; see the source for copying conditions. There is NO
 # warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 
-command_exists() {  # in /usr/local/bin/... if installed by brew
+command_exists() {  # in /usr/local/bin/... if installed by brew.
   command -v "$@" > /dev/null 2>&1
 }
 
