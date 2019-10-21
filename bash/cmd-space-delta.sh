@@ -19,6 +19,8 @@
 ### 0. Set display utilities:
 # clear  # screen and history?
 
+set -euxo pipefail
+
 # Capture starting timestamp:
    start=$(date +%s)
 
@@ -57,12 +59,12 @@ note() {
 
 # Check if argument is provided and folder exists ..."
 if [ $# -ne 1 ]; then
-   echo "Please provide an argument: USAGE: ./cmd-space-delta.sh ~/Documents"
+   error "Please provide an argument: USAGE: ./cmd-space-delta.sh ~/Documents"
    exit 
 fi
 
 if [ ! -d "$1" ]; then  # not in pwd:
-   echo "Folder $1 not found. Exiting..."
+   error "Folder $1 not found. Exiting..."
    exit 
 fi
 
@@ -137,12 +139,12 @@ h2 "STEP 10 - Obtain final space ..."
 #START_BYTES=$(<.START_BYTES)
 FINISH_BYTES=$(<.FINISH_BYTES)
 DIFF_BYTES=$( echo "$FINISH_BYTES - $START_BYTES" | bc )
-echo "FINISH_BYTES=$FINISH_BYTES - START_BYTES $START_BYTES = $DIFF_BYTES"
+success "FINISH_BYTES=$FINISH_BYTES - START_BYTES $START_BYTES = $DIFF_BYTES"
 
 
 # Capture ending timestamp and Calculate difference:
    end=$(date +%s)
    beg-seconds=$(echo "$end - $start" | bc )
    #echo $seconds' sec'
-   echo 'Elapsed HH:MM:SS: ' $( awk -v t=$beg-seconds 'BEGIN{t=int(t*1000); printf "%d:%02d:%02d\n", t/3600000, t/60000%60, t/1000%60}' )
+   info 'Elapsed HH:MM:SS: ' $( awk -v t=$beg-seconds 'BEGIN{t=int(t*1000); printf "%d:%02d:%02d\n", t/3600000, t/60000%60, t/1000%60}' )
 
