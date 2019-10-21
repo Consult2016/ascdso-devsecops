@@ -1,9 +1,11 @@
 #!/bin/bash
 
-# This reports on the diskspace specified in the first argument, as in:
+# cmd-space-delta.sh
+# This removes obsolete tags in image groups from Docker Registry,
+# and reports disk space before and after.
 # USAGE: 
 #   curl -O https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/cmd-space-delta.sh
-#   chmod +x folder.space.sh
+#   chmod +x cmd-space-delta.sh.sh
 #   ./cmd-space-delta.sh ~/var/log
 # RESPONSE:
 #   38M   /var/log
@@ -86,6 +88,7 @@ h2 "STEP 1 - Check if account/image/tag has already been removed..."
 h2 "STEP 2 - Obtain starting space: "
 folder.space.sh  $1  START_BYTES
 
+
 h2 "STEP 3 - Get account/image:tag SHA"
 # OH_SHA=$( docker inspect dev-registry-1x01.amdc.mckinsey.com:5000/pythonapi:9254c0d )
 # MY_SHA=jq ??? "$OH_SHA"
@@ -104,8 +107,16 @@ h2 "STEP 3 - Get account/image:tag SHA"
    #   cp jq /usr/bin
 
 
+h2 "STEP 4 - Verify version of Docker Registry ..."
+# note "No releases in https://github.com/docker/distribution/tree/master/registry"
+# docker registry  ???
 
-h2 "STEP 4 - Remove layers ..."
+
+h2 "STEP 5 - Count accounts, images, tags ..."
+echo "call Python ???"
+
+
+h2 "STEP 6 - Remove layers ..."
 # Do one:
    # curl -v -X DELETE "https://my.docker.registry.com:5000/v2/mytestdockerrepro/manifests/$MY_SHA" )
       # Expect 202 good response
@@ -116,10 +127,15 @@ h2 "STEP 4 - Remove layers ..."
 #./folder.space.sh  $1  MID_BYTES
 
 
-h2 "STEP 6 - Garbage collection to reclaim disk space ..."
+h2 "STEP 7 - Garbage collection to reclaim disk space ..."
 # docker exe registry bin/registry garbage-collect --dry-run /etc/docker/registry/config.yml
 
-h2 "STEP 7 - Obtain END_BYTES space:"
+
+h2 "STEP 8 - Count accounts, images, tags ..."
+echo "call Python ???"
+
+
+h2 "STEP 9 - Calculate space delta ..."
 ./folder.space.sh  $1  END_BYTES 
 START_BYTES=$(<.START_BYTES)
 END_BYTES=$(<.END_BYTES)
@@ -127,20 +143,16 @@ DIFF_BYTES=$( echo "$END_BYTES - $START_BYTES" | bc )
 echo "END_BYTES=$END_BYTES - START_BYTES $START_BYTES = $DIFF_BYTES"
 
 
-h2 "STEP 8 - Calculate space delta ..."
-# START_BYTES - END_BYTES 
-
-
-h2 "STEP 9 - De-gas storage units to reduce fragmentation ..."
+h2 "STEP 10 - De-gas storage units to reduce fragmentation ..."
 # ???
 
-h2 "STEP 10 - Obtain final space ..."
+
+h2 "STEP 11 - Obtain final space ..."
 ./folder.space.sh  $1  FINAL_BYTES 
 #START_BYTES=$(<.START_BYTES)
 FINISH_BYTES=$(<.FINISH_BYTES)
 DIFF_BYTES=$( echo "$FINISH_BYTES - $START_BYTES" | bc )
 success "FINISH_BYTES=$FINISH_BYTES - START_BYTES $START_BYTES = $DIFF_BYTES"
-
 
 # Capture ending timestamp and Calculate difference:
    end=$(date +%s)
