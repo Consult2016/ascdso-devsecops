@@ -20,7 +20,7 @@
 # This is free software; see the source for copying conditions. There is NO
 # warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-set -euxo pipefail
+set -euo pipefail
 
 if [ $# -ne 2 ]; then
    echo "Please provide 2 arguments: USAGE: ./folder-space.sh /folder START_BYTES"
