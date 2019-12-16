@@ -419,7 +419,7 @@ if ! command -v cc >/dev/null; then
 fi
 pkgutil --pkg-info=com.apple.pkg.CLTools_Executables | grep version
    # Tools_Executables | grep version
-   # version: 9.2.0.0.1.1510905681
+   # version: 10.3.0.0.1.1562985497  # on Mojave
 
 
 ######### bash completion:
