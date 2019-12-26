@@ -104,11 +104,10 @@ args_prompt() {
    echo "USAGE EXAMPLE during testing (minimal inputs using defaults):"
    #echo "   ./find_replace1.sh -f \"from text\" -t \"to text\" -u \"URL\" -v -a -d"
    echo "OPTIONS:"
-   echo "   -f       list of files to process"
-   echo "   -v       to run verbose (list space use and each image to console)"
-   echo "   -a       for actual (not --dry-run) delete & garbage collection"
+   echo "   -R       reboot Docker"
+   echo "   -v       to run verbose"
+   echo "   -a       for actual (not --dry-run) "
    echo "   -d       to delete files after run (to save disk space)"
-   echo "   -p       to run in production (default is to run in non-prod)"
  }
 if [ $# -eq 0 ]; then  # display if no paramters are provided:
    args_prompt
@@ -210,10 +209,12 @@ h2 "From $0 in $PWD"
 
 
 install_python() {
+   # global install not needed because Python is base layer in Dockerfile. ``
    echo "$(python3 --version)"
 }
 
 install_venv() {
+   # virtualenv not needed because of Docker.
    if ! command_exists virtualenv ; then
        h2 "2.3 Installing virtualenv ..." 
        pip install virtualenv
@@ -316,7 +317,7 @@ h2 "Build Streamlit Docker image from Python 3.7 (takes several minutes first ti
 
 
 if [ "$RUN_ACTUAL" = false ]; then
-   echo ">>> Dry run default. Not run."
+   info "Dry run default. Not run."
 else
    h2 "-actual run Streamlit Docker image ..."
    # Format: docker ${docker_args} run ${run_args} image ${cmd}
@@ -331,21 +332,10 @@ fi
 exit
 
 
-# docker: Error response from daemon: driver failed programming external connectivity on endpoint 
-# quirky_sanderson (8ef9677560e80f482beff4c7f4f962e0705ccbd82e16df759978080497b47a82): Bind for 0.0.0.0:8501 failed: port is already allocated.
-
 # mount the volume 
 # docker run -d -p 80:80 -v $PWD:/usr/share/nginx/html nginx"
 
 
-
-   if [ "$RUN_DELETE_AFTER" = false ]; then
-      echo ">>> Deletion after push not specified."
-   else  # if true:
-      echo ">>> Deleting cloned folder ${TARGET_REPO} to save disk space:"
-      cd ..
-      rm -rf "${TARGET_REPO}"
-   fi
 
 popd # to undo pushd
 echo ">>> Back at $PWD"
