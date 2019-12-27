@@ -1,19 +1,14 @@
 #!/bin/bash
 
-# This script https://streamlit.io/
-# Tested on macOS Mojave 10.14 
-# Design is at https://wilsonmar.github.io/python-api-flask
+# streamlit-docker.sh at https://github.com/wilsonmar/DevSecOps/blob/master/Streamlit/streamlit-sample1.sh
+   # described at https://wilsonmar.github.io/streamlist
+# Based on git clone https://github.com/bcottman/webApps.git
+   # described in https://medium.com/swlh/part-1-will-streamlit-kill-off-flask-5ecd75f879c8
+
+# This was tested on macOS Mojava 10.14 
+
 # Copyright MIT license.
-# See https://medium.com/swlh/part-1-will-streamlit-kill-off-flask-5ecd75f879c8
-
-# USAGE TEST: ./find_replace1.sh  -u https://  -v
-# USAGE PROD: ./find_replace1.sh -v -p -a -u "git@githuben.intranet.mckinsey.com:product-tooling/app-dtportal-backend.git" 
-
-
-
-# This was tested on macOS Mojava and CentOS 7.7 running under dzoz admin permissions.
-# See the source for copying conditions. There is NO
-# warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 ### 0. Set display utilities:
 
@@ -24,7 +19,7 @@ clear  # screen (but not history)
 # set -o nounset
 # set -e  # to end if 
 
-# Capture starting timestamp and display no matter how it ends:
+# TEMPLATE: Capture starting timestamp and display no matter how it ends:
 EPOCH_START="$(date -u +%s)"  # such as 1572634619
 FREE_DISKBLOCKS_START="$(df -k . | cut -d' ' -f 6)"  # 910631000 Available
 
@@ -102,28 +97,29 @@ info "OS_TYPE=$OS_TYPE on hostname=$HOSTNAME."
 args_prompt() {
    echo "This shell script edits a file (using sed) to trigger CI/CD upon git push."
    echo "USAGE EXAMPLE during testing (minimal inputs using defaults):"
-   #echo "   ./find_replace1.sh -f \"from text\" -t \"to text\" -u \"URL\" -v -a -d"
+   #echo "./streamlit-docker.sh -v -a"
    echo "OPTIONS:"
    echo "   -R       reboot Docker"
    echo "   -v       to run verbose"
-   echo "   -a       for actual (not --dry-run) "
+   echo "   -a       for actual (not dry-run default)"
    echo "   -d       to delete files after run (to save disk space)"
  }
-if [ $# -eq 0 ]; then  # display if no paramters are provided:
-   args_prompt
-fi
+#if [ $# -eq 0 ]; then  # display if no paramters are provided:
+#   args_prompt
+#fi
 exit_abnormal() {                              # Function: Exit with error.
   args_prompt
   exit 1
 }
 # Defaults:
 RUNTYPE="upgrade"
-RUN_ACTUAL=true  # false as dry run is default.  TODO: Add parse of command parameters
+RUN_ACTUAL=false
 RUN_DELETE_AFTER=false
 USER_EMAIL="wilsonmar@gmail.com"
-BUILD_PATH="$HOME/gits"
+BUILD_PATH="$HOME/gits"          # -b
 RESTART_DOCKER=false
 CURRENT_IMAGE="helloworld-streamlit"
+REPO_NAME="webApps"
 
 while test $# -gt 0; do
   case "$1" in
@@ -131,13 +127,30 @@ while test $# -gt 0; do
       args_prompt
       exit 0
       ;;
-    -R)
-      export RESTART_DOCKER=true
+    -a)
+      export RUN_ACTUAL=true
       shift
       ;;
     -r*)
       shift
       export RUNTYPE=`echo $1 | sed -e 's/^[^=]*=//g'`
+      shift
+      ;;
+    -R)
+      export RESTART_DOCKER=true
+      shift
+      ;;
+    -b*)
+      shift
+      export BUILD_PATH=`echo $1 | sed -e 's/^[^=]*=//g'`
+      shift
+      ;;
+    -d)
+      export RUN_DELETE_AFTER=true
+      shift
+      ;;
+    -p)
+      export RUN_PROD=true
       shift
       ;;
     -u)
@@ -147,18 +160,6 @@ while test $# -gt 0; do
       ;;
     -v)
       export RUN_VERBOSE=true
-      shift
-      ;;
-    -a)
-      export RUN_ACTUAL=true
-      shift
-      ;;
-    -p)
-      export RUN_PROD=true  # NPD = non-production default
-      shift
-      ;;
-    -d)
-      export RUN_DELETE_AFTER=true
       shift
       ;;
     *)
@@ -213,19 +214,7 @@ install_python() {
    echo "$(python3 --version)"
 }
 
-install_venv() {
-   # virtualenv not needed because of Docker.
-   if ! command_exists virtualenv ; then
-       h2 "2.3 Installing virtualenv ..." 
-       pip install virtualenv
-   else
-       if [[ "${RUNTYPE}" == *"update"* ]]; then
-          h2 "2.3 Upgrading virtualenv ..." 
-          # ??? virtualenv
-       fi
-   fi
-   echo "$(virtualenv ???)"
-}
+# virtualenv not needed because of Docker.
 
 
 #install_streamlit() {
@@ -255,7 +244,6 @@ build_hello() {
    streamlit hello <<-EOF
 $USER_EMAIL
 EOF
-
 }
 
       if [ ! -d "$BUILD_PATH" ]; then
@@ -266,10 +254,11 @@ EOF
       # else TODO: Delete for idempotency
       fi
 
-      if [ ! -d "webApps" ]; then
-         h2 "1.2 Cloning ..." 
-         git clone https://github.com/bcottman/webApps.git
-         cd WebApps
+      if [ ! -d "$REPO_NAME" ]; then
+         h2 "1.2 Cloning $REPO_NAME ..." 
+         git clone "https://github.com/bcottman/$REPO_NAME.git"
+         #git clone "https://github.com/wilsonmar/$REPO_NAME.git"
+         cd "$REPO_NAME"
          pwd
       # else
          # TODO: Delete for idempotency?
@@ -315,34 +304,17 @@ h2 "Build Streamlit Docker image from Python 3.7 (takes several minutes first ti
    # docker build --cache-from my_image ...
 
 
-
 if [ "$RUN_ACTUAL" = false ]; then
    info "Dry run default. Not run."
 else
    h2 "-actual run Streamlit Docker image ..."
    # Format: docker ${docker_args} run ${run_args} image ${cmd}
    # docker run -it --rm -p 8888:8888 -v "$(pwd)"/../src:/src -v "$(pwd)"/../data:/data -w /src supervisely_anpr bash
-   RESPONSE="$( docker run --rm -p 8501:8501 $CURRENT_IMAGE )"
-   info "$RESPONSE"
-   # You can now view your Streamlit app in your browser.
-   # Network URL: locahost:8501
+   docker run --rm -p 8501:8501 $CURRENT_IMAGE  &
+   # This locks up until you press control+C.
+   # But you should now see your Streamlit app in your default browser.
+   #   You can now view your Streamlit app in your browser.
+   # Network URL: http://172.17.0.2:8501
+   # External URL: http://168.149.244.43:8501
+   # On that web page should appear "Hello World!!!" at this point.
 fi
-
-
-exit
-
-
-# mount the volume 
-# docker run -d -p 80:80 -v $PWD:/usr/share/nginx/html nginx"
-
-
-
-popd # to undo pushd
-echo ">>> Back at $PWD"
-echo ">>> Now open browser to see new job in GoCD."
-   # https://amdc-devegos-lx01.amdc.mckinsey.com:8154/go/tab/pipeline/history/frontend-build
-   # https://amdc-devegos-lx01.amdc.mckinsey.com:8154/go/tab/pipeline/history/dtportal-backend-build
-# Make sure the app still runs fine:
-   # https://home.intranet.mckinsey.com/dtportal/
-# Verify the tag created in the Docker Registry at:
-   # ls /data/registry/docker/registry/v2/repositories/dtportal/nodejs-backend/_manifests/tags/ -al   
