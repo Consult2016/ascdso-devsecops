@@ -116,7 +116,8 @@ RUNTYPE="upgrade"
 RUN_ACTUAL=false
 RUN_DELETE_AFTER=false
 USER_EMAIL="wilsonmar@gmail.com"
-BUILD_PATH="$HOME/gits"          # -b
+BUILD_PATH="$HOME/gits"
+REPO_ACCT="bcottman"
 RESTART_DOCKER=false
 CURRENT_IMAGE="helloworld-streamlit"
 REPO_NAME="webApps"
@@ -249,14 +250,14 @@ EOF
       if [ ! -d "$BUILD_PATH" ]; then
          h2 "1.2 Creating BUILD_PATH "$BUILD_PATH" ..." 
          cd
-         mkdir -p "$BUILD_PATH"
+         mkdir -p "$BUILD_PATH/$REPO_ACCT"
          cd "$BUILD_PATH"
       # else TODO: Delete for idempotency
       fi
 
       if [ ! -d "$REPO_NAME" ]; then
-         h2 "1.2 Cloning $REPO_NAME ..." 
-         git clone "https://github.com/bcottman/$REPO_NAME.git"
+         h2 "1.2 Cloning $REPO_ACCT/$REPO_NAME ..." 
+         git clone "https://github.com/$REPO_ACCT/$REPO_NAME.git"
          #git clone "https://github.com/wilsonmar/$REPO_NAME.git"
          cd "$REPO_NAME"
          pwd
@@ -279,22 +280,24 @@ EOF
 
 h2 "Remove Docker image running from previous run ..."
 
-# List all stopped containers:
+# List all stopped containers created:
    docker container ls -a --filter status=exited --filter status=created
 
-# Remove all stopped containers:
-   docker container prune --force
+# Remove all stopped containers:  TODO: Remove current container only:
+   #docker container prune --force
 
 h2 "Stop active containers ..."
    # See https://linuxize.com/post/how-to-remove-docker-images-containers-volumes-and-networks/
    ACTIVE_CONTAINER=$( docker container ls -aq )
    if [ ! -z "$ACTIVE_CONTAINER" ]; then  # var blank
-      # note "$ACTIVE_CONTAINER is the active container"
+      note "Stopping active container $ACTIVE_CONTAINER ..."
       docker container stop $ACTIVE_CONTAINER
-      docker ps  # should not list anything now.
+      if [ "$RUN_VERBOSE" = true ]; then
+         docker ps  # should not list anything now.
+      fi
    fi
 
-h2 "Build Streamlit Docker image from Python 3.7 (takes several minutes first time) ..."
+h2 "Build Streamlit Docker image $CURRENT_IMAGE from Python 3.7 (takes several minutes first time) ..."
 
    cd webApps/Streamlit/helloWorld
    pwd
@@ -305,7 +308,7 @@ h2 "Build Streamlit Docker image from Python 3.7 (takes several minutes first ti
 
 
 if [ "$RUN_ACTUAL" = false ]; then
-   info "Dry run default. Not run."
+   info "Dry run default. Not run. Add -a for actual run."
 else
    h2 "-actual run Streamlit Docker image ..."
    # Format: docker ${docker_args} run ${run_args} image ${cmd}
