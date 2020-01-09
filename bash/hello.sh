@@ -81,6 +81,7 @@ note "Bash $BASH_VERSION at $LOG_DATETIME"  # built-in variable.
 
 # Check what operating system is used now.
    OS_TYPE="$(uname)"
+   OS_DETAILS=""  # default blank.
 if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
    OS_TYPE="macOS"
 elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
@@ -104,3 +105,4 @@ PUBLIC_IP=$( curl -s ifconfig.me )
 
 note "OS_TYPE=$OS_TYPE on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
 note "$OS_DETAILS"
+
