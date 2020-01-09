@@ -80,16 +80,12 @@ warnError() {
 
 note "Bash $BASH_VERSION"
 
-command_exists() {  # newer than which {command}
-  command -v "$@" > /dev/null 2>&1
-}
-
 # Check what operating system is used now.
    OS_TYPE="$(uname)"
 if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
    OS_TYPE="macOS"
 elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
-   if command_exists lsb_release ; then
+   if command -v lsb_release ; then
       lsb_release -a
       OS_TYPE="Ubuntu"  # for apt-get
    elif [ -f "/etc/os-release" ]; then
