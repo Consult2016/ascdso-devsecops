@@ -88,7 +88,7 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
       lsb_release -a
       OS_TYPE="Ubuntu"  # for apt-get
    elif [ -f "/etc/os-release" ]; then
-         cat "/etc/os-release"   # ID_LIKE="rhel fedora"
+      OS_DETAILS=$( cat "/etc/os-release" )  # ID_LIKE="rhel fedora"
       OS_TYPE="Fedora"        # ID_LIKE="rhel fedora"
    elif [ -f "/etc/centos-release" ]; then
       OS_TYPE="CentOS"  # for yum
@@ -103,3 +103,4 @@ HOSTNAME=$( hostname )
 PUBLIC_IP=$( curl -s ifconfig.me )
 
 note "OS_TYPE=$OS_TYPE on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
+note "$OS_DETAILS"
