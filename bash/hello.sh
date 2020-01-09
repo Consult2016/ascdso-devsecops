@@ -13,23 +13,20 @@
 
 #clear  # screen (but not history)
 
-#set -eu pipefail  # pipefail counts as a parameter
+set -eu pipefail  # pipefail counts as a parameter
 # set -x to show commands for specific issues.
 # set -o nounset
 # set -e  # to end if 
 
 # TEMPLATE: Capture starting timestamp and display no matter how it ends:
 EPOCH_START="$(date -u +%s)"  # such as 1572634619
-echo "$0 at $EPOCH_START"
 FREE_DISKBLOCKS_START="$(df -k . | cut -d' ' -f 6)"  # 910631000 Available
 
 trap this_ending EXIT
 trap this_ending INT QUIT TERM
 this_ending() {
-   echo "_"
    EPOCH_END=$(date -u +%s);
    DIFF=$((EPOCH_END-EPOCH_START))
-
    FREE_DISKBLOCKS_END="$(df -k . | cut -d' ' -f 6)"
 #   DIFF=$(((FREE_DISKBLOCKS_START-FREE_DISKBLOCKS_END)))
 #   MSG="End of script after $((DIFF/360)) minutes and $DIFF bytes disk space consumed."
@@ -61,7 +58,7 @@ h2() {     # heading
 info() {   # output on every run
   printf "${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-RUN_VERBOSE=false
+RUN_VERBOSE=true
 note() { if [ "${RUN_VERBOSE}" = true ]; then
    printf "${bold}${cyan} ${reset} ${cyan}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
    fi
@@ -78,8 +75,6 @@ warnNotice() {
 warnError() {
   printf "${red}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-
-note "Bash $BASH_VERSION"
 
 # Check what operating system is used now.
    OS_TYPE="$(uname)"
@@ -103,4 +98,7 @@ else
 fi
 HOSTNAME=$( hostname )
 PUBLIC_IP=$( curl -s ifconfig.me )
-info "OS_TYPE=$OS_TYPE on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
+
+LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
+note "Bash $BASH_VERSION at $LOG_DATETIME"  # built-in variable.
+note "OS_TYPE=$OS_TYPE on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
