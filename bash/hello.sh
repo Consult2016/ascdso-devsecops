@@ -76,6 +76,9 @@ warnError() {
   printf "${red}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 
+LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
+note "Bash $BASH_VERSION at $LOG_DATETIME"  # built-in variable.
+
 # Check what operating system is used now.
    OS_TYPE="$(uname)"
 if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
@@ -85,7 +88,7 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
       lsb_release -a
       OS_TYPE="Ubuntu"  # for apt-get
    elif [ -f "/etc/os-release" ]; then
-      cat "/etc/os-release"   # ID_LIKE="rhel fedora"
+         cat "/etc/os-release"   # ID_LIKE="rhel fedora"
       OS_TYPE="Fedora"        # ID_LIKE="rhel fedora"
    elif [ -f "/etc/centos-release" ]; then
       OS_TYPE="CentOS"  # for yum
@@ -99,6 +102,4 @@ fi
 HOSTNAME=$( hostname )
 PUBLIC_IP=$( curl -s ifconfig.me )
 
-LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
-note "Bash $BASH_VERSION at $LOG_DATETIME"  # built-in variable.
 note "OS_TYPE=$OS_TYPE on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
