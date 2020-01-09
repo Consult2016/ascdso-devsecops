@@ -5,7 +5,9 @@
 # After getting into the Cloud9 enviornment,
 # cd to folder, copy this line and paste in the Cloud9 terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/hello.sh)"
-# bash -c "$(curl -fsSL https://githuben.intranet.mckinsey.com/raw/Wilson-Mar/dev-bootcamp/master/hello.sh)"
+
+# This was tested on macOS Mojava and Amazon Linux 2018.2
+
 
 ### STEP 1. Set display utilities:
 
@@ -77,19 +79,26 @@ warnError() {
 }
 
 note "Bash $BASH_VERSION"
+
+command_exists() {  # newer than which {command}
+  command -v "$@" > /dev/null 2>&1
+}
+
 # Check what operating system is used now.
    OS_TYPE="$(uname)"
 if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
    OS_TYPE="macOS"
 elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
-   if [ -f $( "lsb_release -a" ) ]; then  # TODO: Verify this works.
+   if command_exists lsb_release ; then
+      lsb_release -a
       OS_TYPE="Ubuntu"  # for apt-get
+   elif [ -f "/etc/os-release" ]; then
+      cat "/etc/os-release"   # ID_LIKE="rhel fedora"
+      OS_TYPE="Fedora"        # ID_LIKE="rhel fedora"
    elif [ -f "/etc/centos-release" ]; then
       OS_TYPE="CentOS"  # for yum
    else
-#      OS_TYPE="Linux"  # from uname.
-      LINUX_OS_VER=$( cat "/etc/os-release" | grep "PRETTY_NAME" )  # ID_LIKE="rhel fedora"
-      note "LINUX_OS_VER=$LINUX_OS_VER"
+      OS_TYPE="Linux"  # from uname.
    fi
 else 
    error "Operating system not anticipated. Please update script. Aborting."
