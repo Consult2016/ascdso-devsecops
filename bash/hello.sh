@@ -76,14 +76,21 @@ warnError() {
   printf "${red}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 
-info "Bash $BASH_VERSION"
+note "Bash $BASH_VERSION"
 # Check what operating system is used now.
+   OS_TYPE="$(uname)"
 if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
    OS_TYPE="macOS"
-elif [ -f "/etc/centos-release" ]; then
-   OS_TYPE="CentOS"  # for yum
-elif [ -f $( "lsb_release -a" ) ]; then  # TODO: Verify this works.
-   OS_TYPE="Ubuntu"  # for apt-get
+elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
+   if [ -f $( "lsb_release -a" ) ]; then  # TODO: Verify this works.
+      OS_TYPE="Ubuntu"  # for apt-get
+   elif [ -f "/etc/centos-release" ]; then
+      OS_TYPE="CentOS"  # for yum
+   else
+#      OS_TYPE="Linux"  # from uname.
+      LINUX_OS_VER=$( cat "/etc/os-release" | grep "PRETTY_NAME" )  # ID_LIKE="rhel fedora"
+      note "LINUX_OS_VER=$LINUX_OS_VER"
+   fi
 else 
    error "Operating system not anticipated. Please update script. Aborting."
    exit 0
@@ -91,4 +98,3 @@ fi
 HOSTNAME=$( hostname )
 PUBLIC_IP=$( curl -s ifconfig.me )
 info "OS_TYPE=$OS_TYPE on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
-
