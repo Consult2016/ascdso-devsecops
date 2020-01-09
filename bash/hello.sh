@@ -29,11 +29,11 @@ this_ending() {
    EPOCH_END=$(date -u +%s);
    DIFF=$((EPOCH_END-EPOCH_START))
 
-   FREE_DISKBLOCKS_END="$(df -k . | cut -d' ' -f 6)"
-   DIFF=$(((FREE_DISKBLOCKS_START-FREE_DISKBLOCKS_END)))
-   MSG="End of script after $((DIFF/360)) minutes and $DIFF bytes disk space consumed."
+#   FREE_DISKBLOCKS_END="$(df -k . | cut -d' ' -f 6)"
+#   DIFF=$(((FREE_DISKBLOCKS_START-FREE_DISKBLOCKS_END)))
+#   MSG="End of script after $((DIFF/360)) minutes and $DIFF bytes disk space consumed."
    #   info 'Elapsed HH:MM:SS: ' $( awk -v t=$beg-seconds 'BEGIN{t=int(t*1000); printf "%d:%02d:%02d\n", t/3600000, t/60000%60, t/1000%60}' )
-   success "$MSG"
+#   success "$MSG"
    #note "$FREE_DISKBLOCKS_START to 
    #note "$FREE_DISKBLOCKS_END"
 }
