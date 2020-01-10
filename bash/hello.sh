@@ -122,9 +122,9 @@ h2 "Config git/GitHub user.name & email"
       source   "$HOME/secrets.sh"  # run file containing variable definitions.
       note "GITHUB_USER_NAME=\"$GITHUB_USER_NAME\" read from file $HOME/secrets.sh"
    else
-      read -p "Enter your user name [John Doe]: " GITHUB_USER_NAME
+      read -p "Enter your GitHub user name [John Doe]: " GITHUB_USER_NAME
       GITHUB_USER_NAME=${GITHUB_USER_NAME:-"John Doe"}
-      read -p "Enter your user name [john_doe@mckinsey.com]: " GITHUB_USER_EMAIL
+      read -p "Enter your GitHub user email [john_doe@mckinsey.com]: " GITHUB_USER_EMAIL
       GITHUB_USER_EMAIL=${GITHUB_USER_EMAIL:-"John_Doe@mckinsey.com"}
    fi
    git config --global user.name  "$GITHUB_USER_NAME"
@@ -133,16 +133,29 @@ h2 "Config git/GitHub user.name & email"
 
 ## Setup env
 
-h2 "Install Python ecosystem:"
-   curl -O https://bootstrap.pypa.io/get-pip.py
-   python3 get-pip.py --user
-   . ~/.bash_profile
-   pip3 install pipenv --user
-
 h2 "Install packages:"
    if [ PACKAGE_MANAGER == "yum" ]; then
       sudo yum -y install postgresql postgresql-server postgresql-devel postgresql-contrib postgresql-docs
    elif [ PACKAGE_MANAGER == "brew" ]; then
       brew install postgresql postgresql-server postgresql-devel postgresql-contrib postgresql-docs
    fi
+
+exit
+
+
+h2 "Install Python ecosystem:"
+   note "$PWD"
+   curl -O https://bootstrap.pypa.io/get-pip.py
+      #  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+      #                                   Dload  Upload   Total   Spent    Left  Speed
+      # 100 1734k  100 1734k    0     0  35.2M      0 --:--:-- --:--:-- --:--:-- 36.0M   
+   python3 get-pip.py --user
+      # Collecting pip
+      # Using cached https://files.pythonhosted.org/packages/00/b6/9cfa56b4081ad13874b0c6f96af8ce16cfbc1cb06bedf8e9164ce5551ec1/pip-19.3.1-py2.py3-none-any.whl
+      # Successfully installed pip-19.3.1
+   pip3 install pipenv --user
+
+h2 "Install aliases, PS1, etc. in ~/.bashrc:"
+   . ~/.bash_profile
+      # function
 
