@@ -77,24 +77,28 @@ warnError() {
 }
 
 LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
-note "Bash $BASH_VERSION at $LOG_DATETIME"  # built-in variable.
 
 # Check what operating system is used now.
    OS_TYPE="$(uname)"
    OS_DETAILS=""  # default blank.
 if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
-   OS_TYPE="macOS"
+      OS_TYPE="macOS"
+      PACKAGE_MANAGER="brew"
 elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
    if command -v lsb_release ; then
       lsb_release -a
       OS_TYPE="Ubuntu"  # for apt-get
+      PACKAGE_MANAGER="apt-get"
    elif [ -f "/etc/os-release" ]; then
       OS_DETAILS=$( cat "/etc/os-release" )  # ID_LIKE="rhel fedora"
-      OS_TYPE="Fedora"        # ID_LIKE="rhel fedora"
+      OS_TYPE="Fedora"  # for yum 
+      PACKAGE_MANAGER="yum"
    elif [ -f "/etc/centos-release" ]; then
       OS_TYPE="CentOS"  # for yum
+      PACKAGE_MANAGER="yum"
    else
-      OS_TYPE="Linux"  # from uname.
+      error "Linux distribution not anticipated. Please update script. Aborting."
+      exit 0
    fi
 else 
    error "Operating system not anticipated. Please update script. Aborting."
@@ -103,6 +107,42 @@ fi
 HOSTNAME=$( hostname )
 PUBLIC_IP=$( curl -s ifconfig.me )
 
-note "OS_TYPE=$OS_TYPE on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
-note "$OS_DETAILS"
+### Print heading:
+      note "Bash $BASH_VERSION at $LOG_DATETIME"  # built-in variable.
+      note "OS_TYPE=$OS_TYPE on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
+   if [ -f "$OS_DETAILS" ]; then
+      note "$OS_DETAILS"
+   fi
+
+### Get secrets from $HOME/secrets.sh
+
+h2 "Config git/GitHub user.name & email"
+   if [ -f "$HOME/secrets.sh" ]; then
+      chmod +x "$HOME/secrets.sh"
+      source   "$HOME/secrets.sh"  # run file containing variable definitions.
+      note "GITHUB_USER_NAME=\"$GITHUB_USER_NAME\" read from file $HOME/secrets.sh"
+   else
+      read -p "Enter your user name [John Doe]: " GITHUB_USER_NAME
+      GITHUB_USER_NAME=${GITHUB_USER_NAME:-"John Doe"}
+      read -p "Enter your user name [john_doe@mckinsey.com]: " GITHUB_USER_EMAIL
+      GITHUB_USER_EMAIL=${GITHUB_USER_EMAIL:-"John_Doe@mckinsey.com"}
+   fi
+   git config --global user.name  "$GITHUB_USER_NAME"
+   git config --global user.email "$GITHUB_USER_EMAIL"
+
+
+## Setup env
+
+h2 "Install Python ecosystem:"
+   curl -O https://bootstrap.pypa.io/get-pip.py
+   python3 get-pip.py --user
+   . ~/.bash_profile
+   pip3 install pipenv --user
+
+h2 "Install packages:"
+   if [ PACKAGE_MANAGER == "yum" ]; then
+      sudo yum -y install postgresql postgresql-server postgresql-devel postgresql-contrib postgresql-docs
+   elif [ PACKAGE_MANAGER == "brew" ]; then
+      brew install postgresql postgresql-server postgresql-devel postgresql-contrib postgresql-docs
+   fi
 
