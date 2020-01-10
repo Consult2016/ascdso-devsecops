@@ -136,9 +136,16 @@ h2 "Config git/GitHub user.name & email"
 h2 "Install packages:"
    if [ PACKAGE_MANAGER == "yum" ]; then
       sudo yum -y install postgresql postgresql-server postgresql-devel postgresql-contrib postgresql-docs
+      if [ "${RUN_VERBOSE}" = true ]; then
+         sudo yum list installed
+      fi
    elif [ PACKAGE_MANAGER == "brew" ]; then
       brew install postgresql postgresql-server postgresql-devel postgresql-contrib postgresql-docs
+      if [ "${RUN_VERBOSE}" = true ]; then
+         brew list
+      fi
    fi
+   note "$( postgres --version )"
 
 exit
 
@@ -155,7 +162,29 @@ h2 "Install Python ecosystem:"
       # Successfully installed pip-19.3.1
    pip3 install pipenv --user
 
-h2 "Install aliases, PS1, etc. in ~/.bashrc:"
+
+h2 "Install aliases, PS1, etc. in ~/.bashrc ..."
    . ~/.bash_profile
       # function
+
+h2 "Run Docker ..."
+   docker run --rm --name snoodle-postgres -p 5432:5432 \
+   -e POSTGRES_USER=snoodle \
+   -e POSTGRES_PASSSWORD=snoodle \
+   -e POSTGRES_DB=snoodle \
+   postgres &
+      # database system is ready to accept connections
+
+h2 "Inside Docker: Run Flask ..."
+# docker exec -it 
+FLASK_APP=snoodle DB_HOST=localhost DB_USERNAME=snoodle DB_PASSWORD=USE_IAM DB_NAME=snoodle HTTP_SCHEME=https python3 -m  flask run 
+
+# With postgres app
+FLASK_APP=snoodle python3 -m flask run
+
+# shell into db
+psql postgresql://snoodle:snoodle@localhost:5432/snoodle
+
+npm install
+npm start
 
