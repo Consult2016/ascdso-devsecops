@@ -37,7 +37,7 @@ this_ending() {
    MSG="End of script after $((DIFF/360)) minutes and $DIFF bytes disk space consumed."
    # echo 'Elapsed HH:MM:SS: ' $( awk -v t=$beg-seconds 'BEGIN{t=int(t*1000); printf "%d:%02d:%02d\n", t/3600000, t/60000%60, t/1000%60}' )
    echo "$MSG"
-#   echo "$FREE_DISKBLOCKS_START to $FREE_DISKBLOCKS_END"
+   echo "Disk $FREE_DISKBLOCKS_START to $FREE_DISKBLOCKS_END"
 }
 sig_cleanup() {
     trap '' EXIT  # some shells call EXIT after the INT handler.
@@ -123,7 +123,7 @@ PUBLIC_IP=$( curl -s ifconfig.me )
 
 # cd ~/environment/
 
-      note "From $0 in $PWD"  # $0 = script being run in Present Wording Directory.
+      note "Running $0 in $PWD"  # $0 = script being run in Present Wording Directory.
       note "Bash $BASH_VERSION at $LOG_DATETIME"  # built-in variable.
       note "OS_TYPE=$OS_TYPE on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
    if [ -f "$OS_DETAILS" ]; then
@@ -131,22 +131,21 @@ PUBLIC_IP=$( curl -s ifconfig.me )
    fi
 
 
-# h2 "STEP 1 - Ensure run variables are based on arguments or defaults ..."
+# Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
-   echo "Bash shell script"
    echo "USAGE EXAMPLE during testing:"
-   echo "   $0 -v -U -D -a -o"
+   echo "   $0 -v -U -D -a -o -d"
    echo "OPTIONS:"
-   echo "   -v       to run verbose (list space use and each image to console)"
-   echo "   -U       Upgrade packages"
+   echo "   -v           to run verbose (list space use and each image to console)"
+   echo "   -D           Download installers"
+   echo "   -U           Upgrade packages"
    echo "   -n \"John Doe\"      GitHub user name"
-   echo "   -e -e \"john_doe@a.com\"      GitHub user email"
-   echo "   -p \"file\"      Project folder path"
-   echo "   -D       Download installer"
-   echo "   -R       reboot Docker before run"
-   echo "   -a       to actually run docker-compose"
-   echo "   -o       to open web page in default browser"
-   echo "   -d       to delete files after run (to save disk space)"
+   echo "   -e \"john_doe@a.com\"      GitHub user email"
+   echo "   -p \"?/?\"      Project folder path"
+   echo "   -R           reboot Docker before run"
+   echo "   -a           to actually run docker-compose"
+   echo "   -o           to open web page in default browser"
+   echo "   -d           to delete files after run (to save disk space)"
  }
 if [ $# -eq 0 ]; then  # display if no paramters are provided:
    args_prompt
