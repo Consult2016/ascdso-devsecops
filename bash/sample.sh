@@ -14,9 +14,9 @@
 
 ### STEP 1. Set display utilities:
 
-clear  # screen (but not history)
+# clear  # screen (but not history)
 
-set -e  # to end if 
+#set -e  # to end if 
 # set -eu pipefail  # pipefail counts as a parameter
 # set -x to show commands for specific issues.
 # set -o nounset
@@ -29,25 +29,29 @@ LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
-   echo "   $0 -h -v -D -U -a -o -d"
+   echo "   $0 -h -v -I -U -c -s -a -o -D"
    echo "OPTIONS:"
    echo "   -h           to display this -help list"
    echo "   -v           to run -verbose (list space use and each image to console)"
-   echo "   -D           -Download installers"
+   echo "   -I           -Install brew, docker, docker-compose"
    echo "   -U           -Upgrade packages"
+   echo "   -c           -clone from GitHub"
+   echo "   -s           Use -secrets file in your user home folder"
    echo "   -n \"John Doe\"         GitHub user -name"
    echo "   -e \"john_doe@a.com\"   GitHub user -email"
-   echo "   -p \"\"     Project folder -path "
+   echo "   -p \" \"    Project folder -path "
    echo "   -R           -Reboot Docker before run"
    echo "   -a           to -actually run docker-compose"
    echo "   -o           to -open web page in default browser"
-   echo "   -d           to -delete files after run (to save disk space)"
+   echo "   -D           to -delete files after run (to save disk space)"
+   echo " "
  }
 if [ $# -eq 0 ]; then  # display if no parameters are provided:
    args_prompt
 fi
-exit_abnormal() {                              # Function: Exit with error.
-  args_prompt
+exit_abnormal() {            # Function: Exit with error.
+  echo "exiting abnormally"
+  #args_prompt
   exit 1
 }
 
@@ -55,12 +59,14 @@ exit_abnormal() {                              # Function: Exit with error.
    RUN_VERBOSE=false
    UPDATE_PKGS=false
    RESTART_DOCKER=false
-   RUN_ACTUAL=false  # false as dry run is default.
+   RUN_ACTUAL=false   # false as dry run is default.
    DOWNLOAD_INSTALL=false     # -d
    RUN_DELETE_AFTER=false     # -D
    RUN_OPEN_BROWSER=false     # -o
+   CLONE_GITHUB=false         # -c
+   USE_SECRETS_FILE=false     # -s
 
-SECRETS_FILEPATH="$HOME/secrets.sh"  # -s
+SECRETS_FILEPATH="$HOME/.secrets.sh"  # -s
 GitHub_USER_NAME=""                  # -n
 GitHub_USER_EMAIL=""                 # -e
 GitHub_REPO_NAME="bsawf"
@@ -72,9 +78,25 @@ PROJECT_FOLDER_PATH="$HOME/projects"
 
 while test $# -gt 0; do
   case "$1" in
-    -h|--help)
+    -h)
       args_prompt
       exit 0
+      ;;
+    -v)
+      export RUN_VERBOSE=true
+      shift
+      ;;
+    -I)
+      export DOWNLOAD_INSTALL=true
+      shift
+      ;;
+    -U)
+      export UPDATE_PKGS=true
+      shift
+      ;;
+    -c)
+      export CLONE_GITHUB=true
+      shift
       ;;
     -n*)
       shift
@@ -95,26 +117,18 @@ while test $# -gt 0; do
       export PROJECT_FOLDER_PATH
       shift
       ;;
-    -s*)
+    -s)
+      export USE_SECRETS_FILE=true
+      shift
+      ;;
+    -S*)
       shift
              SECRETS_FILEPATH=$( echo "$1" | sed -e 's/^[^=]*=//g' )
       export SECRETS_FILEPATH
       shift
       ;;
-    -U)
-      export UPDATE_PKGS=true
-      shift
-      ;;
     -R)
       export RESTART_DOCKER=true
-      shift
-      ;;
-    -v)
-      export RUN_VERBOSE=true
-      shift
-      ;;
-    -d)
-      export DOWNLOAD_INSTALL=true
       shift
       ;;
     -a)
@@ -136,6 +150,7 @@ while test $# -gt 0; do
       ;;
   esac
 done
+
 
 ### Set ANSI color variables (based on aws_code_deploy.sh): 
 bold="\e[1m"
@@ -164,14 +179,14 @@ note() { if [ "${RUN_VERBOSE}" = true ]; then
 success() {
    printf "${green}✔ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-error() {
+error() {       # &#9747;
    printf "${red}${bold}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-warnNotice() {
-   printf "${cyan}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+warning() {  # &#9758; or &#9755;
+   printf "${cyan}☞ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-warnError() {
-   printf "${red}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+fatal() {   # Skull: &#9760;  # Star: &starf; &#9733; U+02606  # Toxic: &#9762;
+   printf "${red}☢  %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 
 # Check what operating system is in use:
@@ -206,18 +221,29 @@ else
 fi
 
 
-DISK_PCT_FREE=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[11]}" )
-   FREE_DISKBLOCKS_START=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
+BASH_VERSION=$( bash --version | grep bash | cut -d' ' -f4 | head -c 1 )
+   if [ "${BASH_VERSION}" -lt "4" ]; then
+      warning "Bash version ${BASH_VERSION} needed to calculate disk free"
+      DISK_PCT_FREE="0"
+      FREE_DISKBLOCKS_START="0"
+   else
+      DISK_PCT_FREE=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[11]}" )
+      FREE_DISKBLOCKS_START=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
+   fi
+
 
 trap this_ending EXIT
 trap this_ending INT QUIT TERM
 this_ending() {
    EPOCH_END=$(date -u +%s);
    DIFF=$((EPOCH_END-EPOCH_START))
-   FREE_DISKBLOCKS_END=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
+   if [ "${BASH_VERSION}" -lt "4" ]; then
+      FREE_DISKBLOCKS_END="0"
+   else
+      FREE_DISKBLOCKS_END=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
+   fi
    DIFF=$(((FREE_DISKBLOCKS_START-FREE_DISKBLOCKS_END)))
-
-   MSG="End of script after $((DIFF/360)) minutes and $DIFF 512-bytes disk blocks consumed."
+   MSG="End of script after $((DIFF/360)) minutes and $DIFF 512-byte disk blocks consumed."
    # echo 'Elapsed HH:MM:SS: ' $( awk -v t=$beg-seconds 'BEGIN{t=int(t*1000); printf "%d:%02d:%02d\n", t/3600000, t/60000%60, t/1000%60}' )
    success "$MSG"
    note "Disk $FREE_DISKBLOCKS_START to $FREE_DISKBLOCKS_END"
@@ -240,32 +266,32 @@ PUBLIC_IP=$( curl -s ifconfig.me )
       note "Bash $BASH_VERSION at $LOG_DATETIME"  # built-in variable.
       note "OS_TYPE=$OS_TYPE using $PACKAGE_MANAGER from $DISK_PCT_FREE disk free"
       note "on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
-   if [ -f "$OS_DETAILS" ]; then
-      note "$OS_DETAILS"
-   fi
-
-
-exit
+#   if [ -f "$OS_DETAILS" ]; then
+#      note "$OS_DETAILS"
+#   fi
 
 
 # Configure location to create new files:
-if [ -z "$PROJECT_FOLDER_PATH" ]; then  # blank (the default)
+if [ -z "$PROJECT_FOLDER_PATH" ]; then  # -p ""  override blank (the default)
    h2 "Using current folder as project folder path ..."
+   pwd
 else
    if [ ! -d "$PROJECT_FOLDER_PATH" ]; then  # path not available.
       h2 "Creating folder $PROJECT_FOLDER_PATH as -project folder path ..."
       mkdir -p "$PROJECT_FOLDER_PATH"
    fi
    pushd "$PROJECT_FOLDER_PATH"
-   info "Now at $PWD during script run ..."
+   info "Pushed into $PWD during script run ..."
 fi
 note "$( ls -al )"
 
 
+if [ "${CLONE_GITHUB}" = true ]; then
 
-if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
-   if [ -d "$GitHub_REPO_NAME" ]; then 
-      rm -rf "$HOME/projects/$GitHub_REPO_NAME"
+   if [ -d   "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME" ]; then 
+      h2 "Deleting previous GitHub clone ..."
+      ls -al "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME"
+      rm -rf "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME"
    fi
 
    h2 "Downloading repo ..."
@@ -278,6 +304,44 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
 else
    cd "$GitHub_REPO_NAME"  
 fi
+note "$( pwd )"
+
+
+### Get secrets from $HOME/secrets.sh
+
+
+Input_GitHub_User_Info(){
+      read -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
+      GitHub_USER_NAME=${GitHub_USER_NAME:-"John Doe"}
+      read -p "Enter your GitHub user email [john_doe@mckinsey.com]: " GitHub_USER_EMAIL
+      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"John_Doe@mckinsey.com"}
+      # cp secrets.sh  "$SECRETS_FILEPATH"
+}
+
+if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
+   if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found:
+      warning "File not found in $SECRETS_FILEPATH "
+      Input_GitHub_User_Info  # function defined above.
+   else  # found:
+      h2 "Using settings in $SECRETS_FILEPATH "
+      ls -al "$SECRETS_FILEPATH"
+      chmod +x "$SECRETS_FILEPATH"
+      source   "$SECRETS_FILEPATH"  # run file containing variable definitions.
+      note "GitHub_USER_NAME=\"$GitHub_USER_NAME\" read from file $SECRETS_FILEPATH"
+   fi
+else
+      Input_GitHub_User_Info  # function defined above.
+fi  # USE_SECRETS_FILE
+
+if [ -z "$GitHub_USER_EMAIL" ]; then 
+   fatal "GitHub_USER_EMAIL is empty!"
+   exit 1
+else
+   info "GitHub_USER_EMAIL and USER_NAME being configured ..."
+   git config --global user.name  "$GitHub_USER_NAME"
+   git config --global user.email "$GitHub_USER_EMAIL"
+   note "$( git config --list --show-origin )"
+fi
 
 
    if [ ! -f ".env" ]; then
@@ -289,17 +353,19 @@ fi
    if [ ! -f "docker-compose.override.yml" ]; then
       cp docker-compose.override.example.yml docker-compose.override.yml
    else
-        note "no .yml file"
+      warning "no .yml file"
    fi
 
 
 
-## Setup env
+# Install utilities:
+
+if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then
       if ! command -v brew ; then
          h2 "Installing brew package manager using Ruby ..."
-         mkdir homebrew && curl -L https://GitLab.com/Homebrew/brew/tarball/master \
+         mkdir homebrew && curl -L https://GitHub.com/Homebrew/brew/tarball/master \
             | tar xz --strip 1 -C homebrew
       else
          if [ "${UPDATE_PKGS}" = true ]; then
@@ -343,7 +409,6 @@ fi
    #  Suse Linux "${PACKAGE_MANAGER}" == "zypper" ?
    fi
 
-
       if ! command -v docker ; then
          h2 "Installing docker ..."
          brew install docker
@@ -369,8 +434,11 @@ fi
       note "$( docker-compose --version )"
          # docker-compose version 1.24.1, build 4667896b
 
+fi  # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
+
 
 ## TODO: Restart Docker DAEMON
+
 
 
 #   if [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q "$DOCKER_WEB_SVC_NAME")` ]; then
@@ -400,6 +468,7 @@ fi
          # 52df7a11b666        redis:5.0.7-buster   "docker-entrypoint.s…"   About an hour ago   Up 35 minutes             6379/tcp                 snakeeyes_redis_1
          # 7b8aba1d860a        postgres             "docker-entrypoint.s…"   7 days ago          Up 7 days                 0.0.0.0:5432->5432/tcp   snoodle-postgres
 
+
 if [ "$RUN_OPEN_BROWSER" = true ]; then  # -o
    if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
       open http://localhost:8000/
@@ -410,7 +479,16 @@ fi
 # TODO: Run tests
 
 
+
 if [ "$RUN_DELETE_AFTER" = true ]; then  # -D
-   docker-compose rm -f
+   h2 "Deleting docker-compose active containers ..."
+   # docker-compose rm -f
+
+   if [ -d "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME" ]; then  # path available.
+      h2 "Remove project folder $PROJECT_FOLDER_PATH/$GitHub_REPO_NAME ..."
+      ls -al "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME"
+      exit
+      rm -rf "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME"
+   fi
 fi
 
