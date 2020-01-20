@@ -29,7 +29,9 @@ LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
-   echo "   $0 -h -v -I -U -c -s -a -o -D"
+   echo "   $0 -h -v -I -U -c -s -r -a -o"
+   echo "USAGE EXAMPLE after testing:"
+   echo "   $0 -v -D -R"
    echo "OPTIONS:"
    echo "   -h           to display this -help list"
    echo "   -v           to run -verbose (list space use and each image to console)"
@@ -40,10 +42,11 @@ args_prompt() {
    echo "   -n \"John Doe\"         GitHub user -name"
    echo "   -e \"john_doe@a.com\"   GitHub user -email"
    echo "   -p \" \"    Project folder -path "
-   echo "   -R           -Reboot Docker before run"
+   echo "   -r           -start Docker before run"
    echo "   -a           to -actually run docker-compose"
    echo "   -o           to -open web page in default browser"
    echo "   -D           to -delete files after run (to save disk space)"
+   echo "   -R           to -Remove cloned files after run (to save disk space)"
    echo " "
  }
 if [ $# -eq 0 ]; then  # display if no parameters are provided:
@@ -64,6 +67,7 @@ exit_abnormal() {            # Function: Exit with error.
    RUN_DELETE_AFTER=false     # -D
    RUN_OPEN_BROWSER=false     # -o
    CLONE_GITHUB=false         # -c
+   REMOVE_GITHUB_AFTER=false  # -R
    USE_SECRETS_FILE=false     # -s
 
 SECRETS_FILEPATH="$HOME/.secrets.sh"  # -s
@@ -79,8 +83,7 @@ PROJECT_FOLDER_PATH="$HOME/projects"
 while test $# -gt 0; do
   case "$1" in
     -h)
-      args_prompt
-      exit 0
+      args_prompt  # function defined above.
       ;;
     -v)
       export RUN_VERBOSE=true
@@ -127,7 +130,7 @@ while test $# -gt 0; do
       export SECRETS_FILEPATH
       shift
       ;;
-    -R)
+    -r)
       export RESTART_DOCKER=true
       shift
       ;;
@@ -141,6 +144,10 @@ while test $# -gt 0; do
       ;;
     -D)
       export RUN_DELETE_AFTER=true
+      shift
+      ;;
+    -R)
+      export REMOVE_GITHUB_AFTER=true
       shift
       ;;
     *)
@@ -482,12 +489,21 @@ fi
 
 if [ "$RUN_DELETE_AFTER" = true ]; then  # -D
    h2 "Deleting docker-compose active containers ..."
-   # docker-compose rm -f
+   CONTAINERS_RUNNING="$( docker ps -a -q )"
+#   note "Active containers: $CONTAINERS_RUNNING"
 
+   note "Stopping containers:"
+   docker stop -v $( docker ps -a -q )
+
+   note "Removing containers:"
+   docker rm -v "$CONTAINERS_RUNNING"
+fi
+
+
+if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -R
    if [ -d "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME" ]; then  # path available.
       h2 "Remove project folder $PROJECT_FOLDER_PATH/$GitHub_REPO_NAME ..."
       ls -al "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME"
-      exit
       rm -rf "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME"
    fi
 fi
