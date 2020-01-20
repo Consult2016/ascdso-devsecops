@@ -24,130 +24,26 @@ set -e  # to end if
 # TEMPLATE: Capture starting timestamp and display no matter how it ends:
 EPOCH_START="$(date -u +%s)"  # such as 1572634619
 LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
-FREE_DISKBLOCKS_START="$( df -m . | cut -d' ' -f 6 )"   # e.g. 254781 MB Used
-
-trap this_ending EXIT
-trap this_ending INT QUIT TERM
-this_ending() {
-   EPOCH_END=$(date -u +%s);
-   DIFF=$((EPOCH_END-EPOCH_START))
-   FREE_DISKBLOCKS_END="$( df -m . | cut -d' ' -f 6 )"   # e.g. 254781 MB Used
-   DIFF=$(((FREE_DISKBLOCKS_START-FREE_DISKBLOCKS_END)))
-
-   MSG="End of script after $((DIFF/360)) minutes and $DIFF bytes disk space consumed."
-   # echo 'Elapsed HH:MM:SS: ' $( awk -v t=$beg-seconds 'BEGIN{t=int(t*1000); printf "%d:%02d:%02d\n", t/3600000, t/60000%60, t/1000%60}' )
-   echo "$MSG"
-   echo "Disk $FREE_DISKBLOCKS_START to $FREE_DISKBLOCKS_END"
-}
-sig_cleanup() {
-    trap '' EXIT  # some shells call EXIT after the INT handler.
-    false # sets $?
-    this_ending
-}
-
-### Set ANSI color variables (based on aws_code_deploy.sh): 
-bold="\e[1m"
-dim="\e[2m"
-# shellcheck disable=SC2034 # ... appears unused. Verify use (or export if used externally).
-underline="\e[4m"
-# shellcheck disable=SC2034 # ... appears unused. Verify use (or export if used externally).
-blink="\e[5m"
-reset="\e[0m"
-red="\e[31m"
-green="\e[32m"
-# shellcheck disable=SC2034 # ... appears unused. Verify use (or export if used externally).
-blue="\e[34m"
-cyan="\e[36m"
-
-h2() {     # heading
-  printf "\n${bold}>>> %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
-}
-info() {   # output on every run
-  printf "${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
-}
-RUN_VERBOSE=true
-note() { if [ "${RUN_VERBOSE}" = true ]; then
-   printf "${bold}${cyan} ${reset} ${cyan}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
-   fi
-}
-success() {
-  printf "${green}✔ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
-}
-error() {
-  printf "${red}${bold}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
-}
-warnNotice() {
-  printf "${cyan}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
-}
-warnError() {
-  printf "${red}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
-}
-
-# Check what operating system is in use:
-   OS_TYPE="$( uname )"
-   OS_DETAILS=""  # default blank.
-if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
-      OS_TYPE="macOS"
-      PACKAGE_MANAGER="brew"
-elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
-   if command -v lsb_release ; then
-      lsb_release -a
-      OS_TYPE="Ubuntu"  # for apt-get
-      PACKAGE_MANAGER="apt-get"
-   elif [ -f "/etc/os-release" ]; then
-      OS_DETAILS=$( cat "/etc/os-release" )  # ID_LIKE="rhel fedora"
-      OS_TYPE="Fedora"  # for yum 
-      PACKAGE_MANAGER="yum"
-   elif [ -f "/etc/redhat-release" ]; then
-      OS_DETAILS=$( cat "/etc/redhat-release" )  # ID_LIKE="rhel fedora"
-      OS_TYPE="RedHat"  # for yum 
-      PACKAGE_MANAGER="yum"
-   elif [ -f "/etc/centos-release" ]; then
-      OS_TYPE="CentOS"  # for yum
-      PACKAGE_MANAGER="yum"
-   else
-      error "Linux distribution not anticipated. Please update script. Aborting."
-      exit 0
-   fi
-else 
-   error "Operating system not anticipated. Please update script. Aborting."
-   exit 0
-fi
-
-
-#################### Print run heading:
-
-# Operating enviornment information:
-HOSTNAME=$( hostname )
-PUBLIC_IP=$( curl -s ifconfig.me )
-
-# cd ~/environment/
-
-      note "Running $0 in $PWD"  # $0 = script being run in Present Wording Directory.
-      note "Bash $BASH_VERSION at $LOG_DATETIME"  # built-in variable.
-      note "OS_TYPE=$OS_TYPE on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
-   if [ -f "$OS_DETAILS" ]; then
-      note "$OS_DETAILS"
-   fi
 
 
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
-   echo "   $0 -v -D -U -a -o -d"
+   echo "   $0 -h -v -D -U -a -o -d"
    echo "OPTIONS:"
+   echo "   -h           to display this -help list"
    echo "   -v           to run -verbose (list space use and each image to console)"
    echo "   -D           -Download installers"
    echo "   -U           -Upgrade packages"
    echo "   -n \"John Doe\"         GitHub user -name"
    echo "   -e \"john_doe@a.com\"   GitHub user -email"
-   echo "   -p \"?/?\"     Project folder -path"
+   echo "   -p \"\"     Project folder -path "
    echo "   -R           -Reboot Docker before run"
    echo "   -a           to -actually run docker-compose"
    echo "   -o           to -open web page in default browser"
    echo "   -d           to -delete files after run (to save disk space)"
  }
-if [ $# -eq 0 ]; then  # display if no paramters are provided:
+if [ $# -eq 0 ]; then  # display if no parameters are provided:
    args_prompt
 fi
 exit_abnormal() {                              # Function: Exit with error.
@@ -156,6 +52,7 @@ exit_abnormal() {                              # Function: Exit with error.
 }
 
 # Defaults (default true so flag turns it true):
+   RUN_VERBOSE=false
    UPDATE_PKGS=false
    RESTART_DOCKER=false
    RUN_ACTUAL=false  # false as dry run is default.
@@ -240,21 +137,133 @@ while test $# -gt 0; do
   esac
 done
 
+### Set ANSI color variables (based on aws_code_deploy.sh): 
+bold="\e[1m"
+dim="\e[2m"
+# shellcheck disable=SC2034 # ... appears unused. Verify use (or export if used externally).
+underline="\e[4m"
+# shellcheck disable=SC2034 # ... appears unused. Verify use (or export if used externally).
+blink="\e[5m"
+reset="\e[0m"
+red="\e[31m"
+green="\e[32m"
+# shellcheck disable=SC2034 # ... appears unused. Verify use (or export if used externally).
+blue="\e[34m"
+cyan="\e[36m"
+
+h2() {     # heading
+   printf "\n${bold}>>> %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+info() {   # output on every run
+   printf "${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+note() { if [ "${RUN_VERBOSE}" = true ]; then
+   printf "${bold}${cyan} ${reset} ${cyan}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   fi
+}
+success() {
+   printf "${green}✔ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+error() {
+   printf "${red}${bold}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+warnNotice() {
+   printf "${cyan}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+warnError() {
+   printf "${red}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+
+# Check what operating system is in use:
+   OS_TYPE="$( uname )"
+   OS_DETAILS=""  # default blank.
+if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
+      OS_TYPE="macOS"
+      PACKAGE_MANAGER="brew"
+elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
+   if command -v lsb_release ; then
+      lsb_release -a
+      OS_TYPE="Ubuntu"  # for apt-get
+      PACKAGE_MANAGER="apt-get"
+   elif [ -f "/etc/os-release" ]; then
+      OS_DETAILS=$( cat "/etc/os-release" )  # ID_LIKE="rhel fedora"
+      OS_TYPE="Fedora"  # for yum 
+      PACKAGE_MANAGER="yum"
+   elif [ -f "/etc/redhat-release" ]; then
+      OS_DETAILS=$( cat "/etc/redhat-release" )  # ID_LIKE="rhel fedora"
+      OS_TYPE="RedHat"  # for yum 
+      PACKAGE_MANAGER="yum"
+   elif [ -f "/etc/centos-release" ]; then
+      OS_TYPE="CentOS"  # for yum
+      PACKAGE_MANAGER="yum"
+   else
+      error "Linux distribution not anticipated. Please update script. Aborting."
+      exit 0
+   fi
+else 
+   error "Operating system not anticipated. Please update script. Aborting."
+   exit 0
+fi
+
+
+DISK_PCT_FREE=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[11]}" )
+   FREE_DISKBLOCKS_START=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
+
+trap this_ending EXIT
+trap this_ending INT QUIT TERM
+this_ending() {
+   EPOCH_END=$(date -u +%s);
+   DIFF=$((EPOCH_END-EPOCH_START))
+   FREE_DISKBLOCKS_END=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
+   DIFF=$(((FREE_DISKBLOCKS_START-FREE_DISKBLOCKS_END)))
+
+   MSG="End of script after $((DIFF/360)) minutes and $DIFF 512-bytes disk blocks consumed."
+   # echo 'Elapsed HH:MM:SS: ' $( awk -v t=$beg-seconds 'BEGIN{t=int(t*1000); printf "%d:%02d:%02d\n", t/3600000, t/60000%60, t/1000%60}' )
+   success "$MSG"
+   note "Disk $FREE_DISKBLOCKS_START to $FREE_DISKBLOCKS_END"
+}
+sig_cleanup() {
+    trap '' EXIT  # some shells call EXIT after the INT handler.
+    false # sets $?
+    this_ending
+}
+
+#################### Print run heading:
+
+# Operating enviornment information:
+HOSTNAME=$( hostname )
+PUBLIC_IP=$( curl -s ifconfig.me )
+
+# cd ~/environment/
+
+      note "Running $0 in $PWD"  # $0 = script being run in Present Wording Directory.
+      note "Bash $BASH_VERSION at $LOG_DATETIME"  # built-in variable.
+      note "OS_TYPE=$OS_TYPE using $PACKAGE_MANAGER from $DISK_PCT_FREE disk free"
+      note "on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
+   if [ -f "$OS_DETAILS" ]; then
+      note "$OS_DETAILS"
+   fi
+
+
 exit
 
 
 # Configure location to create new files:
-if [ ! -d "$HOME/projects" ]; then
-   h2 "Make folder ..."
-   mkdir -p "$HOME/projects"
-fi
-   pushd "$HOME/projects/"
+if [ -z "$PROJECT_FOLDER_PATH" ]; then  # blank (the default)
+   h2 "Using current folder as project folder path ..."
+else
+   if [ ! -d "$PROJECT_FOLDER_PATH" ]; then  # path not available.
+      h2 "Creating folder $PROJECT_FOLDER_PATH as -project folder path ..."
+      mkdir -p "$PROJECT_FOLDER_PATH"
+   fi
+   pushd "$PROJECT_FOLDER_PATH"
    info "Now at $PWD during script run ..."
-   note "$( ls -al )"
+fi
+note "$( ls -al )"
 
 
 
-if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -d
+if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
    if [ -d "$GitHub_REPO_NAME" ]; then 
       rm -rf "$HOME/projects/$GitHub_REPO_NAME"
    fi
