@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
-# install.sh in https://githuben.mckinsey.com/wilsonmar/dev-bootcamp
+# install.sh in https://github.com/wilsonmar/dev-bootcamp
 # This downloads and installs all the utilities, then verifies.
 # After getting into the Cloud9 enviornment,
 # cd to folder, copy this line and paste in the Cloud9 terminal:
-# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/hello.sh)"
+# bash -c "$(curl -fsSL https://git.btcmp-team2.mckinsey.cloud/snippets/1/raw)"
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/dev-bootcamp/master/bash/install.sh)"
 
-# This was tested on macOS Mojava and Amazon Linux 2018.2
+# This was tested on macOS Mojava and Amazon Linux 2018.2 in EC2.
 
 
 ### STEP 1. Set display utilities:
@@ -145,9 +146,7 @@ h2 "Install packages:"
          brew list
       fi
    fi
-   note "$( postgres --version )"
-
-exit
+   note "$( postgres --version )"  # postgres (PostgreSQL) 9.2.24
 
 
 h2 "Install Python ecosystem:"
@@ -164,6 +163,13 @@ h2 "Install Python ecosystem:"
 
 
 h2 "Install aliases, PS1, etc. in ~/.bashrc ..."
+   curl -o ~/.git-prompt.sh \
+      https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh
+         # 100 16938  100 16938    0     0   124k      0 --:--:-- --:--:-- --:--:--  124k
+
+   # Add to your ~/.bash_profile:
+   source ~/.git-prompt.sh
+
    . ~/.bash_profile
       # function
 
@@ -173,14 +179,30 @@ h2 "Run Docker ..."
    -e POSTGRES_PASSSWORD=snoodle \
    -e POSTGRES_DB=snoodle \
    postgres &
+      # 2020-01-10 01:22:30.904 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+      # 2020-01-10 01:22:30.904 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+      # 2020-01-10 01:22:30.909 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
       # database system is ready to accept connections
 
+   ps -al
+
+exit
+
+
 h2 "Inside Docker: Run Flask ..."
+
+cd snoodle-api
 # docker exec -it 
-FLASK_APP=snoodle DB_HOST=localhost DB_USERNAME=snoodle DB_PASSWORD=USE_IAM DB_NAME=snoodle HTTP_SCHEME=https python3 -m  flask run 
+FLASK_APP=snoodle DB_HOST=localhost \
+   DB_USERNAME=snoodle \
+   DB_PASSWORD=USE_IAM \
+   DB_NAME=snoodle HTTP_SCHEME=https \
+   python3 -m flask run 
 
 # With postgres app
 FLASK_APP=snoodle python3 -m flask run
+
+# cd snoodle-ui
 
 # shell into db
 psql postgresql://snoodle:snoodle@localhost:5432/snoodle
