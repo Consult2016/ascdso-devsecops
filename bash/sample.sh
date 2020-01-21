@@ -504,7 +504,8 @@ fi  # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
 Start_Docker(){
    if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
       h2 "Opening Docker daemon on macOS ..."
-      open -a Docker   # open "/Applications/Docker.app"
+      open --background -a Docker   # open "/Applications/Docker.app"
+      # /Applications/Docker.app/Contents/MacOS/Docker
    else
       h2 "Starting Docker daemon on Linux ..."
       sudo systemctl start docker
@@ -515,7 +516,7 @@ Start_Docker(){
       while (! docker stats --no-stream ); do
          # Docker takes a few seconds to initialize
          note "Waiting for Docker to launch..."
-         sleep 1
+         sleep 3  # seconds
       done
          # Docker is running when it can list all containers:
          # CONTAINER ID        NAME                  CPU %               MEM USAGE / LIMIT     MEM %               NET I/O             BLOCK I/O           PIDS
