@@ -31,7 +31,7 @@ args_prompt() {
    echo "USAGE EXAMPLE during testing:"
    echo "   $0 -h -v -I -U -c -s -r -a -o"
    echo "USAGE EXAMPLE after testing:"
-   echo "   $0 -v -D -R"
+   echo "   $0 -v -D -R -M"
    echo "OPTIONS:"
    echo "   -h           to display this -help list"
    echo "   -v           to run -verbose (list space use and each image to console)"
@@ -46,6 +46,7 @@ args_prompt() {
    echo "   -a           to -actually run docker-compose"
    echo "   -o           to -open web page in default browser"
    echo "   -D           to -delete files after run (to save disk space)"
+   echo "   -M           to remove Docker images downloaded from DockerHub"
    echo "   -R           to -Remove cloned files after run (to save disk space)"
    echo " "
  }
@@ -63,12 +64,13 @@ exit_abnormal() {            # Function: Exit with error.
    UPDATE_PKGS=false
    RESTART_DOCKER=false
    RUN_ACTUAL=false   # false as dry run is default.
-   DOWNLOAD_INSTALL=false     # -d
-   RUN_DELETE_AFTER=false     # -D
-   RUN_OPEN_BROWSER=false     # -o
-   CLONE_GITHUB=false         # -c
-   REMOVE_GITHUB_AFTER=false  # -R
-   USE_SECRETS_FILE=false     # -s
+   DOWNLOAD_INSTALL=false       # -d
+   RUN_DELETE_AFTER=false       # -D
+   RUN_OPEN_BROWSER=false       # -o
+   CLONE_GITHUB=false           # -c
+   REMOVE_GITHUB_AFTER=false    # -R
+   USE_SECRETS_FILE=false       # -s
+   REMOVE_DOCKER_IMAGES=false   # -M
 
 SECRETS_FILEPATH="$HOME/.secrets.sh"  # -s
 GitHub_USER_NAME=""                  # -n
@@ -148,6 +150,10 @@ while test $# -gt 0; do
       ;;
     -R)
       export REMOVE_GITHUB_AFTER=true
+      shift
+      ;;
+    -M)
+      export REMOVE_DOCKER_IMAGES=true
       shift
       ;;
     *)
@@ -314,8 +320,7 @@ fi
 note "$( pwd )"
 
 
-### Get secrets from $HOME/secrets.sh
-
+### Get secrets from $HOME/.secrets.sh file:
 
 Input_GitHub_User_Info(){
       read -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
@@ -351,14 +356,16 @@ else
 fi
 
 
+# Needed by snakeeyes:
+
    if [ ! -f ".env" ]; then
-      cp .env.example .env
+      cp .env.example  .env
    else
         note "no .env file"
    fi
 
    if [ ! -f "docker-compose.override.yml" ]; then
-      cp docker-compose.override.example.yml docker-compose.override.yml
+      cp docker-compose.override.example.yml  docker-compose.override.yml
    else
       warning "no .yml file"
    fi
@@ -493,10 +500,10 @@ if [ "$RUN_DELETE_AFTER" = true ]; then  # -D
 #   note "Active containers: $CONTAINERS_RUNNING"
 
    note "Stopping containers:"
-   docker stop -v $( docker ps -a -q )
+   docker stop $( docker ps -a -q )
 
    note "Removing containers:"
-   docker rm -v "$CONTAINERS_RUNNING"
+   docker rm -v "$( docker ps -a -q )"
 fi
 
 
@@ -508,3 +515,12 @@ if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -R
    fi
 fi
 
+
+if [ "$REMOVE_DOCKER_IMAGES" = true ]; then  # -M
+   DOCKER_IMAGES="$( docker images -a -q )"
+   if [ ! -z "$DOCKER_IMAGES" ]; then  
+      h2 "Removing all Docker images ..."
+      docker rmi $( docker images -a -q )
+   fi
+fi
+docker images -a
