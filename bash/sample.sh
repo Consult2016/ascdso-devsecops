@@ -511,7 +511,7 @@ Start_Docker(){
       sudo systemctl start docker
       sudo service docker start
    fi
-
+      sleep 5  # it takes at least that
       # Wait until Docker daemon is running and has completed initialisation
       while (! docker stats --no-stream ); do
          # Docker takes a few seconds to initialize
@@ -565,8 +565,8 @@ if [ "${RUN_ACTUAL}" = true ]; then
       # worker_1   | [2020-01-17 04:59:42,036: INFO/Beat] beat: Starting...
 fi
 
-        h2 "docker container ls ..."
-      docker container ls
+   h2 "docker container ls ..."
+   docker container ls
          # CONTAINER ID        IMAGE                COMMAND                  CREATED             STATUS                    PORTS                    NAMES
          # 3ee3e7ef6d75        snakeeyes_web        "/app/docker-entrypo…"   35 minutes ago      Up 35 minutes (healthy)   0.0.0.0:8000->8000/tcp   snakeeyes_web_1
          # fb64e7c95865        snakeeyes_worker     "/app/docker-entrypo…"   35 minutes ago      Up 35 minutes             8000/tcp                 snakeeyes_worker_1
@@ -577,12 +577,12 @@ fi
 
 if [ "$RUN_OPEN_BROWSER" = true ]; then  # -o
    if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
+      sleep 3
       open http://localhost:8000/
-   else
-      curl https://localhost:8000/
-         # curl: (35) LibreSSL SSL_connect: SSL_ERROR_SYSCALL in connection to localhost:8000 
    fi
 fi
+      curl -s -I -X POST http://localhost:8000/ 
+      curl -s       POST http://localhost:8000/ | head -n 10  # first 10 lines
 
 
 # TODO: Run tests
