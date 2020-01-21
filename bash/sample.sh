@@ -524,7 +524,14 @@ Start_Docker(){
          # c881a6472995        snakeeyes_webpack_1   4.05%               133.5MiB / 1.952GiB   6.68%               4.63kB / 0B         127kB / 0B          23
          # e28b839510b2        snakeeyes_redis_1     0.25%               1.723MiB / 1.952GiB   0.09%               53.4MB / 50.9MB     49.2kB / 94.2kB     4
 }
-if (! pgrep -f docker ); then   # No docker process IDs found:
+# From https://gist.github.com/peterver/ca2d60abc015d334e1054302265b27d9
+# https://medium.com/@valkyrie_be/quicktip-a-universal-way-to-check-if-docker-is-running-ffa6567f8426
+rep=$(curl -s --unix-socket /var/run/docker.sock http://ping > /dev/null)
+status=$?
+if [ "$status" == "7" ]; then   # Not Docker connected:
+#if (! pgrep -f docker ); then   # No docker process IDs found:
+   Start_Docker   # function defined in this file above.
+else   # Docker processes found running:
    if [ "${RESTART_DOCKER}" = true ]; then
       if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
          h2 "Stopping Docker on macOS ..."
@@ -536,8 +543,6 @@ if (! pgrep -f docker ); then   # No docker process IDs found:
       fi
    fi
    Start_Docker   # function defined in this file above.
-else   # processes found:
-   note "Using docker processes alive from previous run..."
 fi
 
 
