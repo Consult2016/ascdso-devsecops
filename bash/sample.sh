@@ -5,7 +5,7 @@
 # coded based on bash scripting techniques described at https://wilsonmar.github.io/bash-scripting.
 
 # This downloads and installs all the utilities, then invokes programs to prove they work
-# This was tested on macOS Mojave.
+# This was run on macOS Mojave and Ubuntu 16.04.
 
 # After you obtain a Terminal (console) in your enviornment,
 # cd to folder, copy this line and paste in the terminal:
@@ -29,9 +29,9 @@ LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
-   echo "   $0 -h -v -I -U -c -s -r -a -o"
+   echo "./sample.sh -v -I -U -c -s -r -a -o"
    echo "USAGE EXAMPLE after testing:"
-   echo "   $0 -v -D -R -M"
+   echo "./sample.sh -v -D -M -R"
    echo "OPTIONS:"
    echo "   -h           to display this -help list"
    echo "   -v           to run -verbose (list space use and each image to console)"
@@ -45,8 +45,8 @@ args_prompt() {
    echo "   -r           -start Docker before run"
    echo "   -a           to -actually run docker-compose"
    echo "   -o           to -open web page in default browser"
-   echo "   -D           to -delete files after run (to save disk space)"
-   echo "   -M           to remove Docker images downloaded from DockerHub"
+   echo "   -D           to -Delete files after run (to save disk space)"
+   echo "   -M           to remove Docker iMages pulled from DockerHub"
    echo "   -R           to -Remove cloned files after run (to save disk space)"
    echo " "
  }
@@ -211,18 +211,19 @@ if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
 elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
    if command -v lsb_release ; then
       lsb_release -a
-      OS_TYPE="Ubuntu"  # for apt-get
+      OS_TYPE="Ubuntu"
+      # TODO: OS_TYPE="WSL" ???
       PACKAGE_MANAGER="apt-get"
    elif [ -f "/etc/os-release" ]; then
       OS_DETAILS=$( cat "/etc/os-release" )  # ID_LIKE="rhel fedora"
-      OS_TYPE="Fedora"  # for yum 
+      OS_TYPE="Fedora"
       PACKAGE_MANAGER="yum"
    elif [ -f "/etc/redhat-release" ]; then
       OS_DETAILS=$( cat "/etc/redhat-release" )  # ID_LIKE="rhel fedora"
-      OS_TYPE="RedHat"  # for yum 
+      OS_TYPE="RedHat"
       PACKAGE_MANAGER="yum"
    elif [ -f "/etc/centos-release" ]; then
-      OS_TYPE="CentOS"  # for yum
+      OS_TYPE="CentOS"
       PACKAGE_MANAGER="yum"
    else
       error "Linux distribution not anticipated. Please update script. Aborting."
@@ -249,14 +250,14 @@ trap this_ending EXIT
 trap this_ending INT QUIT TERM
 this_ending() {
    EPOCH_END=$(date -u +%s);
-   DIFF=$((EPOCH_END-EPOCH_START))
+   EPOCH_DIFF=$((EPOCH_END-EPOCH_START))
    if [ "${BASH_VERSION}" -lt "4" ]; then
       FREE_DISKBLOCKS_END="0"
    else
       FREE_DISKBLOCKS_END=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
    fi
-   DIFF=$(((FREE_DISKBLOCKS_START-FREE_DISKBLOCKS_END)))
-   MSG="End of script after $((DIFF/360)) minutes and $DIFF 512-byte disk blocks consumed."
+   FREE_DIFF=$(((FREE_DISKBLOCKS_END-FREE_DISKBLOCKS_START)))
+   MSG="End of script after $((EPOCH_DIFF/360)) seconds and $((FREE_DIFF*512)) bytes on disk."
    # echo 'Elapsed HH:MM:SS: ' $( awk -v t=$beg-seconds 'BEGIN{t=int(t*1000); printf "%d:%02d:%02d\n", t/3600000, t/60000%60, t/1000%60}' )
    success "$MSG"
    note "Disk $FREE_DISKBLOCKS_START to $FREE_DISKBLOCKS_END"
@@ -293,29 +294,34 @@ else
       h2 "Creating folder $PROJECT_FOLDER_PATH as -project folder path ..."
       mkdir -p "$PROJECT_FOLDER_PATH"
    fi
-   pushd "$PROJECT_FOLDER_PATH"
+   pushd "$PROJECT_FOLDER_PATH" || return  # as suggested by SC2164
    info "Pushed into $PWD during script run ..."
 fi
 note "$( ls -al )"
 
 
-if [ "${CLONE_GITHUB}" = true ]; then
-
-   if [ -d   "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME" ]; then 
-      h2 "Deleting previous GitHub clone ..."
-      ls -al "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME"
-      rm -rf "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME"
+Delete_GitHub_clone(){
+   # https://www.shellcheck.net/wiki/SC2115 Use "${var:?}" to ensure this never expands to / .
+   PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${GitHub_REPO_NAME}"
+   if [ -d "${PROJECT_FOLDER_FULL_PATH:?}" ]; then  # path available.
+      h2 "Remove project folder $PROJECT_FOLDER_FULL_PATH ..."
+      ls -al "${PROJECT_FOLDER_FULL_PATH}"
+      rm -rf "${PROJECT_FOLDER_FULL_PATH}"
    fi
+}
+
+if [ "${CLONE_GITHUB}" = true ]; then
+   Delete_GitHub_clone    # defined above in this file.
 
    h2 "Downloading repo ..."
    git clone https://github.com/nickjj/build-a-saas-app-with-flask.git "$GitHub_REPO_NAME"   
-   cd "$GitHub_REPO_NAME"
+   cd "$GitHub_REPO_NAME" || return 
 
    # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
    # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
    # git pull upstream master
 else
-   cd "$GitHub_REPO_NAME"  
+   cd "$GitHub_REPO_NAME" || return 
 fi
 note "$( pwd )"
 
@@ -323,9 +329,11 @@ note "$( pwd )"
 ### Get secrets from $HOME/.secrets.sh file:
 
 Input_GitHub_User_Info(){
-      read -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
+      # https://www.shellcheck.net/wiki/SC2162: read without -r will mangle backslashes.
+      read -r -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
       GitHub_USER_NAME=${GitHub_USER_NAME:-"John Doe"}
-      read -p "Enter your GitHub user email [john_doe@mckinsey.com]: " GitHub_USER_EMAIL
+
+      read -r -p "Enter your GitHub user email [john_doe@mckinsey.com]: " GitHub_USER_EMAIL
       GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"John_Doe@mckinsey.com"}
       # cp secrets.sh  "$SECRETS_FILEPATH"
 }
@@ -352,7 +360,8 @@ else
    info "GitHub_USER_EMAIL and USER_NAME being configured ..."
    git config --global user.name  "$GitHub_USER_NAME"
    git config --global user.email "$GitHub_USER_EMAIL"
-   note "$( git config --list --show-origin )"
+   # note "$( git config --list )"
+   # note "$( git config --list --show-origin )"
 fi
 
 
@@ -372,24 +381,37 @@ fi
 
 
 
-# Install utilities:
-
 if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
+
+# Install package managers:
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then
       if ! command -v brew ; then
-         h2 "Installing brew package manager using Ruby ..."
-         mkdir homebrew && curl -L https://GitHub.com/Homebrew/brew/tarball/master \
-            | tar xz --strip 1 -C homebrew
+         if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
+            h2 "Installing brew package manager on macOS using Ruby ..."
+            mkdir homebrew && curl -L https://GitHub.com/Homebrew/brew/tarball/master \
+               | tar xz --strip 1 -C homebrew
+         elif [ "$OS_TYPE" == "WSL" ]; then
+            h2 "Installing brew package manager on WSL ..." # A fork of Homebrew known as Linuxbrew.
+            sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
+            # https://medium.com/@edwardbaeg9/using-homebrew-on-windows-10-with-windows-subsystem-for-linux-wsl-c7f1792f88b3
+            # Linuxbrew installs to /home/linuxbrew/.linuxbrew/bin, so add that directory to your PATH.
+            test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
+            test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+            test -r ~/.bash_profile && echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.bash_profile
+            echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.profile
+         fi
       else
          if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Upgrading brew ..."
+               h2 "TODO: Upgrading brew ..."
+ 
          fi
       fi
-      note "$( brew --version)"
+      note "$( brew --version )"
          # Homebrew 2.2.2
          # Homebrew/homebrew-core (git revision e103; last commit 2020-01-07)
          # Homebrew/homebrew-cask (git revision bbf0e; last commit 2020-01-07)
+
    elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then  # (Advanced Packaging Tool) for Debian/Ubuntu
       if ! command -v apt-get ; then
          h2 "Installing apt-get package manager ..."
@@ -421,8 +443,11 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
          fi
       fi
    #  Suse Linux "${PACKAGE_MANAGER}" == "zypper" ?
-   fi
+   fi # brew
 
+# Install Docker and docker-compose:
+
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
       if ! command -v docker ; then
          h2 "Installing docker ..."
          brew install docker
@@ -432,8 +457,6 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
             brew upgrade docker
          fi
       fi
-      note "$( docker --version )"
-         # Docker version 19.03.5, build 633a0ea
 
 
       if ! command -v docker-compose ; then
@@ -445,14 +468,77 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
             brew upgrade docker-compose
          fi
       fi
-      note "$( docker-compose --version )"
-         # docker-compose version 1.24.1, build 4667896b
+
+
+      if ! command -v git ; then
+         h2 "Installing Git ..."
+         brew install git
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Upgrading Git ..."
+            brew upgrade git
+         fi
+      fi
+
+   elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+      fatal "TODO apt-get install docker"
+      apt-get install docker
+      apt-get install docker-compose
+   elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
+      fatal "TODO yum install docker"
+      yum install docker
+      yum install docker-compose
+   fi # brew
 
 fi  # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
 
+      note "$( docker --version )"
+         # Docker version 19.03.5, build 633a0ea
+      note "$( docker-compose --version )"
+         # docker-compose version 1.24.1, build 4667896b
+      note "$( git --version )"  # git version 2.20.1 (Apple Git-117)
 
-## TODO: Restart Docker DAEMON
 
+## Restart Docker DAEMON
+
+Start_Docker(){
+   if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
+      h2 "Opening Docker daemon on macOS ..."
+      open -a Docker   # open "/Applications/Docker.app"
+   else
+      h2 "Starting Docker daemon on Linux ..."
+      sudo systemctl start docker
+      sudo service docker start
+   fi
+
+      # Wait until Docker daemon is running and has completed initialisation
+      while (! docker stats --no-stream ); do
+         # Docker takes a few seconds to initialize
+         note "Waiting for Docker to launch..."
+         sleep 1
+      done
+         # Docker is running when it can list all containers:
+         # CONTAINER ID        NAME                  CPU %               MEM USAGE / LIMIT     MEM %               NET I/O             BLOCK I/O           PIDS
+         # d6033f8e731a        snakeeyes_web_1       0.32%               40.18MiB / 1.952GiB   2.01%               7.24kB / 43.3kB     1.12MB / 0B         3
+         # b8c2f5956e75        snakeeyes_worker_1    0.08%               138.8MiB / 1.952GiB   6.95%               50.9MB / 53.4MB     4.1kB / 0B          8
+         # c881a6472995        snakeeyes_webpack_1   4.05%               133.5MiB / 1.952GiB   6.68%               4.63kB / 0B         127kB / 0B          23
+         # e28b839510b2        snakeeyes_redis_1     0.25%               1.723MiB / 1.952GiB   0.09%               53.4MB / 50.9MB     49.2kB / 94.2kB     4
+}
+if (! pgrep -f docker ); then   # No docker process IDs found:
+   if [ "${RESTART_DOCKER}" = true ]; then
+      if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
+         h2 "Stopping Docker on macOS ..."
+         osascript -e 'quit app "Docker"'
+      else
+         h2 "Stopping Docker on Linux ..."
+         sudo systemctl stop docker
+         sudo service docker stop
+      fi
+   fi
+   Start_Docker   # function defined in this file above.
+else   # processes found:
+   note "Using docker processes alive from previous run..."
+fi
 
 
 #   if [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q "$DOCKER_WEB_SVC_NAME")` ]; then
@@ -486,6 +572,9 @@ fi
 if [ "$RUN_OPEN_BROWSER" = true ]; then  # -o
    if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
       open http://localhost:8000/
+   else
+      curl https://localhost:8000/
+         # curl: (35) LibreSSL SSL_connect: SSL_ERROR_SYSCALL in connection to localhost:8000 
    fi
 fi
 
@@ -495,32 +584,32 @@ fi
 
 
 if [ "$RUN_DELETE_AFTER" = true ]; then  # -D
+      # https://www.thegeekdiary.com/how-to-list-start-stop-delete-docker-containers/
    h2 "Deleting docker-compose active containers ..."
    CONTAINERS_RUNNING="$( docker ps -a -q )"
 #   note "Active containers: $CONTAINERS_RUNNING"
 
    note "Stopping containers:"
-   docker stop $( docker ps -a -q )
+   docker stop "$( docker ps -a -q )"
 
    note "Removing containers:"
    docker rm -v "$( docker ps -a -q )"
 fi
 
 
-if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -R
-   if [ -d "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME" ]; then  # path available.
-      h2 "Remove project folder $PROJECT_FOLDER_PATH/$GitHub_REPO_NAME ..."
-      ls -al "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME"
-      rm -rf "$PROJECT_FOLDER_PATH/$GitHub_REPO_NAME"
-   fi
-fi
-
-
 if [ "$REMOVE_DOCKER_IMAGES" = true ]; then  # -M
    DOCKER_IMAGES="$( docker images -a -q )"
-   if [ ! -z "$DOCKER_IMAGES" ]; then  
+   if [ -n "$DOCKER_IMAGES" ]; then  # variable is NOT empty
       h2 "Removing all Docker images ..."
-      docker rmi $( docker images -a -q )
+      docker rmi "$( docker images -a -q )"
    fi
 fi
-docker images -a
+note "$( docker images -a )"
+
+
+if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -R
+   Delete_GitHub_clone    # defined above in this file.
+fi
+
+# END
+
