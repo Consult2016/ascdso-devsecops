@@ -16,9 +16,9 @@
 
 # clear  # screen (but not history)
 
-#set -e  # to end if 
+set -e  # exits script when a command fails
 # set -eu pipefail  # pipefail counts as a parameter
-# set -x to show commands for specific issues.
+# set -x  # (-o xtrace) to show commands for specific issues.
 # set -o nounset
 
 # TEMPLATE: Capture starting timestamp and display no matter how it ends:
@@ -401,10 +401,12 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
             test -r ~/.bash_profile && echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.bash_profile
             echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.profile
          fi
-      else
+      else  # brew found:
          if [ "${UPDATE_PKGS}" = true ]; then
-               h2 "TODO: Upgrading brew ..."
- 
+            h2 "Updating brew itself ..."
+            # per https://discourse.brew.sh/t/how-to-upgrade-brew-stuck-on-0-9-9/33 from 2016:
+            # cd "$(brew --repo)" && git fetch && git reset --hard origin/master && brew update
+            brew update
          fi
       fi
       note "$( brew --version )"
