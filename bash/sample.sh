@@ -492,13 +492,47 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
       fi
 
    elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-      fatal "Installing docker using apt-get ..."
-      sudo apt-get install docker
-      sudo apt-get install docker-compose
+      if ! command -v docker ; then
+         h2 "Installing docker using apt-get ..."
+         sudo apt-get install docker
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Upgrading docker ..."
+            sudo apt-get install docker
+         fi
+      fi
+
+      if ! command -v docker-compose ; then
+         h2 "Installing docker-compose using apt-get ..."
+         sudo apt-get install docker-compose
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Upgrading docker-compose ..."
+            sudo apt-get install docker-compose
+         fi
+      fi
+
    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
-      fatal "Installing docker using yum ..."
-      yum install docker
-      yum install docker-compose
+      if ! command -v docker ; then
+         h2 "Installing docker using yum ..."
+         yum install docker
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Upgrading docker ..."
+            sudo apt-get install docker
+         fi
+      fi
+
+      if ! command -v docker-compose ; then
+         h2 "Installing docker-compose using yum ..."
+         yum install docker-compose
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Upgrading docker-compose ..."
+            sudo apt-yum install docker-compose
+         fi
+      fi
+
    fi # brew
 
 fi  # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
