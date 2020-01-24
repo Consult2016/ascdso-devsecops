@@ -492,11 +492,11 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
       fi
 
    elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-      fatal "TODO apt-get install docker"
+      fatal "Installing docker using apt-get ..."
       sudo apt-get install docker
       sudo apt-get install docker-compose
    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
-      fatal "TODO yum install docker"
+      fatal "Installing docker using yum ..."
       yum install docker
       yum install docker-compose
    fi # brew
