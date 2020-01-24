@@ -300,12 +300,13 @@ fi
 note "$( ls -al )"
 
 
-# Capture password manual input once for multiple shares:
+# Capture password manual input once for multiple shares 
+# (without saving password like expect command) https://www.linuxcloudvps.com/blog/how-to-automate-shell-scripts-with-expect-command/
    # From https://askubuntu.com/a/711591
-   read -p "Password: " -s szPassword
-   printf "%s\n" "$szPassword" | sudo --stdin mount \
-      -t cifs //192.168.1.1/home /media/$USER/home \
-      -o username=$USER,password="$szPassword"
+#   read -p "Password: " -s szPassword
+#   printf "%s\n" "$szPassword" | sudo --stdin mount \
+#      -t cifs //192.168.1.1/home /media/$USER/home \
+#      -o username=$USER,password="$szPassword"
 
 
 Delete_GitHub_clone(){
