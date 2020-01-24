@@ -300,6 +300,14 @@ fi
 note "$( ls -al )"
 
 
+# Capture password manual input once for multiple shares:
+   # From https://askubuntu.com/a/711591
+   read -p "Password: " -s szPassword
+   printf "%s\n" "$szPassword" | sudo --stdin mount \
+      -t cifs //192.168.1.1/home /media/$USER/home \
+      -o username=$USER,password="$szPassword"
+
+
 Delete_GitHub_clone(){
    # https://www.shellcheck.net/wiki/SC2115 Use "${var:?}" to ensure this never expands to / .
    PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${GitHub_REPO_NAME}"
@@ -484,8 +492,8 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
 
    elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
       fatal "TODO apt-get install docker"
-      apt-get install docker
-      apt-get install docker-compose
+      sudo apt-get install docker
+      sudo apt-get install docker-compose
    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
       fatal "TODO yum install docker"
       yum install docker
