@@ -16,11 +16,6 @@
 
 # clear  # screen (but not history)
 
-#set -e  # exits script when a command fails
-# set -eu pipefail  # pipefail counts as a parameter
-# set -x  # (-o xtrace) to show commands for specific issues.
-# set -o nounset
-
 # TEMPLATE: Capture starting timestamp and display no matter how it ends:
 EPOCH_START="$(date -u +%s)"  # such as 1572634619
 LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
@@ -34,6 +29,7 @@ args_prompt() {
    echo "./sample.sh -v -D -M -R"
    echo "OPTIONS:"
    echo "   -h           to display this -help list"
+   echo "   -E           to set -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
    echo "   -I           -Install brew, docker, docker-compose"
    echo "   -U           -Upgrade packages"
@@ -60,6 +56,7 @@ exit_abnormal() {            # Function: Exit with error.
 }
 
 # Defaults (default true so flag turns it true):
+   SET_EXIT=false
    RUN_VERBOSE=false
    UPDATE_PKGS=false
    RESTART_DOCKER=false
@@ -71,6 +68,7 @@ exit_abnormal() {            # Function: Exit with error.
    REMOVE_GITHUB_AFTER=false    # -R
    USE_SECRETS_FILE=false       # -s
    REMOVE_DOCKER_IMAGES=false   # -M
+   RUBY_INSTALL=false
 
 SECRETS_FILEPATH="$HOME/.secrets.sh"  # -s
 GitHub_USER_NAME=""                  # -n
@@ -89,6 +87,10 @@ while test $# -gt 0; do
       ;;
     -v)
       export RUN_VERBOSE=true
+      shift
+      ;;
+    -E)
+      export SET_EXIT=true
       shift
       ;;
     -I)
@@ -300,6 +302,16 @@ fi
 note "$( ls -al )"
 
 
+if [ "${SET_EXIT}" = true ]; then
+   h2 "Set -e ..."
+   set -e  # exits script when a command fails
+# set -eu pipefail  # pipefail counts as a parameter
+# set -x  # (-o xtrace) to show commands for specific issues.
+# set -o nounset
+fi
+
+
+
 # Capture password manual input once for multiple shares 
 # (without saving password like expect command) https://www.linuxcloudvps.com/blog/how-to-automate-shell-scripts-with-expect-command/
    # From https://askubuntu.com/a/711591
@@ -374,7 +386,8 @@ else
 fi
 
 
-# Needed by snakeeyes:
+if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
+   # Needed by snakeeyes:
 
    if [ ! -f ".env" ]; then
       cp .env.example  .env
@@ -387,14 +400,17 @@ fi
    else
       warning "no .yml file"
    fi
+fi
 
 
+if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
-if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
+   h2 "Install package managers ..."
 
-# Install package managers:
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
 
-   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+      # TODO: Install XCode?
+
       if ! command -v brew ; then
          if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
             h2 "Installing brew package manager on macOS using Ruby ..."
@@ -407,6 +423,15 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
             # Linuxbrew installs to /home/linuxbrew/.linuxbrew/bin, so add that directory to your PATH.
             test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
             test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+            if grep -q ".rbenv/bin:" ".bashrc" ; then
+               note ".rbenv/bin: already in .bashrc"
+            else
+               info "Adding .rbenv/bin: in .bashrc"
+               echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
+               source .bashrc
+            fi
+
             test -r ~/.bash_profile && echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.bash_profile
             echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.profile
          fi
@@ -424,6 +449,7 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
          # Homebrew/homebrew-cask (git revision bbf0e; last commit 2020-01-07)
 
    elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then  # (Advanced Packaging Tool) for Debian/Ubuntu
+
       if ! command -v apt-get ; then
          h2 "Installing apt-get package manager ..."
          wget http://security.ubuntu.com/ubuntu/pool/main/a/apt/apt_1.0.1ubuntu2.17_amd64.deb -O apt.deb
@@ -434,7 +460,8 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
          if [ "${UPDATE_PKGS}" = true ]; then
             h2 "Upgrading apt-get ..."
             # https://askubuntu.com/questions/194651/why-use-apt-get-upgrade-instead-of-apt-get-dist-upgrade
-            sudo apt-get update && time sudo apt-get dist-upgrade
+            sudo apt-get update
+            sudo apt-get dist-upgrade
          fi
       fi
       note "$( apt-get --version )"
@@ -453,8 +480,178 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
             # https://www.cyberciti.biz/faq/rhel-centos-fedora-linux-yum-command-howto/
          fi
       fi
-   #  Suse Linux "${PACKAGE_MANAGER}" == "zypper" ?
+      note "$( yum --version )"
+
+   #  TODO: elif for Suse Linux "${PACKAGE_MANAGER}" == "zypper" ?
+
    fi # brew
+
+fi # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
+
+
+if [ "${RUBY_INSTALL}" = true ]; then  # -I
+
+   # https://websiteforstudents.com/install-refinery-cms-ruby-on-rails-on-ubuntu-16-04-18-04-18-10/
+
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+      if ! command -v gnupg2 ; then
+         h2 "Installing gnupg2 ..."
+         brew install gnupg2
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Upgrading gnupg2 ..."
+            brew upgrade gnupg2
+         fi
+      fi
+      note "$( gpg --version | grep GnuPG )"  # gpg (GnuPG) 2.2.19
+
+      # download and install the mpapis public key with GPG:
+      curl -sSL https://rvm.io/mpapis.asc | gpg --import -
+         # (Michael Papis (mpapis) is the creator of RVM, and his public key is used to validate RVM downloads:
+         # gpg-connect-agent --dirmngr 'keyserver --hosttable'
+      gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3
+         # FIX: gpg: keyserver receive failed: No route to host
+
+      if ! command -v imagemagick ; then
+         h2 "Installing imagemagick ..."
+         brew install imagemagick
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Upgrading imagemagick ..."
+            brew upgrade imagemagick
+         fi
+      fi
+
+   elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+      # ??? apt-get install gnupg2
+      # gpg
+
+      # Use apt instead of apt-get since Ubuntu 16.04 (from Linux Mint)
+      sudo apt install curl git
+      note "$( git --version )"  # git version 2.20.1 (Apple Git-117)
+
+      apt install imagemagick
+
+      sudo apt autoremove
+
+      # Add Node.js and Yarn repositories and keys 
+      curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+      curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+      echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+
+      sudo apt-get update
+      sudo apt-get install nodejs yarn zlib1g-dev build-essential libpq-dev libssl-dev libreadline-dev libyaml-dev 
+      sudo apt-get install libsqlite3-dev sqlite3 
+      sudo apt-get install libxml2-dev libxslt1-dev libcurl4-openssl-dev libffi-dev
+   fi
+
+      note "$( yarn --version )"
+      note "$( nodejs --version )"
+      note "$( sqlite3 --version )"
+
+
+## Rbenv
+
+   cd ~/
+   git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+         if grep -q ".rbenv/bin:" ".bashrc" ; then
+            note ".rbenv/bin: already in .bashrc"
+         else
+            info "Adding .rbenv/bin: in .bashrc"
+            echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
+            source .bashrc
+         fi
+
+         if grep -q "rbenv init " ".bashrc" ; then
+            note "rbenv init - already in .bashrc"
+         else
+            info "Adding rbenv init - in .bashrc"
+            echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+            source .bashrc
+         fi
+
+   git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+
+         if grep -q ".rbenv/plugins/ruby-build/bin:" ".bashrc" ; then
+            note "rbenv/plugins/ already in .bashrc"
+         else
+            info "Adding rbenv/plugins in .bashrc"
+            echo 'export PATH="$HOME/.rbenv/plugins/ruby-build/bin:$PATH"' >> ~/.bashrc
+            source .bashrc
+         fi
+
+
+   # Install the latest stable build of RVM:
+
+   \curl -sSL https://raw.githubusercontent.com/rvm/rvm/master/binscripts/rvm-installer | bash -s stable
+
+   # Start using RVM without having to close and reopen Terminal.
+   source ~/.rvm/scripts/rvm 
+
+
+   # Based on latest stable release from https://www.ruby-lang.org/en/downloads/
+   RUBY_RELEASE="2.7.0"
+   rbenv install "${RUBY_RELEASE}"
+   rbenv global  "${RUBY_RELEASE}"
+
+   # Verify:
+   ruby -v
+
+   # upgrade Ruby
+   rvm install ruby --latest
+
+   # Install MySQL Server
+   sudo apt-get install mysql-client mysql-server libmysqlclient-dev
+
+   # Install Rails
+   curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+   sudo apt-get install -y nodejs
+
+   note "$( rails --version | grep Rails )"  # Rails 3.2.22.5
+
+   gem update --system
+
+   gem install bundler
+
+   gem install rails -v 5.2.1
+
+   gem install rdoc
+
+   brew install imagemagick
+
+   gem install execjs
+
+   gem install refinerycms
+
+   rbenv rehash
+
+   ## Build refinery app:
+  APPNAME="rockstar"
+   refinerycms "${APPNAME}"
+   cd "${APPNAME}"
+
+   # TODO: Internationalize Refinery
+
+   # TODO: Add YWAM resources from GitHub
+
+   info "Done installing RoR with ."
+
+   h2 "start the Rails server ..."
+   rails server
+
+   # http://localhost:3000/refinery
+
+   # Manually logon to the backend using the admin address and password…
+
+   exit
+
+fi # if [ "${RUBY_INSTALL}" = true ]; then  # -I
+
+
+
+# TODO: Build docker image.
+
+if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
 
 # Install Docker and docker-compose:
 
@@ -491,7 +688,18 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
          fi
       fi
 
+      if ! command -v curl ; then
+         h2 "Installing Curl ..."
+         brew install curl wget tree
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Upgrading Curl ..."
+            brew upgrade curl wget tree
+         fi
+      fi
+
    elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+
       if ! command -v docker ; then
          h2 "Installing docker using apt-get ..."
          sudo apt-get install docker
@@ -541,7 +749,6 @@ fi  # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
          # Docker version 19.03.5, build 633a0ea
       note "$( docker-compose --version )"
          # docker-compose version 1.24.1, build 4667896b
-      note "$( git --version )"  # git version 2.20.1 (Apple Git-117)
 
 
 ## Restart Docker DAEMON
