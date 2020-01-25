@@ -534,16 +534,18 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       # ??? apt-get install gnupg2
       # gpg
 
-      # Use apt instead of apt-get since Ubuntu 16.04 (from Linux Mint)
+      h2 "Use apt instead of apt-get since Ubuntu 16.04 (from Linux Mint)"
       sudo apt install curl git
       note "$( git --version )"  # git version 2.20.1 (Apple Git-117)
 
+      h2 "apt install imagemagick"
       apt install imagemagick
 
+      h2 "sudo apt autoremove"
       sudo apt autoremove
 
-      # Add Node.js and Yarn repositories and keys (8.x deprecated) for apt-get:
-      curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+      h2 "Add Node.js and Yarn repositories and keys (8.x deprecated) for apt-get:"
+      #curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
       curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
       echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
 
@@ -616,8 +618,8 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    h2 "Install MySQL Server"
    sudo apt-get install mysql-client mysql-server libmysqlclient-dev
 
-   h2 "Install Rails"
-   curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+   h2 "Install Node"
+   curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
    sudo apt-get install -y nodejs
 
    note "$( rails --version | grep Rails )"  # Rails 3.2.22.5
@@ -629,7 +631,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    gem install bundler
 
    h2 "gem install rails"
-   gem install rails -v 5.2.1
+   gem install rails   # -v 5.2.1
 
    h2 "gem install rdoc"
    gem install rdoc
