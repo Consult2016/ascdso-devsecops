@@ -9,7 +9,7 @@
 
 # After you obtain a Terminal (console) in your enviornment,
 # cd to folder, copy this line and paste in the terminal:
-# bash -c "$(curl -fsSL  https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -V
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -h -v -i
 
 
 ### STEP 1. Set display utilities:
@@ -24,6 +24,7 @@ LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
+   echo "./ruby-install.sh -v -i"
    echo "./ruby-install.sh -v -I -U -c -s -r -a -o"
    echo "USAGE EXAMPLE after testing:"
    echo "./ruby-install.sh -v -D -M -R"
