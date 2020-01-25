@@ -16,7 +16,7 @@
 
 # clear  # screen (but not history)
 
-set -e  # exits script when a command fails
+#set -e  # exits script when a command fails
 # set -eu pipefail  # pipefail counts as a parameter
 # set -x  # (-o xtrace) to show commands for specific issues.
 # set -o nounset
