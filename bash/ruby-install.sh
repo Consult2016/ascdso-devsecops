@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2001 # See if you can use ${variable//search/replace} instead.
 
-# ruby-install.sh in https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh
+# ruby-install.sh in https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh
 # coded based on bash scripting techniques described at https://wilsonmar.github.io/bash-scripting.
 
 # This downloads and installs all the utilities, then invokes programs to prove they work
@@ -9,7 +9,7 @@
 
 # After you obtain a Terminal (console) in your enviornment,
 # cd to folder, copy this line and paste in the terminal:
-# bash -c "$(curl -fsSL  https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -V
+# bash -c "$(curl -fsSL  https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -V
 
 
 ### STEP 1. Set display utilities:
@@ -24,13 +24,14 @@ LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
-   echo "./sample.sh -v -I -U -c -s -r -a -o"
+   echo "./ruby-install.sh -v -I -U -c -s -r -a -o"
    echo "USAGE EXAMPLE after testing:"
-   echo "./sample.sh -v -D -M -R"
+   echo "./ruby-install.sh -v -D -M -R"
    echo "OPTIONS:"
    echo "   -h           to display this -help list"
    echo "   -E           to set -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
+   echo "   -i           -install Ruby and Refinery"
    echo "   -I           -Install brew, docker, docker-compose"
    echo "   -U           -Upgrade packages"
    echo "   -c           -clone from GitHub"
@@ -58,6 +59,7 @@ exit_abnormal() {            # Function: Exit with error.
 # Defaults (default true so flag turns it true):
    SET_EXIT=false
    RUN_VERBOSE=false
+   RUBY_INSTALL=false
    UPDATE_PKGS=false
    RESTART_DOCKER=false
    RUN_ACTUAL=false   # false as dry run is default.
@@ -68,6 +70,7 @@ exit_abnormal() {            # Function: Exit with error.
    REMOVE_GITHUB_AFTER=false    # -R
    USE_SECRETS_FILE=false       # -s
    REMOVE_DOCKER_IMAGES=false   # -M
+   RUBY_INSTALL=false
 
 SECRETS_FILEPATH="$HOME/.secrets.sh"  # -s
 GitHub_USER_NAME=""                  # -n
@@ -86,6 +89,10 @@ while test $# -gt 0; do
       ;;
     -v)
       export RUN_VERBOSE=true
+      shift
+      ;;
+    -i)
+      export RUBY_INSTALL=true
       shift
       ;;
     -E)
@@ -337,7 +344,7 @@ if [ "${CLONE_GITHUB}" = true ]; then
    git clone https://github.com/nickjj/build-a-saas-app-with-flask.git "$GitHub_REPO_NAME"   
    cd "$GitHub_REPO_NAME" || return 
 
-   # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
+   # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/ruby-install.sh
    # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
    # git pull upstream master
 else
@@ -485,6 +492,11 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
    fi # brew
 
+fi # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
+
+
+if [ "${RUBY_INSTALL}" = true ]; then  # -I
+
    # https://websiteforstudents.com/install-refinery-cms-ruby-on-rails-on-ubuntu-16-04-18-04-18-10/
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then
@@ -542,8 +554,6 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
       note "$( yarn --version )"
       note "$( nodejs --version )"
       note "$( sqlite3 --version )"
-
-exit
 
 
 ## Rbenv
@@ -630,23 +640,22 @@ exit
 
    # TODO: Add YWAM resources from GitHub
 
-fi  # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
+   info "Done installing RoR with ."
 
-info "Done installing RoR with ."
+   h2 "start the Rails server ..."
+   rails server
 
-# start the server…
-rails server
+   # http://localhost:3000/refinery
 
-# http://localhost:3000/refinery
+   # Manually logon to the backend using the admin address and password…
 
-# Manually logon to the backend using the admin address and password…
+   exit
+
+fi # if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
 exit
 
-
-
 # TODO: Build docker image.
-
 
 if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
 
