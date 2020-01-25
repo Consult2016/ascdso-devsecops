@@ -73,6 +73,7 @@ exit_abnormal() {            # Function: Exit with error.
    REMOVE_DOCKER_IMAGES=false   # -M
    RUBY_INSTALL=false
 
+APPNAME="rockstar"
 SECRETS_FILEPATH="$HOME/.secrets.sh"  # -s
 GitHub_USER_NAME=""                  # -n
 GitHub_USER_EMAIL=""                 # -e
@@ -541,8 +542,8 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
       sudo apt autoremove
 
-      # Add Node.js and Yarn repositories and keys 
-      curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+      # Add Node.js and Yarn repositories and keys (8.x deprecated) for apt-get:
+      curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
       curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
       echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
 
@@ -560,6 +561,9 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 ## Rbenv
 
    cd ~/
+   pwd
+
+   h2 "git clone rbenv.gits"
    git clone https://github.com/rbenv/rbenv.git ~/.rbenv
          if grep -q ".rbenv/bin:" ".bashrc" ; then
             note ".rbenv/bin: already in .bashrc"
@@ -569,6 +573,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
             source .bashrc
          fi
 
+   h2 "rbenv init"
          if grep -q "rbenv init " ".bashrc" ; then
             note "rbenv init - already in .bashrc"
          else
@@ -577,6 +582,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
             source .bashrc
          fi
 
+   h2 "git clone ruby-build.git"
    git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
 
          if grep -q ".rbenv/plugins/ruby-build/bin:" ".bashrc" ; then
@@ -588,8 +594,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
          fi
 
 
-   # Install the latest stable build of RVM:
-
+   h2 "curl Install the latest stable build of RVM:"
    \curl -sSL https://raw.githubusercontent.com/rvm/rvm/master/binscripts/rvm-installer | bash -s stable
 
    # Start using RVM without having to close and reopen Terminal.
@@ -597,43 +602,48 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
 
    # Based on latest stable release from https://www.ruby-lang.org/en/downloads/
+   h2 "rbenv install / global"
    RUBY_RELEASE="2.7.0"
    rbenv install "${RUBY_RELEASE}"
    rbenv global  "${RUBY_RELEASE}"
 
-   # Verify:
+   h2 "Verify ruby version"
    ruby -v
 
-   # upgrade Ruby
+   h2 "upgrade Ruby"
    rvm install ruby --latest
 
-   # Install MySQL Server
+   h2 "Install MySQL Server"
    sudo apt-get install mysql-client mysql-server libmysqlclient-dev
 
-   # Install Rails
+   h2 "Install Rails"
    curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
    sudo apt-get install -y nodejs
 
    note "$( rails --version | grep Rails )"  # Rails 3.2.22.5
 
+   h2 "gem update --system"
    gem update --system
 
+   h2 "gem install bundler"
    gem install bundler
 
+   h2 "gem install rails"
    gem install rails -v 5.2.1
 
+   h2 "gem install rdoc"
    gem install rdoc
 
-   brew install imagemagick
-
+   h2 "gem install execjs"
    gem install execjs
 
+   h2 "gem install refinerycms"
    gem install refinerycms
 
+   h2 "rbenv rehash"
    rbenv rehash
 
-   ## Build refinery app:
-  APPNAME="rockstar"
+   h2 "Build refinery app"
    refinerycms "${APPNAME}"
    cd "${APPNAME}"
 
@@ -645,8 +655,9 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
    h2 "start the Rails server ..."
    rails server
-
-   # http://localhost:3000/refinery
+   h2 "Opening website ..."
+      curl -s -I -X POST http://localhost:3000/refinery
+      curl -s       POST http://localhost:3000/ | head -n 10  # first 10 lines
 
    # Manually logon to the backend using the admin address and password…
 
