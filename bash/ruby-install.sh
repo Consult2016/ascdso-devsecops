@@ -24,8 +24,8 @@ LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
-   echo "./ruby-install.sh -v -i"
-   echo "./ruby-install.sh -v -I -U -c -s -r -a -o"
+   echo "./ruby-install.sh -v -E -i"
+   echo "./ruby-install.sh -v -E -I -U -c -s -r -a -o"
    echo "USAGE EXAMPLE after testing:"
    echo "./ruby-install.sh -v -D -M -R"
    echo "OPTIONS:"
@@ -214,6 +214,7 @@ fatal() {   # Skull: &#9760;  # Star: &starf; &#9733; U+02606  # Toxic: &#9762;
 
 # Check what operating system is in use:
    OS_TYPE="$( uname )"
+   # shellcheck disable=SC2034  # OS_DETAILS appears unused. Verify use (or export if use
    OS_DETAILS=""  # default blank.
 if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
       OS_TYPE="macOS"
@@ -294,6 +295,13 @@ PUBLIC_IP=$( curl -s ifconfig.me )
 #      note "$OS_DETAILS"
 #   fi
 
+if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
+   h2 "BASHFILE=~/.bash_profile ..."
+   BASHFILE="$HOME/.bash_profile"  # on Macs
+else
+   h2 "BASHFILE=~/.bashrc ..."
+   BASHFILE="$HOME/.bashrc"  # on Linux
+fi
 
 # Configure location to create new files:
 if [ -z "$PROJECT_FOLDER_PATH" ]; then  # -p ""  override blank (the default)
@@ -364,7 +372,9 @@ Input_GitHub_User_Info(){
 
       read -r -p "Enter your GitHub user email [john_doe@mckinsey.com]: " GitHub_USER_EMAIL
       GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"John_Doe@mckinsey.com"}
-      # cp secrets.sh  "$SECRETS_FILEPATH"
+
+      # shellcheck disable=SC1090  #: Can't follow non-constant source. Use a directive to specify location.
+      # cp secrets.sh  "${SECRETS_FILEPATH}"
 }
 
 if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
@@ -432,16 +442,22 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
             test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
             test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
-            if grep -q ".rbenv/bin:" ".bashrc" ; then
-               note ".rbenv/bin: already in .bashrc"
+            if grep -q ".rbenv/bin:" "${BASHFILE}" ; then
+               note ".rbenv/bin: already in ${BASHFILE}"
             else
-               info "Adding .rbenv/bin: in .bashrc"
-               echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
-               source .bashrc
+               info "Adding .rbenv/bin: in ${BASHFILE} "
+               # shellcheck disable=SC2016: Expressions don't expand in single quotes, use double quotes for that.
+               echo "export PATH=\"$HOME/.rbenv/bin:$PATH\" " >>"${BASHFILE}"
+               source "${BASHFILE}"
             fi
 
-            test -r ~/.bash_profile && echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.bash_profile
-            echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.profile
+            if grep -q "brew shellenv" "${BASHFILE}" ; then
+               note "brew shellenv: already in ${BASHFILE}"
+            else
+               info "Adding brew shellenv: in ${BASHFILE} "
+               echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>"${BASHFILE}"
+               source "${BASHFILE}"
+            fi
          fi
       else  # brew found:
          if [ "${UPDATE_PKGS}" = true ]; then
@@ -567,40 +583,40 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
    h2 "git clone rbenv.gits"
    git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-         if grep -q ".rbenv/bin:" ".bashrc" ; then
-            note ".rbenv/bin: already in .bashrc"
-         else
-            info "Adding .rbenv/bin: in .bashrc"
-            echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
-            source .bashrc
-         fi
+            if grep -q ".rbenv/bin:" "${BASHFILE}" ; then
+               note ".rbenv/bin: already in ${BASHFILE}"
+            else
+               info "Adding .rbenv/bin: in ${BASHFILE} "
+               # shellcheck disable=SC2016: Expressions don't expand in single quotes, use double quotes for that.
+               echo "export PATH=\"$HOME/.rbenv/bin:$PATH\" " >>"${BASHFILE}"
+               source "${BASHFILE}"
+            fi
 
    h2 "rbenv init"
-         if grep -q "rbenv init " ".bashrc" ; then
-            note "rbenv init - already in .bashrc"
-         else
-            info "Adding rbenv init - in .bashrc"
-            echo 'eval "$(rbenv init -)"' >> ~/.bashrc
-            source .bashrc
-         fi
+            if grep -q "rbenv init " "${BASHFILE}" ; then
+               note "rbenv init  already in ${BASHFILE}"
+            else
+               info "Adding rbenv init  in ${BASHFILE} "
+               # shellcheck disable=SC2016: Expressions don't expand in single quotes, use double quotes for that.
+               echo "eval \"$(rbenv init -)\" " >>"${BASHFILE}"
+               source "${BASHFILE}"
+            fi
 
    h2 "git clone ruby-build.git"
    git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
-
-         if grep -q ".rbenv/plugins/ruby-build/bin:" ".bashrc" ; then
-            note "rbenv/plugins/ already in .bashrc"
+         if grep -q ".rbenv/plugins/ruby-build/bin:" "${BASHFILE}" ; then
+            note "rbenv/plugins/ already in ${BASHFILE}"
          else
-            info "Adding rbenv/plugins in .bashrc"
-            echo 'export PATH="$HOME/.rbenv/plugins/ruby-build/bin:$PATH"' >> ~/.bashrc
-            source .bashrc
+            info "Adding rbenv/plugins in ${BASHFILE}"
+            echo 'export PATH="$HOME/.rbenv/plugins/ruby-build/bin:$PATH"' >>"${BASHFILE}"
+            source "${BASHFILE}"
          fi
-
 
    h2 "curl Install the latest stable build of RVM:"
    \curl -sSL https://raw.githubusercontent.com/rvm/rvm/master/binscripts/rvm-installer | bash -s stable
 
    # Start using RVM without having to close and reopen Terminal.
-   source ~/.rvm/scripts/rvm 
+   source "$HOME/.rvm/scripts/rvm"
 
 
    # Based on latest stable release from https://www.ruby-lang.org/en/downloads/
@@ -632,6 +648,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
    h2 "gem install rails"
    gem install rails   # -v 5.2.1
+       # Rails 3.2.22.5
 
    h2 "gem install rdoc"
    gem install rdoc
@@ -656,7 +673,10 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    info "Done installing RoR with ."
 
    h2 "start the Rails server ..."
+   cd "${APPNAME}"
+   pwd
    rails server
+
    h2 "Opening website ..."
       curl -s -I -X POST http://localhost:3000/refinery
       curl -s       POST http://localhost:3000/ | head -n 10  # first 10 lines
