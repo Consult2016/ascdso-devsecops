@@ -567,12 +567,12 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
       h2 "Install Node"
       curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-      silent-apt-get-install nodejs
+      silent-apt-get-install "nodejs"
 
       h2 "Add Yarn repositories and keys (8.x deprecated) for apt-get:"
       curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
       echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-      silent-apt-get-install yarn 
+      silent-apt-get-install "yarn" 
 
       h2 "Install Ruby dependencies "
       silent-apt-get-install "rbenv"   # instead of git clone https://github.com/rbenv/rbenv.git ~/.rbenv
@@ -654,7 +654,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    sudo gem update --system
 
    h2 "gem install bundler"
-   sudo gem install bundler
+   sudo gem install bundler   # 1.17.3 to 2.14?
 
    h2 "gem install rails"  # https://gorails.com/setup/ubuntu/16.04
    sudo gem install rails    # latest
