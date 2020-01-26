@@ -16,7 +16,7 @@ SCRIPT_VERSION="v0.27"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
-# TEMPLATE: Capture starting timestamp and display no matter how it ends:
+# Capture starting timestamp and display no matter how it ends:
 EPOCH_START="$(date -u +%s)"  # such as 1572634619
 LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 
@@ -75,10 +75,11 @@ exit_abnormal() {            # Function: Exit with error.
 
 APPNAME="rockstar"
 SECRETS_FILEPATH="$HOME/.secrets.sh"  # -s
+PROJECT_FOLDER_PATH="$HOME/projects"
+
 GitHub_USER_NAME=""                  # -n
 GitHub_USER_EMAIL=""                 # -e
 GitHub_REPO_NAME="bsawf"
-PROJECT_FOLDER_PATH="$HOME/projects"
 
 #DOCKER_DB_NANE="snakeeyes-postgres"
 #DOCKER_WEB_SVC_NAME="snakeeyes_worker_1"  # from docker-compose ps  
@@ -221,6 +222,10 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
       OS_TYPE="Ubuntu"
       # TODO: OS_TYPE="WSL" ???
       PACKAGE_MANAGER="apt-get"
+
+      silent-apt-get(){  # "$1" refers to parameter of package to install:
+         sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq "$1" < /dev/null > /dev/null
+      }
    elif [ -f "/etc/os-release" ]; then
       OS_DETAILS=$( cat "/etc/os-release" )  # ID_LIKE="rhel fedora"
       OS_TYPE="Fedora"
@@ -562,27 +567,27 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
       h2 "Install Node"
       curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-      sudo apt-get install -y nodejs
+      silent-apt-get nodejs
 
       h2 "Add Yarn repositories and keys (8.x deprecated) for apt-get:"
       curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
       echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-      sudo apt-get install yarn 
+      silent-apt-get yarn 
 
       h2 "Install Ruby dependencies "
-      sudo apt-get install rbenv   # instead of git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-      sudo apt-get install autoconf bison build-essential libssl-dev libyaml-dev zlib1g-dev libncurses5-dev libffi-dev 
-      sudo apt-get install libreadline-dev   # instead of libreadline6-dev 
-      sudo apt-get install libgdbm-dev    # libgdbm3  # (not found)
+      silent-apt-get "rbenv"   # instead of git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+      silent-apt-get "autoconf bison build-essential libssl-dev libyaml-dev zlib1g-dev libncurses5-dev libffi-dev"
+      silent-apt-get "libreadline-dev"    # instead of libreadline6-dev 
+      silent-apt-get "libgdbm-dev"    # libgdbm3  # (not found)
 
-      sudo apt-get install libpq-dev   
-      sudo apt-get install libxml2-dev libxslt1-dev libcurl4-openssl-dev
+      silent-apt-get "libpq-dev"
+      silent-apt-get "libxml2-dev libxslt1-dev libcurl4-openssl-dev"
       
       h2 "Install SQLite3 ..."
-      sudo apt-get install libsqlite3-dev sqlite3
+      silent-apt-get "libsqlite3-dev sqlite3"
 
       h2 "Install MySQL Server"
-      sudo apt-get install mysql-client mysql-server libmysqlclient-dev
+      silent-apt-get "mysql-client mysql-server libmysqlclient-dev"
 
    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
       # For Redhat distro:
@@ -640,7 +645,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    ruby -v
 
    h2 "Install Ruby Development Headers ..."
-   sudo apt-get install "ruby${RUBY_RELEASE}-dev"
+   silent-apt-get "ruby${RUBY_RELEASE}-dev"
 
    note "$( rails --version | grep Rails )"  # Rails 3.2.22.5
       # See https://rubyonrails.org/
@@ -748,32 +753,32 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
 
       if ! command -v docker ; then
          h2 "Installing docker using apt-get ..."
-         sudo apt-get install docker
+         silent-apt-get "docker"
       else
          if [ "${UPDATE_PKGS}" = true ]; then
             h2 "Upgrading docker ..."
-            sudo apt-get install docker
+            silent-apt-get "docker"
          fi
       fi
 
       if ! command -v docker-compose ; then
          h2 "Installing docker-compose using apt-get ..."
-         sudo apt-get install docker-compose
+         silent-apt-get "docker-compose"
       else
          if [ "${UPDATE_PKGS}" = true ]; then
             h2 "Upgrading docker-compose ..."
-            sudo apt-get install docker-compose
+            silent-apt-get "docker-compose"
          fi
       fi
 
    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
       if ! command -v docker ; then
          h2 "Installing docker using yum ..."
-         yum install docker
+         sudo yum install docker
       else
          if [ "${UPDATE_PKGS}" = true ]; then
             h2 "Upgrading docker ..."
-            sudo apt-get install docker
+            sudo yum install docker
          fi
       fi
 
@@ -783,7 +788,7 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
       else
          if [ "${UPDATE_PKGS}" = true ]; then
             h2 "Upgrading docker-compose ..."
-            sudo apt-yum install docker-compose
+            yum install docker-compose
          fi
       fi
 
