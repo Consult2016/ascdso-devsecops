@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.24"
+SCRIPT_VERSION="v0.25"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -566,10 +566,11 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       sudo apt-get install yarn 
 
       h2 "Install Ruby dependencies "
-      sudo apt-get install autoconf bison build-essential libssl-dev libyaml-dev libreadline6-dev zlib1g-dev libncurses5-dev libffi-dev libgdbm3 libgdbm-dev
+      sudo apt-get install autoconf bison build-essential libssl-dev libyaml-dev zlib1g-dev libncurses5-dev libffi-dev 
+      sudo apt-get install libreadline-dev   # instead of libreadline6-dev 
+      sudo apt-get install libgdbm-dev    # libgdbm3  # (not found)
 
-      sudo apt-get update
-      sudo apt-get install libpq-dev libreadline-dev
+      sudo apt-get install libpq-dev   
       sudo apt-get install libxml2-dev libxslt1-dev libcurl4-openssl-dev
       
       h2 "Install SQLite3 ..."
@@ -589,7 +590,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    h2 "Now at path $PWD ..."
 
    # See https://www.digitalocean.com/community/tutorials/how-to-install-ruby-on-rails-with-rbenv-on-ubuntu-16-04
-   
+
    h2 "git clone rbenv.gits"
    if [ ! -d "~/.rbenv" ]; then  # directory not available, so clone into it:
       git clone https://github.com/rbenv/rbenv.git ~/.rbenv
