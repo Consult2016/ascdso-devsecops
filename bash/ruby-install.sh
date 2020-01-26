@@ -346,11 +346,11 @@ Delete_GitHub_clone(){
 
 if [ "${CLONE_GITHUB}" = true ]; then
    Delete_GitHub_clone    # defined above in this file.
-
-   h2 "Downloading repo ..."
-   git clone https://github.com/nickjj/build-a-saas-app-with-flask.git "$GitHub_REPO_NAME"   
-   cd "$GitHub_REPO_NAME"
-
+   if [ ! -d "$GitHub_REPO_NAME" ]; then  # directory not available, so clone into it:
+      h2 "Downloading repo ..."
+      git clone https://github.com/nickjj/build-a-saas-app-with-flask.git "$GitHub_REPO_NAME"   
+      cd "$GitHub_REPO_NAME"
+   fi
    # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/ruby-install.sh
    # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
    # git pull upstream master
@@ -526,10 +526,10 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       note "$( gpg --version | grep GnuPG )"  # gpg (GnuPG) 2.2.19
 
       # download and install the mpapis public key with GPG:
-      curl -sSL https://rvm.io/mpapis.asc | gpg --import -
+      #curl -sSL https://rvm.io/mpapis.asc | gpg --import -
          # (Michael Papis (mpapis) is the creator of RVM, and his public key is used to validate RVM downloads:
          # gpg-connect-agent --dirmngr 'keyserver --hosttable'
-      gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3
+      #gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3
          # FIX: gpg: keyserver receive failed: No route to host
 
       if ! command -v imagemagick ; then
@@ -556,15 +556,14 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       h2 "sudo apt autoremove"
       sudo apt autoremove
 
-      h2 "Add Yarn repositories and keys (8.x deprecated) for apt-get:"
-      #curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-      curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-      echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-      sudo apt-get install yarn 
-
       h2 "Install Node"
       curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
       sudo apt-get install -y nodejs
+
+      h2 "Add Yarn repositories and keys (8.x deprecated) for apt-get:"
+      curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+      echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+      sudo apt-get install yarn 
 
       sudo apt-get update
       sudo apt-get install zlib1g-dev build-essential libpq-dev libssl-dev libreadline-dev libyaml-dev 
@@ -573,8 +572,8 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
    fi
 
-      note "$( yarn --version )"
       note "$( nodejs --version )"
+      note "$( yarn --version )"
       note "$( sqlite3 --version )"
 
 
@@ -616,12 +615,11 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
             source "${BASHFILE}"
          fi
 
-   h2 "curl Install the latest stable build of RVM:"
-   \curl -sSL https://raw.githubusercontent.com/rvm/rvm/master/binscripts/rvm-installer | bash -s stable
+   #h2 "curl Install the latest stable build of RVM:"
+   #curl -sSL https://raw.githubusercontent.com/rvm/rvm/master/binscripts/rvm-installer | bash -s stable
 
    # Start using RVM without having to close and reopen Terminal.
-   source "$HOME/.rvm/scripts/rvm"
-
+   # source "$HOME/.rvm/scripts/rvm"
 
    # Based on latest stable release from https://www.ruby-lang.org/en/downloads/
    h2 "rbenv install / global"
@@ -631,9 +629,6 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
    h2 "Verify ruby version"
    ruby -v
-
-   h2 "upgrade Ruby"
-   rvm install ruby --latest
 
    h2 "Install MySQL Server"
    sudo apt-get install mysql-client mysql-server libmysqlclient-dev
