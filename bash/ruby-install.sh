@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.30"
+SCRIPT_VERSION="v0.31"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -602,7 +602,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       h2 "Install MySQL Server"
       silent-apt-get-install "mysql-client"
       silent-apt-get-install "mysql-server"
-      silent-apt-get-install "ibmysqlclient-dev"
+      silent-apt-get-install "libmysqlclient-dev"  # unable to locate
 
    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
       # For Redhat distro:
