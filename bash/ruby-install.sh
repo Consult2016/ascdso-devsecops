@@ -223,7 +223,7 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
       # TODO: OS_TYPE="WSL" ???
       PACKAGE_MANAGER="apt-get"
 
-      silent-apt-get(){  # "$1" refers to parameter of package to install:
+      silent-apt-get-install(){  # see https://wilsonmar.github.io/bash-scripts/#silent-apt-get-install
          sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq "$1" < /dev/null > /dev/null
       }
    elif [ -f "/etc/os-release" ]; then
@@ -567,27 +567,27 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
       h2 "Install Node"
       curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-      silent-apt-get nodejs
+      silent-apt-get-install nodejs
 
       h2 "Add Yarn repositories and keys (8.x deprecated) for apt-get:"
       curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
       echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-      silent-apt-get yarn 
+      silent-apt-get-install yarn 
 
       h2 "Install Ruby dependencies "
-      silent-apt-get "rbenv"   # instead of git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-      silent-apt-get "autoconf bison build-essential libssl-dev libyaml-dev zlib1g-dev libncurses5-dev libffi-dev"
-      silent-apt-get "libreadline-dev"    # instead of libreadline6-dev 
-      silent-apt-get "libgdbm-dev"    # libgdbm3  # (not found)
+      silent-apt-get-install "rbenv"   # instead of git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+      silent-apt-get-install "autoconf bison build-essential libssl-dev libyaml-dev zlib1g-dev libncurses5-dev libffi-dev"
+      silent-apt-get-install "libreadline-dev"    # instead of libreadline6-dev 
+      silent-apt-get-install "libgdbm-dev"    # libgdbm3  # (not found)
 
-      silent-apt-get "libpq-dev"
-      silent-apt-get "libxml2-dev libxslt1-dev libcurl4-openssl-dev"
+      silent-apt-get-install "libpq-dev"
+      silent-apt-get-install "libxml2-dev libxslt1-dev libcurl4-openssl-dev"
       
       h2 "Install SQLite3 ..."
-      silent-apt-get "libsqlite3-dev sqlite3"
+      silent-apt-get-install "libsqlite3-dev sqlite3"
 
       h2 "Install MySQL Server"
-      silent-apt-get "mysql-client mysql-server libmysqlclient-dev"
+      silent-apt-get-install "mysql-client mysql-server libmysqlclient-dev"
 
    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
       # For Redhat distro:
@@ -645,7 +645,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    ruby -v
 
    h2 "Install Ruby Development Headers ..."
-   silent-apt-get "ruby${RUBY_RELEASE}-dev"
+   silent-apt-get-install "ruby${RUBY_RELEASE}-dev"
 
    note "$( rails --version | grep Rails )"  # Rails 3.2.22.5
       # See https://rubyonrails.org/
@@ -753,21 +753,21 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
 
       if ! command -v docker ; then
          h2 "Installing docker using apt-get ..."
-         silent-apt-get "docker"
+         silent-apt-get-install "docker"
       else
          if [ "${UPDATE_PKGS}" = true ]; then
             h2 "Upgrading docker ..."
-            silent-apt-get "docker"
+            silent-apt-get-install "docker"
          fi
       fi
 
       if ! command -v docker-compose ; then
          h2 "Installing docker-compose using apt-get ..."
-         silent-apt-get "docker-compose"
+         silent-apt-get-install "docker-compose"
       else
          if [ "${UPDATE_PKGS}" = true ]; then
             h2 "Upgrading docker-compose ..."
-            silent-apt-get "docker-compose"
+            silent-apt-get-install "docker-compose"
          fi
       fi
 
