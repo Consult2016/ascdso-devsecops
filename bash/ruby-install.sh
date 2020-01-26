@@ -12,9 +12,9 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
+SCRIPT_VERSION="v0.24"
 clear  # screen (but not history)
-echo "================================================"
-SCRIPT_VERSION="v0.23"
+echo "================================================ $SCRIPT_VERSION "
 
 # TEMPLATE: Capture starting timestamp and display no matter how it ends:
 EPOCH_START="$(date -u +%s)"  # such as 1572634619
