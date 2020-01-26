@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.29"
+SCRIPT_VERSION="v0.30"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -596,7 +596,8 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       silent-apt-get-install "libcurl4-openssl-dev"
       
       h2 "Install SQLite3 ..."
-      silent-apt-get-install "libsqlite3-dev sqlite3"
+      silent-apt-get-install "libsqlite3-dev"
+      silent-apt-get-install "sqlite3"
 
       h2 "Install MySQL Server"
       silent-apt-get-install "mysql-client"
