@@ -13,7 +13,7 @@
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
 clear  # screen (but not history)
-echo "================================================"
+echo "================================================ v0.23"
 
 # TEMPLATE: Capture starting timestamp and display no matter how it ends:
 EPOCH_START="$(date -u +%s)"  # such as 1572634619
@@ -580,13 +580,12 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 ## Rbenv
 
    cd ~/
-   h2 "Now at $pwd"
+   h2 "Now at path $PWD ..."
 
    h2 "git clone rbenv.gits"
-   if [ ! -d "~/.rbenv" ]; then  # path not available.
+   if [ ! -d "~/.rbenv" ]; then  # directory not available, so clone into it:
       git clone https://github.com/rbenv/rbenv.git ~/.rbenv
    fi
-   zzz
             if grep -q ".rbenv/bin:" "${BASHFILE}" ; then
                note ".rbenv/bin: already in ${BASHFILE}"
             else
