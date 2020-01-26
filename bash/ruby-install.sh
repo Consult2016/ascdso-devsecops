@@ -580,10 +580,13 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 ## Rbenv
 
    cd ~/
-   pwd
+   h2 "Now at $pwd"
 
    h2 "git clone rbenv.gits"
-   git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+   if [ ! -d "~/.rbenv" ]; then  # path not available.
+      git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+   fi
+   zzz
             if grep -q ".rbenv/bin:" "${BASHFILE}" ; then
                note ".rbenv/bin: already in ${BASHFILE}"
             else
