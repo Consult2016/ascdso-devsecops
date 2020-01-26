@@ -543,8 +543,8 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       fi
 
    elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-      # ??? apt-get install gnupg2
-      # gpg
+
+      sudo apt-get update
 
       h2 "Use apt instead of apt-get since Ubuntu 16.04 (from Linux Mint)"
       sudo apt install curl git
@@ -565,10 +565,18 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
       sudo apt-get install yarn 
 
+      h2 "Install Ruby dependencies "
+      sudo apt-get install autoconf bison build-essential libssl-dev libyaml-dev libreadline6-dev zlib1g-dev libncurses5-dev libffi-dev libgdbm3 libgdbm-dev
+
       sudo apt-get update
-      sudo apt-get install zlib1g-dev build-essential libpq-dev libssl-dev libreadline-dev libyaml-dev 
-      sudo apt-get install libsqlite3-dev sqlite3 
-      sudo apt-get install libxml2-dev libxslt1-dev libcurl4-openssl-dev libffi-dev
+      sudo apt-get install libpq-dev libreadline-dev
+      sudo apt-get install libxml2-dev libxslt1-dev libcurl4-openssl-dev
+      
+      h2 "Install SQLite3 ..."
+      sudo apt-get install libsqlite3-dev sqlite3
+
+      h2 "Install MySQL Server"
+      sudo apt-get install mysql-client mysql-server libmysqlclient-dev
 
    fi
 
@@ -577,11 +585,11 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       note "$( sqlite3 --version )"
 
 
-## Rbenv
-
    cd ~/
    h2 "Now at path $PWD ..."
 
+   # See https://www.digitalocean.com/community/tutorials/how-to-install-ruby-on-rails-with-rbenv-on-ubuntu-16-04
+   
    h2 "git clone rbenv.gits"
    if [ ! -d "~/.rbenv" ]; then  # directory not available, so clone into it:
       git clone https://github.com/rbenv/rbenv.git ~/.rbenv
@@ -595,18 +603,10 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
                source "${BASHFILE}"
             fi
 
-   h2 "rbenv init"
-            if grep -q "rbenv init " "${BASHFILE}" ; then
-               note "rbenv init  already in ${BASHFILE}"
-            else
-               info "Adding rbenv init  in ${BASHFILE} "
-               # shellcheck disable=SC2016 # Expressions don't expand in single quotes, use double quotes for that.
-               echo "eval \"$(rbenv init -)\" " >>"${BASHFILE}"
-               source "${BASHFILE}"
-            fi
-
-   h2 "git clone ruby-build.git"
-   git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+   h2 "git clone ruby-build.git to use the rbenv install command"
+   if [ ! -d "~/.rbenv/plugins/ruby-build" ]; then  # directory not available, so clone into it:
+      git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+   fi
          if grep -q ".rbenv/plugins/ruby-build/bin:" "${BASHFILE}" ; then
             note "rbenv/plugins/ already in ${BASHFILE}"
          else
@@ -615,23 +615,34 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
             source "${BASHFILE}"
          fi
 
+
+   h2 "rbenv init"
+            if grep -q "rbenv init " "${BASHFILE}" ; then
+               note "rbenv init  already in ${BASHFILE}"
+            else
+               info "Adding rbenv init  in ${BASHFILE} "
+               # shellcheck disable=SC2016 # Expressions don't expand in single quotes, use double quotes for that.
+               echo "eval \"$( rbenv init - )\" " >>"${BASHFILE}"
+               source "${BASHFILE}"
+            fi
+
+   # Based on latest stable release from https://www.ruby-lang.org/en/downloads/
+   h2 "rbenv install"
+   RUBY_RELEASE="2.7.0"
+   rbenv install "${RUBY_RELEASE}"
+
+   h2 "rbenv global"
+   rbenv global  "${RUBY_RELEASE}"   # insted of -l (latest)
+
+
    #h2 "curl Install the latest stable build of RVM:"
    #curl -sSL https://raw.githubusercontent.com/rvm/rvm/master/binscripts/rvm-installer | bash -s stable
 
    # Start using RVM without having to close and reopen Terminal.
    # source "$HOME/.rvm/scripts/rvm"
 
-   # Based on latest stable release from https://www.ruby-lang.org/en/downloads/
-   h2 "rbenv install / global"
-   RUBY_RELEASE="2.7.0"
-   rbenv install "${RUBY_RELEASE}"
-   rbenv global  "${RUBY_RELEASE}"
-
    h2 "Verify ruby version"
    ruby -v
-
-   h2 "Install MySQL Server"
-   sudo apt-get install mysql-client mysql-server libmysqlclient-dev
 
    note "$( rails --version | grep Rails )"  # Rails 3.2.22.5
 
