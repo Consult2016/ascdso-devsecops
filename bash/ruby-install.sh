@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.33"
+SCRIPT_VERSION="v0.35"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -352,11 +352,13 @@ Delete_GitHub_clone(){
 
 if [ "${CLONE_GITHUB}" = true ]; then
    Delete_GitHub_clone    # defined above in this file.
-   if [ ! -d "$GitHub_REPO_NAME" ]; then  # directory not available, so clone into it:
+   if [ -d "$GitHub_REPO_NAME" ]; then  # directory not available, so clone into it:
+      rm -rf "$GitHub_REPO_NAME" 
+   fi
       h2 "Downloading repo ..."
       git clone https://github.com/nickjj/build-a-saas-app-with-flask.git "$GitHub_REPO_NAME"   
       cd "$GitHub_REPO_NAME"
-   fi
+   
    # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/ruby-install.sh
    # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
    # git pull upstream master
@@ -625,9 +627,10 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    # and http://devopspy.com/linux/install-latest-ruby-using-rbenv/
 
    h2 "git clone ruby-build.git to use the rbenv install command"
-   if [ ! -d "~/.rbenv/plugins/ruby-build" ]; then  # directory not available, so clone into it:
-      git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+   if [ -d "~/.rbenv/plugins/ruby-build" ]; then  # directory not available, so clone into it:
+      rm -rf "~/.rbenv/plugins/ruby-build"
    fi
+      git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
          if grep -q ".rbenv/plugins/ruby-build/bin:" "${BASHFILE}" ; then
             note "rbenv/plugins/ already in ${BASHFILE}"
          else
