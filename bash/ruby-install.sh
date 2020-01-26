@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.27"
+SCRIPT_VERSION="v0.28"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -571,12 +571,22 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
       h2 "Add Yarn repositories and keys (8.x deprecated) for apt-get:"
       curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+         # response: OK
       echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
       silent-apt-get-install "yarn" 
 
       h2 "Install Ruby dependencies "
       silent-apt-get-install "rbenv"   # instead of git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-      silent-apt-get-install "autoconf bison build-essential libssl-dev libyaml-dev zlib1g-dev libncurses5-dev libffi-dev"
+         # Extracting templates from packages: 100%
+      silent-apt-get-install "autoconf"
+      silent-apt-get-install "bison"
+      silent-apt-get-install "build-essential"
+      silent-apt-get-install "libssl-dev"
+      silent-apt-get-install "libyaml-dev"
+      silent-apt-get-install "zlib1g-dev"
+      silent-apt-get-install "libncurses5-dev"
+      silent-apt-get-install "libffi-dev"
+         # E: Unable to locate package autoconf bison
       silent-apt-get-install "libreadline-dev"    # instead of libreadline6-dev 
       silent-apt-get-install "libgdbm-dev"    # libgdbm3  # (not found)
 
