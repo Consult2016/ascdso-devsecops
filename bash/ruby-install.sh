@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.28"
+SCRIPT_VERSION="v0.29"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -591,13 +591,17 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       silent-apt-get-install "libgdbm-dev"    # libgdbm3  # (not found)
 
       silent-apt-get-install "libpq-dev"
-      silent-apt-get-install "libxml2-dev libxslt1-dev libcurl4-openssl-dev"
+      silent-apt-get-install "libxml2-dev"
+      silent-apt-get-install "libxslt1-dev"
+      silent-apt-get-install "libcurl4-openssl-dev"
       
       h2 "Install SQLite3 ..."
       silent-apt-get-install "libsqlite3-dev sqlite3"
 
       h2 "Install MySQL Server"
-      silent-apt-get-install "mysql-client mysql-server libmysqlclient-dev"
+      silent-apt-get-install "mysql-client"
+      silent-apt-get-install "mysql-server"
+      silent-apt-get-install "ibmysqlclient-dev"
 
    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
       # For Redhat distro:
