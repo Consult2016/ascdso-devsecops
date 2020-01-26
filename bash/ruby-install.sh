@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.26"
+SCRIPT_VERSION="v0.27"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -423,7 +423,7 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
 
-      # TODO: Install XCode?
+      # TODO: Install XCode for  Ruby Development Headers?
       # sudo xcode-select --install
       # sudo xcodebuild -license accept
       # See https://stackoverflow.com/questions/20559255/error-while-installing-json-gem-mkmf-rb-cant-find-header-files-for-ruby/20561594
@@ -639,7 +639,11 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    h2 "Verify ruby version"
    ruby -v
 
+   h2 "Install Ruby Development Headers ..."
+   sudo apt-get install "ruby${RUBY_RELEASE}-dev"
+
    note "$( rails --version | grep Rails )"  # Rails 3.2.22.5
+      # See https://rubyonrails.org/
 
    h2 "gem update --system"
    sudo gem update --system
