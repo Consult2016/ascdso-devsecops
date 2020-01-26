@@ -10,7 +10,7 @@
 
 # After you obtain a Terminal (console) in your enviornment,
 # cd to folder, copy this line and paste in the terminal:
-# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -h -v -i
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
 clear  # screen (but not history)
 echo "================================================"
@@ -57,12 +57,12 @@ exit_abnormal() {            # Function: Exit with error.
 }
 
 # Defaults (default true so flag turns it true):
-   SET_EXIT=false
-   RUN_VERBOSE=false
-   RUBY_INSTALL=false
-   UPDATE_PKGS=false
-   RESTART_DOCKER=false
-   RUN_ACTUAL=false   # false as dry run is default.
+   SET_EXIT=false               # -E
+   RUN_VERBOSE=false            # -v
+   RUBY_INSTALL=false           # -i
+   UPDATE_PKGS=false            # -U
+   RESTART_DOCKER=false         # -r
+   RUN_ACTUAL=false             # -a  (dry run is default)
    DOWNLOAD_INSTALL=false       # -d
    RUN_DELETE_AFTER=false       # -D
    RUN_OPEN_BROWSER=false       # -o
@@ -354,7 +354,9 @@ if [ "${CLONE_GITHUB}" = true ]; then
    # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
    # git pull upstream master
 else
-   cd "$GitHub_REPO_NAME"
+   if [ -d "${GitHub_REPO_NAME:?}" ]; then  # path available.
+      cd "$GitHub_REPO_NAME"
+   fi
 fi
 note "$( pwd )"
 
@@ -548,20 +550,26 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       note "$( git --version )"  # git version 2.20.1 (Apple Git-117)
 
       h2 "apt install imagemagick"
-      apt install imagemagick
+      sudo apt install imagemagick
 
       h2 "sudo apt autoremove"
       sudo apt autoremove
 
-      h2 "Add Node.js and Yarn repositories and keys (8.x deprecated) for apt-get:"
+      h2 "Add Yarn repositories and keys (8.x deprecated) for apt-get:"
       #curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
       curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
       echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+      sudo apt-get install yarn 
+
+      h2 "Install Node"
+      curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+      sudo apt-get install -y nodejs
 
       sudo apt-get update
-      sudo apt-get install nodejs yarn zlib1g-dev build-essential libpq-dev libssl-dev libreadline-dev libyaml-dev 
+      sudo apt-get install zlib1g-dev build-essential libpq-dev libssl-dev libreadline-dev libyaml-dev 
       sudo apt-get install libsqlite3-dev sqlite3 
       sudo apt-get install libxml2-dev libxslt1-dev libcurl4-openssl-dev libffi-dev
+
    fi
 
       note "$( yarn --version )"
@@ -626,10 +634,6 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
    h2 "Install MySQL Server"
    sudo apt-get install mysql-client mysql-server libmysqlclient-dev
-
-   h2 "Install Node"
-   curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-   sudo apt-get install -y nodejs
 
    note "$( rails --version | grep Rails )"  # Rails 3.2.22.5
 
