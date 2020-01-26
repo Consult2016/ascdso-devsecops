@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.25"
+SCRIPT_VERSION="v0.26"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -424,6 +424,9 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
 
       # TODO: Install XCode?
+      # sudo xcode-select --install
+      # sudo xcodebuild -license accept
+      # See https://stackoverflow.com/questions/20559255/error-while-installing-json-gem-mkmf-rb-cant-find-header-files-for-ruby/20561594
 
       if ! command -v brew ; then
          if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
@@ -442,6 +445,7 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
                note ".rbenv/bin: already in ${BASHFILE}"
             else
                info "Adding .rbenv/bin: in ${BASHFILE} "
+               echo "# .rbenv/bin are shims for Ruby commands so must be in front:" >>"${BASHFILE}"
                # shellcheck disable=SC2016 # Expressions don't expand in single quotes, use double quotes for that.
                echo "export PATH=\"$HOME/.rbenv/bin:$PATH\" " >>"${BASHFILE}"
                source "${BASHFILE}"
@@ -566,6 +570,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       sudo apt-get install yarn 
 
       h2 "Install Ruby dependencies "
+      sudo apt-get install rbenv   # instead of git clone https://github.com/rbenv/rbenv.git ~/.rbenv
       sudo apt-get install autoconf bison build-essential libssl-dev libyaml-dev zlib1g-dev libncurses5-dev libffi-dev 
       sudo apt-get install libreadline-dev   # instead of libreadline6-dev 
       sudo apt-get install libgdbm-dev    # libgdbm3  # (not found)
@@ -579,6 +584,12 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       h2 "Install MySQL Server"
       sudo apt-get install mysql-client mysql-server libmysqlclient-dev
 
+   elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
+      # For Redhat distro:
+      sudo yum install ruby-devel
+   elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then
+      # for [open]SuSE:
+      sudo zypper install ruby-devel
    fi
 
       note "$( nodejs --version )"
@@ -590,19 +601,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    h2 "Now at path $PWD ..."
 
    # See https://www.digitalocean.com/community/tutorials/how-to-install-ruby-on-rails-with-rbenv-on-ubuntu-16-04
-
-   h2 "git clone rbenv.gits"
-   if [ ! -d "~/.rbenv" ]; then  # directory not available, so clone into it:
-      git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-   fi
-            if grep -q ".rbenv/bin:" "${BASHFILE}" ; then
-               note ".rbenv/bin: already in ${BASHFILE}"
-            else
-               info "Adding .rbenv/bin: in ${BASHFILE} "
-               # shellcheck disable=SC2016 # Expressions don't expand in single quotes, use double quotes for that.
-               echo "export PATH=\"$HOME/.rbenv/bin:$PATH\" " >>"${BASHFILE}"
-               source "${BASHFILE}"
-            fi
+   # and http://devopspy.com/linux/install-latest-ruby-using-rbenv/
 
    h2 "git clone ruby-build.git to use the rbenv install command"
    if [ ! -d "~/.rbenv/plugins/ruby-build" ]; then  # directory not available, so clone into it:
@@ -615,7 +614,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
             echo "export PATH=\"$HOME/.rbenv/plugins/ruby-build/bin:$PATH\" " >>"${BASHFILE}"
             source "${BASHFILE}"
          fi
-
+   
 
    h2 "rbenv init"
             if grep -q "rbenv init " "${BASHFILE}" ; then
@@ -626,21 +625,16 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
                echo "eval \"$( rbenv init - )\" " >>"${BASHFILE}"
                source "${BASHFILE}"
             fi
+            # This results in display of rbenv().
 
    # Based on latest stable release from https://www.ruby-lang.org/en/downloads/
-   h2 "rbenv install"
    RUBY_RELEASE="2.7.0"
+   h2 "Install Ruby $RUBY_RELEASE using rbenv ..."
    rbenv install "${RUBY_RELEASE}"
+      # Downloading ...
 
    h2 "rbenv global"
-   rbenv global  "${RUBY_RELEASE}"   # insted of -l (latest)
-
-
-   #h2 "curl Install the latest stable build of RVM:"
-   #curl -sSL https://raw.githubusercontent.com/rvm/rvm/master/binscripts/rvm-installer | bash -s stable
-
-   # Start using RVM without having to close and reopen Terminal.
-   # source "$HOME/.rvm/scripts/rvm"
+   rbenv global "${RUBY_RELEASE}"   # insted of -l (latest)
 
    h2 "Verify ruby version"
    ruby -v
@@ -648,26 +642,27 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    note "$( rails --version | grep Rails )"  # Rails 3.2.22.5
 
    h2 "gem update --system"
-   gem update --system
+   sudo gem update --system
 
    h2 "gem install bundler"
-   gem install bundler
+   sudo gem install bundler
 
-   h2 "gem install rails"
-   gem install rails   # -v 5.2.1
-       # Rails 3.2.22.5
+   h2 "gem install rails"  # https://gorails.com/setup/ubuntu/16.04
+   sudo gem install rails    # latest
+   # gem install rails -v 6.0.2.1
+
+   h2 "rbenv rehash to make the rails executable available:"  # https://github.com/rbenv/rbenv
+   sudo rbenv rehash
 
    h2 "gem install rdoc"
-   gem install rdoc
+   sudo gem install rdoc
 
    h2 "gem install execjs"
-   gem install execjs
+   sudo gem install execjs
 
    h2 "gem install refinerycms"
-   gem install refinerycms
-
-   h2 "rbenv rehash"
-   rbenv rehash
+   sudo gem install refinerycms
+       # /usr/lib/ruby/include
 
    h2 "Build refinery app"
    refinerycms "${APPNAME}"
