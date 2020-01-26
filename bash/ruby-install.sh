@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2001 # See if you can use ${variable//search/replace} instead.
+# shellcheck disable=SC1090 # Can't follow non-constant source. Use a directive to specify location.
 
 # ruby-install.sh in https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh
 # coded based on bash scripting techniques described at https://wilsonmar.github.io/bash-scripting.
@@ -11,10 +12,8 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -h -v -i
 
-
-### STEP 1. Set display utilities:
-
-# clear  # screen (but not history)
+clear  # screen (but not history)
+echo "================================================"
 
 # TEMPLATE: Capture starting timestamp and display no matter how it ends:
 EPOCH_START="$(date -u +%s)"  # such as 1572634619
@@ -29,7 +28,6 @@ args_prompt() {
    echo "USAGE EXAMPLE after testing:"
    echo "./ruby-install.sh -v -D -M -R"
    echo "OPTIONS:"
-   echo "   -h           to display this -help list"
    echo "   -E           to set -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
    echo "   -i           -install Ruby and Refinery"
@@ -37,8 +35,8 @@ args_prompt() {
    echo "   -U           -Upgrade packages"
    echo "   -c           -clone from GitHub"
    echo "   -s           Use -secrets file in your user home folder"
-   echo "   -n \"John Doe\"         GitHub user -name"
-   echo "   -e \"john_doe@a.com\"   GitHub user -email"
+   echo "   -n \"$USER\"            GitHub user -name"
+   echo "   -e \"$USER@corp.com\"   GitHub user -email"
    echo "   -p \" \"    Project folder -path "
    echo "   -r           -start Docker before run"
    echo "   -a           to -actually run docker-compose"
@@ -50,6 +48,7 @@ args_prompt() {
  }
 if [ $# -eq 0 ]; then  # display if no parameters are provided:
    args_prompt
+   exit 1
 fi
 exit_abnormal() {            # Function: Exit with error.
   echo "exiting abnormally"
@@ -86,9 +85,6 @@ PROJECT_FOLDER_PATH="$HOME/projects"
 
 while test $# -gt 0; do
   case "$1" in
-    -h)
-      args_prompt  # function defined above.
-      ;;
     -v)
       export RUN_VERBOSE=true
       shift
@@ -193,28 +189,27 @@ h2() {     # heading
    printf "\n${bold}>>> %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 info() {   # output on every run
-   printf "${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 note() { if [ "${RUN_VERBOSE}" = true ]; then
-   printf "${bold}${cyan} ${reset} ${cyan}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${bold}${cyan} ${reset} ${cyan}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
    fi
 }
 success() {
-   printf "${green}✔ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${green}✔ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-error() {       # &#9747;
-   printf "${red}${bold}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+error() {    # &#9747;
+   printf "\n${red}${bold}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 warning() {  # &#9758; or &#9755;
-   printf "${cyan}☞ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${cyan}☞ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 fatal() {   # Skull: &#9760;  # Star: &starf; &#9733; U+02606  # Toxic: &#9762;
-   printf "${red}☢  %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${red}☢  %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 
 # Check what operating system is in use:
    OS_TYPE="$( uname )"
-   # shellcheck disable=SC2034  # OS_DETAILS appears unused. Verify use (or export if use
    OS_DETAILS=""  # default blank.
 if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
       OS_TYPE="macOS"
@@ -230,7 +225,7 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
       OS_TYPE="Fedora"
       PACKAGE_MANAGER="yum"
    elif [ -f "/etc/redhat-release" ]; then
-      OS_DETAILS=$( cat "/etc/redhat-release" )  # ID_LIKE="rhel fedora"
+      OS_DETAILS=$( cat "/etc/redhat-release" )
       OS_TYPE="RedHat"
       PACKAGE_MANAGER="yum"
    elif [ -f "/etc/centos-release" ]; then
@@ -244,6 +239,7 @@ else
    error "Operating system not anticipated. Please update script. Aborting."
    exit 0
 fi
+note "OS_DETAILS=$OS_DETAILS"
 
 
 BASH_VERSION=$( bash --version | grep bash | cut -d' ' -f4 | head -c 1 )
@@ -251,7 +247,7 @@ BASH_VERSION=$( bash --version | grep bash | cut -d' ' -f4 | head -c 1 )
       warning "Bash version ${BASH_VERSION} needed to calculate disk free"
       DISK_PCT_FREE="0"
       FREE_DISKBLOCKS_START="0"
-   else
+   else  # use array feature in BASH v4+ :
       DISK_PCT_FREE=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[11]}" )
       FREE_DISKBLOCKS_START=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
    fi
@@ -352,13 +348,13 @@ if [ "${CLONE_GITHUB}" = true ]; then
 
    h2 "Downloading repo ..."
    git clone https://github.com/nickjj/build-a-saas-app-with-flask.git "$GitHub_REPO_NAME"   
-   cd "$GitHub_REPO_NAME" || return 
+   cd "$GitHub_REPO_NAME"
 
    # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/ruby-install.sh
    # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
    # git pull upstream master
 else
-   cd "$GitHub_REPO_NAME" || return 
+   cd "$GitHub_REPO_NAME"
 fi
 note "$( pwd )"
 
@@ -367,14 +363,11 @@ note "$( pwd )"
 
 Input_GitHub_User_Info(){
       # https://www.shellcheck.net/wiki/SC2162: read without -r will mangle backslashes.
-      read -r -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
-      GitHub_USER_NAME=${GitHub_USER_NAME:-"John Doe"}
+      read -r -p "Enter your GitHub user name [$USER]: " GitHub_USER_NAME
+      GitHub_USER_NAME=${GitHub_USER_NAME:-"$USER"}
 
-      read -r -p "Enter your GitHub user email [john_doe@mckinsey.com]: " GitHub_USER_EMAIL
-      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"John_Doe@mckinsey.com"}
-
-      # shellcheck disable=SC1090  #: Can't follow non-constant source. Use a directive to specify location.
-      # cp secrets.sh  "${SECRETS_FILEPATH}"
+      read -r -p "Enter your GitHub user email [$USER@corp.com]: " GitHub_USER_EMAIL
+      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"$USER@corp.com"}
 }
 
 if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
@@ -446,7 +439,7 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
                note ".rbenv/bin: already in ${BASHFILE}"
             else
                info "Adding .rbenv/bin: in ${BASHFILE} "
-               # shellcheck disable=SC2016: Expressions don't expand in single quotes, use double quotes for that.
+               # shellcheck disable=SC2016 # Expressions don't expand in single quotes, use double quotes for that.
                echo "export PATH=\"$HOME/.rbenv/bin:$PATH\" " >>"${BASHFILE}"
                source "${BASHFILE}"
             fi
@@ -587,7 +580,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
                note ".rbenv/bin: already in ${BASHFILE}"
             else
                info "Adding .rbenv/bin: in ${BASHFILE} "
-               # shellcheck disable=SC2016: Expressions don't expand in single quotes, use double quotes for that.
+               # shellcheck disable=SC2016 # Expressions don't expand in single quotes, use double quotes for that.
                echo "export PATH=\"$HOME/.rbenv/bin:$PATH\" " >>"${BASHFILE}"
                source "${BASHFILE}"
             fi
@@ -597,7 +590,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
                note "rbenv init  already in ${BASHFILE}"
             else
                info "Adding rbenv init  in ${BASHFILE} "
-               # shellcheck disable=SC2016: Expressions don't expand in single quotes, use double quotes for that.
+               # shellcheck disable=SC2016 # Expressions don't expand in single quotes, use double quotes for that.
                echo "eval \"$(rbenv init -)\" " >>"${BASHFILE}"
                source "${BASHFILE}"
             fi
@@ -608,7 +601,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
             note "rbenv/plugins/ already in ${BASHFILE}"
          else
             info "Adding rbenv/plugins in ${BASHFILE}"
-            echo 'export PATH="$HOME/.rbenv/plugins/ruby-build/bin:$PATH"' >>"${BASHFILE}"
+            echo "export PATH=\"$HOME/.rbenv/plugins/ruby-build/bin:$PATH\" " >>"${BASHFILE}"
             source "${BASHFILE}"
          fi
 
@@ -820,6 +813,7 @@ Start_Docker(){
 # From https://gist.github.com/peterver/ca2d60abc015d334e1054302265b27d9
 # https://medium.com/@valkyrie_be/quicktip-a-universal-way-to-check-if-docker-is-running-ffa6567f8426
 rep=$(curl -s --unix-socket /var/run/docker.sock http://ping > /dev/null)
+note "$rep"
 status=$?
 if [ "$status" == "7" ]; then   # Not Docker connected:
 #if (! pgrep -f docker ); then   # No docker process IDs found:
@@ -885,7 +879,7 @@ if [ "$RUN_DELETE_AFTER" = true ]; then  # -D
       # https://www.thegeekdiary.com/how-to-list-start-stop-delete-docker-containers/
    h2 "Deleting docker-compose active containers ..."
    CONTAINERS_RUNNING="$( docker ps -a -q )"
-#   note "Active containers: $CONTAINERS_RUNNING"
+   note "Active containers: $CONTAINERS_RUNNING"
 
    note "Stopping containers:"
    docker stop "$( docker ps -a -q )"
