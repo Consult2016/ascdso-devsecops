@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.31"
+SCRIPT_VERSION="v0.33"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -41,6 +41,7 @@ args_prompt() {
    echo "   -p \" \"    Project folder -path "
    echo "   -r           -start Docker before run"
    echo "   -a           to -actually run docker-compose"
+#   echo "   -t           to run -tests"
    echo "   -o           to -open web page in default browser"
    echo "   -D           to -Delete files after run (to save disk space)"
    echo "   -M           to remove Docker iMages pulled from DockerHub"
@@ -640,7 +641,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
             if grep -q "rbenv init " "${BASHFILE}" ; then
                note "rbenv init  already in ${BASHFILE}"
             else
-               info "Adding rbenv init  in ${BASHFILE} "
+               info "Adding rbenv init - in ${BASHFILE} "
                # shellcheck disable=SC2016 # Expressions don't expand in single quotes, use double quotes for that.
                echo "eval \"$( rbenv init - )\" " >>"${BASHFILE}"
                source "${BASHFILE}"
@@ -659,8 +660,8 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    h2 "Verify ruby version"
    ruby -v
 
-   h2 "Install Ruby Development Headers ..."
-   silent-apt-get-install "ruby${RUBY_RELEASE}-dev"
+   #h2 "Install Ruby Development Headers ..."
+   #silent-apt-get-install "ruby${RUBY_RELEASE}-dev"
 
    note "$( rails --version | grep Rails )"  # Rails 3.2.22.5
       # See https://rubyonrails.org/
