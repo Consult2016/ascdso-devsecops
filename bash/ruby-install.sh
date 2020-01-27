@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.36"
+SCRIPT_VERSION="v0.37"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -307,16 +307,6 @@ sig_cleanup() {
 HOSTNAME=$( hostname )
 PUBLIC_IP=$( curl -s ifconfig.me )
 
-# cd ~/environment/
-
-      note "Running $0 in $PWD"  # $0 = script being run in Present Wording Directory.
-      note "Bash $BASH_VERSION at $LOG_DATETIME"  # built-in variable.
-      note "OS_TYPE=$OS_TYPE using $PACKAGE_MANAGER from $DISK_PCT_FREE disk free"
-      note "on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
-#   if [ -f "$OS_DETAILS" ]; then
-#      note "$OS_DETAILS"
-#   fi
-
 if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
    h2 "BASHFILE=~/.bash_profile ..."
    BASHFILE="$HOME/.bash_profile"  # on Macs
@@ -324,6 +314,15 @@ else
    h2 "BASHFILE=~/.bashrc ..."
    BASHFILE="$HOME/.bashrc"  # on Linux
 fi
+
+      note "Running $0 in $PWD"  # $0 = script being run in Present Wording Directory.
+      note "$LOG_DATETIME"
+      note "Bash $BASH_VERSION from $BASHFILE"
+      note "OS_TYPE=$OS_TYPE using $PACKAGE_MANAGER from $DISK_PCT_FREE disk free"
+      note "on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
+#   if [ -f "$OS_DETAILS" ]; then
+#      note "$OS_DETAILS"
+#   fi
 
 # Configure location to create new files:
 if [ -z "$PROJECT_FOLDER_PATH" ]; then  # -p ""  override blank (the default)
@@ -348,7 +347,7 @@ if [ "${SET_EXIT}" = true ]; then
 # set -o nounset
 fi
 
-
+exit
 
 # Capture password manual input once for multiple shares 
 # (without saving password like expect command) https://www.linuxcloudvps.com/blog/how-to-automate-shell-scripts-with-expect-command/
@@ -450,10 +449,20 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
 
-      # TODO: Install XCode for  Ruby Development Headers?
-      # sudo xcode-select --install
-      # sudo xcodebuild -license accept
+      # Install XCode for  Ruby Development Headers:
       # See https://stackoverflow.com/questions/20559255/error-while-installing-json-gem-mkmf-rb-cant-find-header-files-for-ruby/20561594
+      # Ensure Apple's command line tools (such as cc) are installed by node:
+      if ! command -v cc >/dev/null; then  # not installed, so:
+         h2 "Installing Apple's xcode command line tools (this takes a while) ..."
+         xcode-select --install 
+         # NOTE: Xcode installs its git to /usr/bin/git; recent versions of OS X (Yosemite and later) ship with stubs in /usr/bin, which take precedence over this git. 
+      fi
+      xcode-select --version  >>$LOGFILE
+         # XCode version: https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man1/pkgutil.1.html
+         # pkgutil --pkg-info=com.apple.pkg.CLTools_Executables | grep version
+         # Tools_Executables | grep version
+         # version: 9.2.0.0.1.1510905681
+      # TODO: https://gist.github.com/tylergets/90f7e61314821864951e58d57dfc9acd
 
       if ! command -v brew ; then
          if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
