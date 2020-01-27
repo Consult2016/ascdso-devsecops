@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.47"
+SCRIPT_VERSION="v0.48"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -710,16 +710,18 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    h2 "Verify ruby version"
    ruby -v
 
+   # To avoid Gem:ConfigMap is deprecated ???
+   gem pristine --all --no-extensions
+
    h2 "gem update --system"
    sudo gem update --system
-      # Gem:ConfigMap is deprecated ???
 
    h2 "gem install bundler"
    sudo gem install bundler   # 1.17.3 to 2.14?
 
    # To avoid Ubuntu rails install ERROR: Failed to build gem native extension.
    # h2 "gem install ruby-dev"  # https://stackoverflow.com/questions/22544754/failed-to-build-gem-native-extension-installing-compass
-   h2 "Install ruby${RUBY_VERSION}-dev for Ruby Development Headers ..."
+   h2 "Install ruby${RUBY_VERSION}-dev for Ruby Development Headers native extensions ..."
    silent-apt-get-install "ruby${RUBY_VERSION}-dev"
 
    h2 "gem install rails"  # https://gorails.com/setup/ubuntu/16.04
