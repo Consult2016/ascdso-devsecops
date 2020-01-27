@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.35"
+SCRIPT_VERSION="v0.36"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -24,10 +24,10 @@ LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
-   echo "./ruby-install.sh -v -E -i"
-   echo "./ruby-install.sh -v -E -I -U -c -s -r -a -o"
+   echo "./ruby-install.sh -v -E -i -o  # Ruby app"   
+   echo "./ruby-install.sh -v -E -I -U -c -s -r -a -o  # Python app"
    echo "USAGE EXAMPLE after testing:"
-   echo "./ruby-install.sh -v -D -M -R"
+   echo "./ruby-install.sh -v -D -M -C"
    echo "OPTIONS:"
    echo "   -E           to set -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
@@ -38,14 +38,14 @@ args_prompt() {
    echo "   -s           Use -secrets file in your user home folder"
    echo "   -n \"$USER\"            GitHub user -name"
    echo "   -e \"$USER@corp.com\"   GitHub user -email"
-   echo "   -p \" \"    Project folder -path "
+   echo "   -P \" \"    Project folder -path "
    echo "   -r           -start Docker before run"
    echo "   -a           to -actually run docker-compose"
 #   echo "   -t           to run -tests"
    echo "   -o           to -open web page in default browser"
    echo "   -D           to -Delete files after run (to save disk space)"
    echo "   -M           to remove Docker iMages pulled from DockerHub"
-   echo "   -R           to -Remove cloned files after run (to save disk space)"
+   echo "   -C           to remove -Cloned files after run (to save disk space)"
    echo " "
  }
 if [ $# -eq 0 ]; then  # display if no parameters are provided:
@@ -74,9 +74,8 @@ exit_abnormal() {            # Function: Exit with error.
    REMOVE_DOCKER_IMAGES=false   # -M
    RUBY_INSTALL=false
 
-APPNAME="rockstar"
-SECRETS_FILEPATH="$HOME/.secrets.sh"  # -s
-PROJECT_FOLDER_PATH="$HOME/projects"
+SECRETS_FILEPATH="$HOME/.secrets.sh"  # -S
+PROJECT_FOLDER_PATH="$HOME/projects"  # -P
 
 GitHub_USER_NAME=""                  # -n
 GitHub_USER_EMAIL=""                 # -e
@@ -85,6 +84,7 @@ GitHub_REPO_NAME="bsawf"
 #DOCKER_DB_NANE="snakeeyes-postgres"
 #DOCKER_WEB_SVC_NAME="snakeeyes_worker_1"  # from docker-compose ps  
 #APPNAME="snakeeyes"
+APPNAME="rockstar"
 
 while test $# -gt 0; do
   case "$1" in
@@ -157,12 +157,12 @@ while test $# -gt 0; do
       export RUN_DELETE_AFTER=true
       shift
       ;;
-    -R)
-      export REMOVE_GITHUB_AFTER=true
-      shift
-      ;;
     -M)
       export REMOVE_DOCKER_IMAGES=true
+      shift
+      ;;
+    -C)
+      export REMOVE_GITHUB_AFTER=true
       shift
       ;;
     *)
@@ -225,7 +225,12 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
       PACKAGE_MANAGER="apt-get"
 
       silent-apt-get-install(){  # see https://wilsonmar.github.io/bash-scripts/#silent-apt-get-install
-         sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq "$1" < /dev/null > /dev/null
+         if [ "${RUN_VERBOSE}" = true ]; then
+            info "apt-get install $1 ... "
+            sudo apt-get install "$1"
+         else
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq "$1" < /dev/null > /dev/null
+         fi
       }
    elif [ -f "/etc/os-release" ]; then
       OS_DETAILS=$( cat "/etc/os-release" )  # ID_LIKE="rhel fedora"
@@ -250,14 +255,28 @@ note "OS_DETAILS=$OS_DETAILS"
 
 
 BASH_VERSION=$( bash --version | grep bash | cut -d' ' -f4 | head -c 1 )
-   if [ "${BASH_VERSION}" -lt "4" ]; then
-      warning "Bash version ${BASH_VERSION} needed to calculate disk free"
-      DISK_PCT_FREE="0"
-      FREE_DISKBLOCKS_START="0"
-   else  # use array feature in BASH v4+ :
+   if [ "${BASH_VERSION}" -ge "4" ]; then  # use array feature in BASH v4+ :
       DISK_PCT_FREE=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[11]}" )
       FREE_DISKBLOCKS_START=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
-   fi
+   else
+      if [ "${UPDATE_PKGS}" = true ]; then
+         h2 "Bash version ${BASH_VERSION} too old. Upgrading to latest ..."
+         if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+            brew install bash
+         elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+            silent-apt-get-install "bash"
+         elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+            sudo yum install bash      # please test
+         elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+            sudo zypper install bash   # please test
+         fi
+         info "Now at $( bash --version  | grep 'bash' )"
+         fatal "Now please run this script again now that Bash is up to date. Exiting ..."
+         exit 0
+      else   # carry on with old bash:
+         DISK_PCT_FREE="0"
+         FREE_DISKBLOCKS_START="0"
+      fi
 
 
 trap this_ending EXIT
@@ -694,7 +713,8 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
    h2 "Build refinery app"
    refinerycms "${APPNAME}"
-   cd "${APPNAME}"
+   # TODO: if not error
+      cd "${APPNAME}"
 
    # TODO: Internationalize Refinery
 
@@ -936,7 +956,7 @@ fi
 note "$( docker images -a )"
 
 
-if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -R
+if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -C
    Delete_GitHub_clone    # defined above in this file.
 fi
 
