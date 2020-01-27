@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.48"
+SCRIPT_VERSION="v0.49"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -710,9 +710,10 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    h2 "Verify ruby version"
    ruby -v
 
-   # To avoid Gem:ConfigMap is deprecated ???
-   gem pristine --all --no-extensions
-
+   h2 "To avoid Gem:ConfigMap is deprecated in gem 1.8.x"
+   # See https://ryenus.tumblr.com/post/5450167670/eliminate-rubygems-deprecation-warnings
+   ruby -e "`gem -v 2>&1 | grep called | sed -r -e 's#^.*specifications/##' -e 's/-[0-9].*$//'`.split.each {|x| `gem pristine #{x} -- --build-arg`}"
+   
    h2 "gem update --system"
    sudo gem update --system
 
