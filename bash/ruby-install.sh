@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.37"
+SCRIPT_VERSION="v0.38"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -440,110 +440,3 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
       warning "no .yml file"
    fi
 fi
-
-
-if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
-
-   h2 "Install package managers ..."
-
-   if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
-
-      # Install XCode for  Ruby Development Headers:
-      # See https://stackoverflow.com/questions/20559255/error-while-installing-json-gem-mkmf-rb-cant-find-header-files-for-ruby/20561594
-      # Ensure Apple's command line tools (such as cc) are installed by node:
-      if ! command -v cc >/dev/null; then  # not installed, so:
-         h2 "Installing Apple's xcode command line tools (this takes a while) ..."
-         xcode-select --install 
-         # NOTE: Xcode installs its git to /usr/bin/git; recent versions of OS X (Yosemite and later) ship with stubs in /usr/bin, which take precedence over this git. 
-      fi
-      note "$( xcode-select --version )"
-         # XCode version: https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man1/pkgutil.1.html
-         # pkgutil --pkg-info=com.apple.pkg.CLTools_Executables | grep version
-         # Tools_Executables | grep version
-         # version: 9.2.0.0.1.1510905681
-      # TODO: https://gist.github.com/tylergets/90f7e61314821864951e58d57dfc9acd
-
-      if ! command -v brew ; then
-         if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
-            h2 "Installing brew package manager on macOS using Ruby ..."
-            mkdir homebrew && curl -L https://GitHub.com/Homebrew/brew/tarball/master \
-               | tar xz --strip 1 -C homebrew
-         elif [ "$OS_TYPE" == "WSL" ]; then
-            h2 "Installing brew package manager on WSL ..." # A fork of Homebrew known as Linuxbrew.
-            sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
-            # https://medium.com/@edwardbaeg9/using-homebrew-on-windows-10-with-windows-subsystem-for-linux-wsl-c7f1792f88b3
-            # Linuxbrew installs to /home/linuxbrew/.linuxbrew/bin, so add that directory to your PATH.
-            test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
-            test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-
-            if grep -q ".rbenv/bin:" "${BASHFILE}" ; then
-               note ".rbenv/bin: already in ${BASHFILE}"
-            else
-               info "Adding .rbenv/bin: in ${BASHFILE} "
-               echo "# .rbenv/bin are shims for Ruby commands so must be in front:" >>"${BASHFILE}"
-               # shellcheck disable=SC2016 # Expressions don't expand in single quotes, use double quotes for that.
-               echo "export PATH=\"$HOME/.rbenv/bin:$PATH\" " >>"${BASHFILE}"
-               source "${BASHFILE}"
-            fi
-
-            if grep -q "brew shellenv" "${BASHFILE}" ; then
-               note "brew shellenv: already in ${BASHFILE}"
-            else
-               info "Adding brew shellenv: in ${BASHFILE} "
-               echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>"${BASHFILE}"
-               source "${BASHFILE}"
-            fi
-         fi
-      else  # brew found:
-         if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Updating brew itself ..."
-            # per https://discourse.brew.sh/t/how-to-upgrade-brew-stuck-on-0-9-9/33 from 2016:
-            # cd "$(brew --repo)" && git fetch && git reset --hard origin/master && brew update
-            brew update
-         fi
-      fi
-      note "$( brew --version )"
-         # Homebrew 2.2.2
-         # Homebrew/homebrew-core (git revision e103; last commit 2020-01-07)
-         # Homebrew/homebrew-cask (git revision bbf0e; last commit 2020-01-07)
-
-   elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then  # (Advanced Packaging Tool) for Debian/Ubuntu
-
-      if ! command -v apt-get ; then
-         h2 "Installing apt-get package manager ..."
-         wget http://security.ubuntu.com/ubuntu/pool/main/a/apt/apt_1.0.1ubuntu2.17_amd64.deb -O apt.deb
-         sudo dpkg -i apt.deb
-         # Alternative:
-         # pkexec dpkg -i apt.deb
-      else
-         if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Upgrading apt-get ..."
-            # https://askubuntu.com/questions/194651/why-use-apt-get-upgrade-instead-of-apt-get-dist-upgrade
-            sudo apt-get update
-            sudo apt-get dist-upgrade
-         fi
-      fi
-      note "$( apt-get --version )"
-
-   elif [ "${PACKAGE_MANAGER}" == "yum" ]; then  #  (Yellow dog Updater Modified) for Red Hat, CentOS
-      if ! command -v yum ; then
-         h2 "Installing yum rpm package manager ..."
-         # https://www.unix.com/man-page/linux/8/rpm/
-         wget https://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/e/epel-release-7-11.noarch.rpm
-         rpm -ivh yum-3.4.3-154.el7.centos.noarch.rpm
-      else
-         if [ "${UPDATE_PKGS}" = true ]; then
-            #rpm -ivh telnet-0.17-60.el7.x86_64.rpm
-            # https://unix.stackexchange.com/questions/109424/how-to-reinstall-yum
-            rpm -V yum
-            # https://www.cyberciti.biz/faq/rhel-centos-fedora-linux-yum-command-howto/
-         fi
-      fi
-      note "$( yum --version )"
-
-   #  TODO: elif for Suse Linux "${PACKAGE_MANAGER}" == "zypper" ?
-
-   fi # brew
-
-fi # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
-
