@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.42"
+SCRIPT_VERSION="v0.44"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -643,10 +643,10 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       silent-apt-get-install "libmysqlclient-dev"  # unable to locate
 
    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
-      # For Redhat distro:
+      # TODO: More For Redhat distro:
       sudo yum install ruby-devel
    elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then
-      # for [open]SuSE:
+      # TODO: More for [open]SuSE:
       sudo zypper install ruby-devel
    fi
 
@@ -673,6 +673,10 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
             source "${BASHFILE}"
          fi
    
+   if ! command -v rbenv ; then
+      fatal "rbenv not found. Aborting for script fix ..."
+      exit 1
+   fi
 
    h2 "rbenv init"
             if grep -q "rbenv init " "${BASHFILE}" ; then
@@ -685,11 +689,16 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
             fi
             # This results in display of rbenv().
 
-   # Based on latest stable release from https://www.ruby-lang.org/en/downloads/
+   # Manually lookup latest stable release in https://www.ruby-lang.org/en/downloads/
    RUBY_RELEASE="2.7.0"
+
    h2 "Install Ruby $RUBY_RELEASE using rbenv ..."
-   rbenv install "${RUBY_RELEASE}"
+   # Check if the particular Ruby version is already installed by rbenv
+   RUBY_RELEASE_RESPONSE="$( rbenv install -l | grep $RUBY_RELEASE )"
+   if [ -z "$RUBY_RELEASE_RESPONSE" ]; then  # not found:
+      rbenv install "${RUBY_RELEASE}"
       # Downloading ...
+   fi
 
    h2 "rbenv global"
    rbenv global "${RUBY_RELEASE}"   # insted of -l (latest)
@@ -700,9 +709,6 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    #h2 "Install Ruby Development Headers ..."
    #silent-apt-get-install "ruby${RUBY_RELEASE}-dev"
 
-   note "$( rails --version | grep Rails )"  # Rails 3.2.22.5
-      # See https://rubyonrails.org/
-
    h2 "gem update --system"
    sudo gem update --system
 
@@ -711,7 +717,13 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
    h2 "gem install rails"  # https://gorails.com/setup/ubuntu/16.04
    sudo gem install rails    # latest
-   # gem install rails -v 6.0.2.1
+      # gem install rails -v 6.0.2.1
+   if ! command -v rails ; then
+      fatal "rails not found. Aborting for script fix ..."
+      exit 1
+   fi
+   note "$( rails --version | grep "Rails" )"  # Rails 3.2.22.5
+      # See https://rubyonrails.org/
 
    h2 "rbenv rehash to make the rails executable available:"  # https://github.com/rbenv/rbenv
    sudo rbenv rehash
@@ -733,7 +745,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
    # TODO: Internationalize Refinery
 
-   # TODO: Add YWAM resources from GitHub
+   # TODO: Add RoR app resources from GitHub
 
    info "Done installing RoR with ."
 
