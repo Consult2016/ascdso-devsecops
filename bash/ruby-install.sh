@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.44"
+SCRIPT_VERSION="v0.45"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -642,6 +642,9 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       silent-apt-get-install "mysql-server"
       silent-apt-get-install "libmysqlclient-dev"  # unable to locate
 
+      #h2 "Install PostgreSQL ..."
+      #silent-apt-get-install "postgres"
+
    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
       # TODO: More For Redhat distro:
       sudo yum install ruby-devel
@@ -711,13 +714,17 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
    h2 "gem update --system"
    sudo gem update --system
+      # Gem:ConfigMap is deprecated ???
 
    h2 "gem install bundler"
    sudo gem install bundler   # 1.17.3 to 2.14?
 
+   h2 "gem install ruby-dev"  # https://stackoverflow.com/questions/22544754/failed-to-build-gem-native-extension-installing-compass
+   sudo gem install ruby-dev
+      # To avoid Ubuntu rails install ERROR: Failed to build gem native extension.
+
    h2 "gem install rails"  # https://gorails.com/setup/ubuntu/16.04
    sudo gem install rails    # latest
-      # gem install rails -v 6.0.2.1
    if ! command -v rails ; then
       fatal "rails not found. Aborting for script fix ..."
       exit 1
