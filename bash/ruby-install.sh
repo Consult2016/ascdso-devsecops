@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.49"
+SCRIPT_VERSION="v0.50"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -603,7 +603,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       h2 "sudo apt autoremove"
       sudo apt autoremove
 
-      h2 "Install Node"
+      h2 "Install NodeJs to run Ruby"
       curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
       silent-apt-get-install "nodejs"
 
@@ -717,7 +717,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    h2 "gem update --system"
    sudo gem update --system
 
-   h2 "gem install bundler"
+   h2 "gem install bundler"  # https://bundler.io/v1.12/rationale.html
    sudo gem install bundler   # 1.17.3 to 2.14?
 
    # To avoid Ubuntu rails install ERROR: Failed to build gem native extension.
@@ -752,22 +752,19 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    # TODO: if not error
       cd "${APPNAME}"
 
-   # TODO: Internationalize Refinery
+   # TODO: Add RoR app resources from GitHub  (gem file)
+   # TODO: containing Internationalize Refinery
 
-   # TODO: Add RoR app resources from GitHub
-
-   info "Done installing RoR with ."
-
-   h2 "start the Rails server ..."
+   h2 "Starting rails server at ${APPNAME} ..."
    cd "${APPNAME}"
-   pwd
+   note "Now at $PWD ..."
    rails server
 
    h2 "Opening website ..."
       curl -s -I -X POST http://localhost:3000/refinery
       curl -s       POST http://localhost:3000/ | head -n 10  # first 10 lines
 
-   # Manually logon to the backend using the admin address and password…
+   # TODO: Use Selenium to manually logon to the backend using the admin address and password…
 
    exit
 
