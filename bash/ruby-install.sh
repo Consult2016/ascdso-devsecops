@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.41"
+SCRIPT_VERSION="v0.42"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -392,11 +392,11 @@ note "$( pwd )"
 
 Input_GitHub_User_Info(){
       # https://www.shellcheck.net/wiki/SC2162: read without -r will mangle backslashes.
-      read -r -p "Enter your GitHub user name [$USER]: " GitHub_USER_NAME
-      GitHub_USER_NAME=${GitHub_USER_NAME:-"$USER"}
+      read -r -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
+      GitHub_USER_NAME=${GitHub_USER_NAME:-"John Doe"}
 
-      read -r -p "Enter your GitHub user email [$USER@corp.com]: " GitHub_USER_EMAIL
-      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"$USER@corp.com"}
+      read -r -p "Enter your GitHub user email [john_doe@gmail.com]: " GitHub_USER_EMAIL
+      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"johb_doe@gmail.com"}
 }
 
 if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
@@ -416,7 +416,7 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
    fi
 else  # flag not to use file, then manually input:
    warning "Using default GitHub user info ..."
-   Input_GitHub_User_Info  # function defined above.
+   # Input_GitHub_User_Info  # function defined above.
 fi  # USE_SECRETS_FILE
 
 if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
@@ -659,14 +659,16 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    h2 "Now at path $PWD ..."
 
    h2 "git clone ruby-build.git to use the rbenv install command"
-   if [   -d "~/.rbenv/plugins/ruby-build" ]; then  # directory found, so remove it first.
-      rm -rf "~/.rbenv/plugins/ruby-build"
+   FOLDER_PATH="~/.rbenv/plugins/ruby-build"
+   if [   -d "${FOLDER_PATH}" ]; then  # directory found, so remove it first.
+      note "Deleting ${FOLDER_PATH} ..."
+      rm -rf "${FOLDER_PATH}"
    fi
-      git clone https://github.com/rbenv/ruby-build.git  ~/.rbenv/plugins/ruby-build
-         if grep -q ".rbenv/plugins/ruby-build/bin:" "${BASHFILE}" ; then
+      git clone https://github.com/rbenv/ruby-build.git  "${FOLDER_PATH}"
+         if grep -q ".rbenv/plugins/ruby-build/bin" "${BASHFILE}" ; then
             note "rbenv/plugins/ already in ${BASHFILE}"
          else
-            info "Adding rbenv/plugins in ${BASHFILE}"
+            info "Appending rbenv/plugins in ${BASHFILE}"
             echo "export PATH=\"$HOME/.rbenv/plugins/ruby-build/bin:$PATH\" " >>"${BASHFILE}"
             source "${BASHFILE}"
          fi
@@ -676,7 +678,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
             if grep -q "rbenv init " "${BASHFILE}" ; then
                note "rbenv init  already in ${BASHFILE}"
             else
-               info "Adding rbenv init - in ${BASHFILE} "
+               info "Appending rbenv init - in ${BASHFILE} "
                # shellcheck disable=SC2016 # Expressions don't expand in single quotes, use double quotes for that.
                echo "eval \"$( rbenv init - )\" " >>"${BASHFILE}"
                source "${BASHFILE}"
