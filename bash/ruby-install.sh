@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.40"
+SCRIPT_VERSION="v0.41"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -30,14 +30,15 @@ args_prompt() {
    echo "./ruby-install.sh -v -D -M -C"
    echo "OPTIONS:"
    echo "   -E           to set -e to stop on error"
+   echo "   -x           to set sudoers -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
    echo "   -i           -install Ruby and Refinery"
    echo "   -I           -Install brew, docker, docker-compose"
    echo "   -U           -Upgrade packages"
    echo "   -c           -clone from GitHub"
-   echo "   -s           Use -secrets file in your user home folder"
-   echo "   -n \"$USER\"            GitHub user -name"
-   echo "   -e \"$USER@corp.com\"   GitHub user -email"
+   echo "   -s           -set GitHub user info from ~/.secrets.sh in your user home folder"
+   echo "   -n \"John Doe\"            GitHub user -name"
+   echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
    echo "   -P \" \"    Project folder -path "
    echo "   -r           -start Docker before run"
    echo "   -a           to -actually run docker-compose"
@@ -76,10 +77,10 @@ exit_abnormal() {            # Function: Exit with error.
 SECRETS_FILEPATH="$HOME/.secrets.sh"  # -S
 PROJECT_FOLDER_PATH="$HOME/projects"  # -P
 
-GitHub_USER_NAME=""                  # -n
-GitHub_USER_EMAIL=""                 # -e
-GitHub_REPO_NAME="bsawf"
+GitHub_USER_NAME="John Doe"                  # -n
+GitHub_USER_EMAIL="john_doe@gmail.com"       # -e
 
+GitHub_REPO_NAME="bsawf"
 #DOCKER_DB_NANE="snakeeyes-postgres"
 #DOCKER_WEB_SVC_NAME="snakeeyes_worker_1"  # from docker-compose ps  
 #APPNAME="snakeeyes"
@@ -399,30 +400,37 @@ Input_GitHub_User_Info(){
 }
 
 if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
-   if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found:
-      warning "File not found in $SECRETS_FILEPATH "
-      Input_GitHub_User_Info  # function defined above.
-   else  # found:
+   if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
+      warning "File not found in $SECRETS_FILEPATH. Downloading file .secrets.sample.sh ... "
+      curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/.secrets.sample.sh
+      warning "Moving downloaded file to $HOME/.secrets.sh ... "
+      mv .secrets.sample.sh  .secrets.sh
+      fatal "Please edit file $HOME/.secrets.sh and run again ..."
+      exit 1
+   else  # file found:
       h2 "Using settings in $SECRETS_FILEPATH "
       ls -al "$SECRETS_FILEPATH"
       chmod +x "$SECRETS_FILEPATH"
       source   "$SECRETS_FILEPATH"  # run file containing variable definitions.
       note "GitHub_USER_NAME=\"$GitHub_USER_NAME\" read from file $SECRETS_FILEPATH"
    fi
-else
-      Input_GitHub_User_Info  # function defined above.
+else  # flag not to use file, then manually input:
+   warning "Using default GitHub user info ..."
+   Input_GitHub_User_Info  # function defined above.
 fi  # USE_SECRETS_FILE
 
-if [ -z "$GitHub_USER_EMAIL" ]; then 
-   fatal "GitHub_USER_EMAIL is empty!"
-   exit 1
+if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
+   Input_GitHub_User_Info  # function defined above.
 else
+   note "Using -u \"$GitHub_USER_NAME\" - e\"GitHub_USER_EMAIL\" ..."
+   # since this is hard coded as "John Doe" above
+fi
+
    info "GitHub_USER_EMAIL and USER_NAME being configured ..."
    git config --global user.name  "$GitHub_USER_NAME"
    git config --global user.email "$GitHub_USER_EMAIL"
    # note "$( git config --list )"
    # note "$( git config --list --show-origin )"
-fi
 
 
 if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
@@ -650,14 +658,11 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    cd ~/
    h2 "Now at path $PWD ..."
 
-   # See https://www.digitalocean.com/community/tutorials/how-to-install-ruby-on-rails-with-rbenv-on-ubuntu-16-04
-   # and http://devopspy.com/linux/install-latest-ruby-using-rbenv/
-
    h2 "git clone ruby-build.git to use the rbenv install command"
-   if [ -d "~/.rbenv/plugins/ruby-build" ]; then  # directory not available, so clone into it:
+   if [   -d "~/.rbenv/plugins/ruby-build" ]; then  # directory found, so remove it first.
       rm -rf "~/.rbenv/plugins/ruby-build"
    fi
-      git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+      git clone https://github.com/rbenv/ruby-build.git  ~/.rbenv/plugins/ruby-build
          if grep -q ".rbenv/plugins/ruby-build/bin:" "${BASHFILE}" ; then
             note "rbenv/plugins/ already in ${BASHFILE}"
          else
