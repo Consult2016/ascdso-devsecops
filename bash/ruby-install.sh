@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/ruby-install.sh)" -v -E -i
 
-SCRIPT_VERSION="v0.46"
+SCRIPT_VERSION="v0.47"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -694,6 +694,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
 
    # Manually lookup latest stable release in https://www.ruby-lang.org/en/downloads/
    RUBY_RELEASE="2.7.0"
+   RUBY_VERSION="2.7"
 
    h2 "Install Ruby $RUBY_RELEASE using rbenv ..."
    # Check if the particular Ruby version is already installed by rbenv
@@ -709,9 +710,6 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    h2 "Verify ruby version"
    ruby -v
 
-   #h2 "Install Ruby Development Headers ..."
-   #silent-apt-get-install "ruby${RUBY_RELEASE}-dev"
-
    h2 "gem update --system"
    sudo gem update --system
       # Gem:ConfigMap is deprecated ???
@@ -719,9 +717,10 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    h2 "gem install bundler"
    sudo gem install bundler   # 1.17.3 to 2.14?
 
-   h2 "gem install ruby_dev"  # https://stackoverflow.com/questions/22544754/failed-to-build-gem-native-extension-installing-compass
-   sudo gem install ruby_dev
-      # To avoid Ubuntu rails install ERROR: Failed to build gem native extension.
+   # To avoid Ubuntu rails install ERROR: Failed to build gem native extension.
+   # h2 "gem install ruby-dev"  # https://stackoverflow.com/questions/22544754/failed-to-build-gem-native-extension-installing-compass
+   h2 "Install ruby${RUBY_VERSION}-dev for Ruby Development Headers ..."
+   silent-apt-get-install "ruby${RUBY_VERSION}-dev"
 
    h2 "gem install rails"  # https://gorails.com/setup/ubuntu/16.04
    sudo gem install rails    # latest
