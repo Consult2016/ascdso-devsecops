@@ -717,6 +717,18 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
    h2 "gem update --system"
    sudo gem update --system
 
+   h2 "create .gemrc"  # https://www.digitalocean.com/community/tutorials/how-to-install-ruby-on-rails-with-rbenv-on-ubuntu-16-04
+   if [ ! -f "~/.gemrc" ]; then   # file NOT found, so create it:
+      echo "gem: --no-document" > ~/.gemrc
+   else
+      if grep -q "gem: --no-document" "~/.gemrc" ; then   # found in file:
+         note "gem: --no-document already in ~/.gemrc "
+      else
+         info "Adding gem --no-document in ~/.gemrc "
+         echo "gem: --no-document" >> ~/.gemrc
+      fi
+   fi
+
    h2 "gem install bundler"  # https://bundler.io/v1.12/rationale.html
    sudo gem install bundler   # 1.17.3 to 2.14?
 

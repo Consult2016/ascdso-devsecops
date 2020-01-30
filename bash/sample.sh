@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2001 # See if you can use ${variable//search/replace} instead.
+# shellcheck disable=SC1090 # Can't follow non-constant source. Use a directive to specify location.
 
 # sample.sh in https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh
 # coded based on bash scripting techniques described at https://wilsonmar.github.io/bash-scripting.
@@ -9,14 +10,13 @@
 
 # After you obtain a Terminal (console) in your enviornment,
 # cd to folder, copy this line and paste in the terminal:
-# bash -c "$(curl -fsSL  https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -V
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -E -i
 
+SCRIPT_VERSION="v0.50"
+clear  # screen (but not history)
+echo "================================================ $SCRIPT_VERSION "
 
-### STEP 1. Set display utilities:
-
-# clear  # screen (but not history)
-
-# TEMPLATE: Capture starting timestamp and display no matter how it ends:
+# Capture starting timestamp and display no matter how it ends:
 EPOCH_START="$(date -u +%s)"  # such as 1572634619
 LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 
@@ -24,30 +24,34 @@ LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
-   echo "./sample.sh -v -I -U -c -s -r -a -o"
+   echo "./sample.sh -v -E -i -o  # Ruby app"   
+   echo "./sample.sh -v -E -I -U -c -s -r -a -o  # Python app"
    echo "USAGE EXAMPLE after testing:"
-   echo "./sample.sh -v -D -M -R"
+   echo "./sample.sh -v -D -M -C"
    echo "OPTIONS:"
-   echo "   -h           to display this -help list"
    echo "   -E           to set -e to stop on error"
+   echo "   -x           to set sudoers -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
+   echo "   -i           -install Ruby and Refinery"
    echo "   -I           -Install brew, docker, docker-compose"
    echo "   -U           -Upgrade packages"
    echo "   -c           -clone from GitHub"
-   echo "   -s           Use -secrets file in your user home folder"
-   echo "   -n \"John Doe\"         GitHub user -name"
-   echo "   -e \"john_doe@a.com\"   GitHub user -email"
-   echo "   -p \" \"    Project folder -path "
+   echo "   -s           -set GitHub user info from ~/.secrets.sh in your user home folder"
+   echo "   -n \"John Doe\"            GitHub user -name"
+   echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
+   echo "   -P \" \"    Project folder -path "
    echo "   -r           -start Docker before run"
    echo "   -a           to -actually run docker-compose"
+#   echo "   -t           to run -tests"
    echo "   -o           to -open web page in default browser"
    echo "   -D           to -Delete files after run (to save disk space)"
    echo "   -M           to remove Docker iMages pulled from DockerHub"
-   echo "   -R           to -Remove cloned files after run (to save disk space)"
+   echo "   -C           to remove -Cloned files after run (to save disk space)"
    echo " "
  }
 if [ $# -eq 0 ]; then  # display if no parameters are provided:
    args_prompt
+   exit 1
 fi
 exit_abnormal() {            # Function: Exit with error.
   echo "exiting abnormally"
@@ -56,11 +60,12 @@ exit_abnormal() {            # Function: Exit with error.
 }
 
 # Defaults (default true so flag turns it true):
-   SET_EXIT=false
-   RUN_VERBOSE=false
-   UPDATE_PKGS=false
-   RESTART_DOCKER=false
-   RUN_ACTUAL=false   # false as dry run is default.
+   SET_EXIT=false               # -E
+   RUN_VERBOSE=false            # -v
+   RUBY_INSTALL=false           # -i
+   UPDATE_PKGS=false            # -U
+   RESTART_DOCKER=false         # -r
+   RUN_ACTUAL=false             # -a  (dry run is default)
    DOWNLOAD_INSTALL=false       # -d
    RUN_DELETE_AFTER=false       # -D
    RUN_OPEN_BROWSER=false       # -o
@@ -68,25 +73,27 @@ exit_abnormal() {            # Function: Exit with error.
    REMOVE_GITHUB_AFTER=false    # -R
    USE_SECRETS_FILE=false       # -s
    REMOVE_DOCKER_IMAGES=false   # -M
-   RUBY_INSTALL=false
 
-SECRETS_FILEPATH="$HOME/.secrets.sh"  # -s
-GitHub_USER_NAME=""                  # -n
-GitHub_USER_EMAIL=""                 # -e
+SECRETS_FILEPATH="$HOME/.secrets.sh"  # -S
+PROJECT_FOLDER_PATH="$HOME/projects"  # -P
+
+GitHub_USER_NAME="John Doe"                  # -n
+GitHub_USER_EMAIL="john_doe@gmail.com"       # -e
+
 GitHub_REPO_NAME="bsawf"
-PROJECT_FOLDER_PATH="$HOME/projects"
-
 #DOCKER_DB_NANE="snakeeyes-postgres"
 #DOCKER_WEB_SVC_NAME="snakeeyes_worker_1"  # from docker-compose ps  
 #APPNAME="snakeeyes"
+APPNAME="rockstar"
 
 while test $# -gt 0; do
   case "$1" in
-    -h)
-      args_prompt  # function defined above.
-      ;;
     -v)
       export RUN_VERBOSE=true
+      shift
+      ;;
+    -i)
+      export RUBY_INSTALL=true
       shift
       ;;
     -E)
@@ -150,12 +157,12 @@ while test $# -gt 0; do
       export RUN_DELETE_AFTER=true
       shift
       ;;
-    -R)
-      export REMOVE_GITHUB_AFTER=true
-      shift
-      ;;
     -M)
       export REMOVE_DOCKER_IMAGES=true
+      shift
+      ;;
+    -C)
+      export REMOVE_GITHUB_AFTER=true
       shift
       ;;
     *)
@@ -185,23 +192,23 @@ h2() {     # heading
    printf "\n${bold}>>> %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 info() {   # output on every run
-   printf "${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 note() { if [ "${RUN_VERBOSE}" = true ]; then
-   printf "${bold}${cyan} ${reset} ${cyan}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${bold}${cyan} ${reset} ${cyan}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
    fi
 }
 success() {
-   printf "${green}✔ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${green}✔ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-error() {       # &#9747;
-   printf "${red}${bold}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+error() {    # &#9747;
+   printf "\n${red}${bold}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 warning() {  # &#9758; or &#9755;
-   printf "${cyan}☞ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${cyan}☞ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 fatal() {   # Skull: &#9760;  # Star: &starf; &#9733; U+02606  # Toxic: &#9762;
-   printf "${red}☢  %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${red}☢  %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 
 # Check what operating system is in use:
@@ -216,12 +223,21 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
       OS_TYPE="Ubuntu"
       # TODO: OS_TYPE="WSL" ???
       PACKAGE_MANAGER="apt-get"
+
+      silent-apt-get-install(){  # see https://wilsonmar.github.io/bash-scripts/#silent-apt-get-install
+         if [ "${RUN_VERBOSE}" = true ]; then
+            info "apt-get install $1 ... "
+            sudo apt-get install "$1"
+         else
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq "$1" < /dev/null > /dev/null
+         fi
+      }
    elif [ -f "/etc/os-release" ]; then
       OS_DETAILS=$( cat "/etc/os-release" )  # ID_LIKE="rhel fedora"
       OS_TYPE="Fedora"
       PACKAGE_MANAGER="yum"
    elif [ -f "/etc/redhat-release" ]; then
-      OS_DETAILS=$( cat "/etc/redhat-release" )  # ID_LIKE="rhel fedora"
+      OS_DETAILS=$( cat "/etc/redhat-release" )
       OS_TYPE="RedHat"
       PACKAGE_MANAGER="yum"
    elif [ -f "/etc/centos-release" ]; then
@@ -235,18 +251,33 @@ else
    error "Operating system not anticipated. Please update script. Aborting."
    exit 0
 fi
+note "OS_DETAILS=$OS_DETAILS"
 
 
 BASH_VERSION=$( bash --version | grep bash | cut -d' ' -f4 | head -c 1 )
-   if [ "${BASH_VERSION}" -lt "4" ]; then
-      warning "Bash version ${BASH_VERSION} needed to calculate disk free"
-      DISK_PCT_FREE="0"
-      FREE_DISKBLOCKS_START="0"
-   else
+   if [ "${BASH_VERSION}" -ge "4" ]; then  # use array feature in BASH v4+ :
       DISK_PCT_FREE=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[11]}" )
       FREE_DISKBLOCKS_START=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
+   else
+      if [ "${UPDATE_PKGS}" = true ]; then
+         h2 "Bash version ${BASH_VERSION} too old. Upgrading to latest ..."
+         if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+            brew install bash
+         elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+            silent-apt-get-install "bash"
+         elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+            sudo yum install bash      # please test
+         elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+            sudo zypper install bash   # please test
+         fi
+         info "Now at $( bash --version  | grep 'bash' )"
+         fatal "Now please run this script again now that Bash is up to date. Exiting ..."
+         exit 0
+      else   # carry on with old bash:
+         DISK_PCT_FREE="0"
+         FREE_DISKBLOCKS_START="0"
+      fi
    fi
-
 
 trap this_ending EXIT
 trap this_ending INT QUIT TERM
@@ -259,7 +290,7 @@ this_ending() {
       FREE_DISKBLOCKS_END=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
    fi
    FREE_DIFF=$(((FREE_DISKBLOCKS_END-FREE_DISKBLOCKS_START)))
-   MSG="End of script after $((EPOCH_DIFF/360)) seconds and $((FREE_DIFF*512)) bytes on disk."
+   MSG="End of script $SCRIPT_VERSION after $((EPOCH_DIFF/360)) seconds and $((FREE_DIFF*512)) bytes on disk."
    # echo 'Elapsed HH:MM:SS: ' $( awk -v t=$beg-seconds 'BEGIN{t=int(t*1000); printf "%d:%02d:%02d\n", t/3600000, t/60000%60, t/1000%60}' )
    success "$MSG"
    note "Disk $FREE_DISKBLOCKS_START to $FREE_DISKBLOCKS_END"
@@ -276,10 +307,17 @@ sig_cleanup() {
 HOSTNAME=$( hostname )
 PUBLIC_IP=$( curl -s ifconfig.me )
 
-# cd ~/environment/
+if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
+   h2  "BASHFILE=~/.bash_profile ..."
+   BASHFILE="$HOME/.bash_profile"  # on Macs
+else
+   h2  "BASHFILE=~/.bashrc ..."
+   BASHFILE="$HOME/.bashrc"  # on Linux
+fi
 
       note "Running $0 in $PWD"  # $0 = script being run in Present Wording Directory.
-      note "Bash $BASH_VERSION at $LOG_DATETIME"  # built-in variable.
+      note "$LOG_DATETIME"
+      note "Bash $BASH_VERSION from $BASHFILE"
       note "OS_TYPE=$OS_TYPE using $PACKAGE_MANAGER from $DISK_PCT_FREE disk free"
       note "on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
 #   if [ -f "$OS_DETAILS" ]; then
@@ -311,7 +349,6 @@ if [ "${SET_EXIT}" = true ]; then
 fi
 
 
-
 # Capture password manual input once for multiple shares 
 # (without saving password like expect command) https://www.linuxcloudvps.com/blog/how-to-automate-shell-scripts-with-expect-command/
    # From https://askubuntu.com/a/711591
@@ -333,16 +370,20 @@ Delete_GitHub_clone(){
 
 if [ "${CLONE_GITHUB}" = true ]; then
    Delete_GitHub_clone    # defined above in this file.
-
-   h2 "Downloading repo ..."
-   git clone https://github.com/nickjj/build-a-saas-app-with-flask.git "$GitHub_REPO_NAME"   
-   cd "$GitHub_REPO_NAME" || return 
-
+   if [ -d "$GitHub_REPO_NAME" ]; then  # directory not available, so clone into it:
+      rm -rf "$GitHub_REPO_NAME" 
+   fi
+      h2 "Downloading repo ..."
+      git clone https://github.com/nickjj/build-a-saas-app-with-flask.git "$GitHub_REPO_NAME"   
+      cd "$GitHub_REPO_NAME"
+   
    # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
    # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
    # git pull upstream master
 else
-   cd "$GitHub_REPO_NAME" || return 
+   if [ -d "${GitHub_REPO_NAME:?}" ]; then  # path available.
+      cd "$GitHub_REPO_NAME"
+   fi
 fi
 note "$( pwd )"
 
@@ -354,36 +395,42 @@ Input_GitHub_User_Info(){
       read -r -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
       GitHub_USER_NAME=${GitHub_USER_NAME:-"John Doe"}
 
-      read -r -p "Enter your GitHub user email [john_doe@mckinsey.com]: " GitHub_USER_EMAIL
-      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"John_Doe@mckinsey.com"}
-      # cp secrets.sh  "$SECRETS_FILEPATH"
+      read -r -p "Enter your GitHub user email [john_doe@gmail.com]: " GitHub_USER_EMAIL
+      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"johb_doe@gmail.com"}
 }
 
 if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
-   if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found:
-      warning "File not found in $SECRETS_FILEPATH "
-      Input_GitHub_User_Info  # function defined above.
-   else  # found:
+   if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
+      warning "File not found in $SECRETS_FILEPATH. Downloading file .secrets.sample.sh ... "
+      curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/.secrets.sample.sh
+      warning "Moving downloaded file to $HOME/.secrets.sh ... "
+      mv .secrets.sample.sh  .secrets.sh
+      fatal "Please edit file $HOME/.secrets.sh and run again ..."
+      exit 1
+   else  # file found:
       h2 "Using settings in $SECRETS_FILEPATH "
       ls -al "$SECRETS_FILEPATH"
       chmod +x "$SECRETS_FILEPATH"
       source   "$SECRETS_FILEPATH"  # run file containing variable definitions.
       note "GitHub_USER_NAME=\"$GitHub_USER_NAME\" read from file $SECRETS_FILEPATH"
    fi
-else
-      Input_GitHub_User_Info  # function defined above.
+else  # flag not to use file, then manually input:
+   warning "Using default GitHub user info ..."
+   # Input_GitHub_User_Info  # function defined above.
 fi  # USE_SECRETS_FILE
 
-if [ -z "$GitHub_USER_EMAIL" ]; then 
-   fatal "GitHub_USER_EMAIL is empty!"
-   exit 1
+if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
+   Input_GitHub_User_Info  # function defined above.
 else
+   note "Using -u \"$GitHub_USER_NAME\" - e\"GitHub_USER_EMAIL\" ..."
+   # since this is hard coded as "John Doe" above
+fi
+
    info "GitHub_USER_EMAIL and USER_NAME being configured ..."
    git config --global user.name  "$GitHub_USER_NAME"
    git config --global user.email "$GitHub_USER_EMAIL"
    # note "$( git config --list )"
    # note "$( git config --list --show-origin )"
-fi
 
 
 if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
@@ -409,7 +456,20 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
 
-      # TODO: Install XCode?
+      # Install XCode for  Ruby Development Headers:
+      # See https://stackoverflow.com/questions/20559255/error-while-installing-json-gem-mkmf-rb-cant-find-header-files-for-ruby/20561594
+      # Ensure Apple's command line tools (such as cc) are installed by node:
+      if ! command -v cc >/dev/null; then  # not installed, so:
+         h2 "Installing Apple's xcode command line tools (this takes a while) ..."
+         xcode-select --install 
+         # NOTE: Xcode installs its git to /usr/bin/git; recent versions of OS X (Yosemite and later) ship with stubs in /usr/bin, which take precedence over this git. 
+      fi
+      note "$( xcode-select --version )"
+         # XCode version: https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man1/pkgutil.1.html
+         # pkgutil --pkg-info=com.apple.pkg.CLTools_Executables | grep version
+         # Tools_Executables | grep version
+         # version: 9.2.0.0.1.1510905681
+      # TODO: https://gist.github.com/tylergets/90f7e61314821864951e58d57dfc9acd
 
       if ! command -v brew ; then
          if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
@@ -424,16 +484,23 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
             test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
             test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
-            if grep -q ".rbenv/bin:" ".bashrc" ; then
-               note ".rbenv/bin: already in .bashrc"
+            if grep -q ".rbenv/bin:" "${BASHFILE}" ; then
+               note ".rbenv/bin: already in ${BASHFILE}"
             else
-               info "Adding .rbenv/bin: in .bashrc"
-               echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
-               source .bashrc
+               info "Adding .rbenv/bin: in ${BASHFILE} "
+               echo "# .rbenv/bin are shims for Ruby commands so must be in front:" >>"${BASHFILE}"
+               # shellcheck disable=SC2016 # Expressions don't expand in single quotes, use double quotes for that.
+               echo "export PATH=\"$HOME/.rbenv/bin:$PATH\" " >>"${BASHFILE}"
+               source "${BASHFILE}"
             fi
 
-            test -r ~/.bash_profile && echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.bash_profile
-            echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.profile
+            if grep -q "brew shellenv" "${BASHFILE}" ; then
+               note "brew shellenv: already in ${BASHFILE}"
+            else
+               info "Adding brew shellenv: in ${BASHFILE} "
+               echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>"${BASHFILE}"
+               source "${BASHFILE}"
+            fi
          fi
       else  # brew found:
          if [ "${UPDATE_PKGS}" = true ]; then
@@ -506,10 +573,10 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       note "$( gpg --version | grep GnuPG )"  # gpg (GnuPG) 2.2.19
 
       # download and install the mpapis public key with GPG:
-      curl -sSL https://rvm.io/mpapis.asc | gpg --import -
+      #curl -sSL https://rvm.io/mpapis.asc | gpg --import -
          # (Michael Papis (mpapis) is the creator of RVM, and his public key is used to validate RVM downloads:
          # gpg-connect-agent --dirmngr 'keyserver --hosttable'
-      gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3
+      #gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3
          # FIX: gpg: keyserver receive failed: No route to host
 
       if ! command -v imagemagick ; then
@@ -523,130 +590,197 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -I
       fi
 
    elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-      # ??? apt-get install gnupg2
-      # gpg
 
-      # Use apt instead of apt-get since Ubuntu 16.04 (from Linux Mint)
+      sudo apt-get update
+
+      h2 "Use apt instead of apt-get since Ubuntu 16.04 (from Linux Mint)"
       sudo apt install curl git
       note "$( git --version )"  # git version 2.20.1 (Apple Git-117)
 
-      apt install imagemagick
+      h2 "apt install imagemagick"
+      sudo apt install imagemagick
 
+      h2 "sudo apt autoremove"
       sudo apt autoremove
 
-      # Add Node.js and Yarn repositories and keys 
-      curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
-      curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-      echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+      h2 "Install NodeJs to run Ruby"
+      curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+      silent-apt-get-install "nodejs"
 
-      sudo apt-get update
-      sudo apt-get install nodejs yarn zlib1g-dev build-essential libpq-dev libssl-dev libreadline-dev libyaml-dev 
-      sudo apt-get install libsqlite3-dev sqlite3 
-      sudo apt-get install libxml2-dev libxslt1-dev libcurl4-openssl-dev libffi-dev
+      h2 "Add Yarn repositories and keys (8.x deprecated) for apt-get:"
+      curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+         # response: OK
+      echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+      silent-apt-get-install "yarn" 
+
+      h2 "Install Ruby dependencies "
+      silent-apt-get-install "rbenv"   # instead of git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+         # Extracting templates from packages: 100%
+      silent-apt-get-install "autoconf"
+      silent-apt-get-install "bison"
+      silent-apt-get-install "build-essential"
+      silent-apt-get-install "libssl-dev"
+      silent-apt-get-install "libyaml-dev"
+      silent-apt-get-install "zlib1g-dev"
+      silent-apt-get-install "libncurses5-dev"
+      silent-apt-get-install "libffi-dev"
+         # E: Unable to locate package autoconf bison
+      silent-apt-get-install "libreadline-dev"    # instead of libreadline6-dev 
+      silent-apt-get-install "libgdbm-dev"    # libgdbm3  # (not found)
+
+      silent-apt-get-install "libpq-dev"
+      silent-apt-get-install "libxml2-dev"
+      silent-apt-get-install "libxslt1-dev"
+      silent-apt-get-install "libcurl4-openssl-dev"
+      
+      h2 "Install SQLite3 ..."
+      silent-apt-get-install "libsqlite3-dev"
+      silent-apt-get-install "sqlite3"
+
+      h2 "Install MySQL Server"
+      silent-apt-get-install "mysql-client"
+      silent-apt-get-install "mysql-server"
+      silent-apt-get-install "libmysqlclient-dev"  # unable to locate
+
+      #h2 "Install PostgreSQL ..."
+      #silent-apt-get-install "postgres"
+
+   elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
+      # TODO: More For Redhat distro:
+      sudo yum install ruby-devel
+   elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then
+      # TODO: More for [open]SuSE:
+      sudo zypper install ruby-devel
    fi
 
-      note "$( yarn --version )"
       note "$( nodejs --version )"
+      note "$( yarn --version )"
       note "$( sqlite3 --version )"
 
 
-## Rbenv
-
    cd ~/
-   git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-         if grep -q ".rbenv/bin:" ".bashrc" ; then
-            note ".rbenv/bin: already in .bashrc"
+   h2 "Now at path $PWD ..."
+
+   h2 "git clone ruby-build.git to use the rbenv install command"
+   FOLDER_PATH="~/.rbenv/plugins/ruby-build"
+   if [   -d "${FOLDER_PATH}" ]; then  # directory found, so remove it first.
+      note "Deleting ${FOLDER_PATH} ..."
+      rm -rf "${FOLDER_PATH}"
+   fi
+      git clone https://github.com/rbenv/ruby-build.git  "${FOLDER_PATH}"
+         if grep -q ".rbenv/plugins/ruby-build/bin" "${BASHFILE}" ; then
+            note "rbenv/plugins/ already in ${BASHFILE}"
          else
-            info "Adding .rbenv/bin: in .bashrc"
-            echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
-            source .bashrc
+            info "Appending rbenv/plugins in ${BASHFILE}"
+            echo "export PATH=\"$HOME/.rbenv/plugins/ruby-build/bin:$PATH\" " >>"${BASHFILE}"
+            source "${BASHFILE}"
          fi
+   
+   if ! command -v rbenv ; then
+      fatal "rbenv not found. Aborting for script fix ..."
+      exit 1
+   fi
 
-         if grep -q "rbenv init " ".bashrc" ; then
-            note "rbenv init - already in .bashrc"
-         else
-            info "Adding rbenv init - in .bashrc"
-            echo 'eval "$(rbenv init -)"' >> ~/.bashrc
-            source .bashrc
-         fi
+   h2 "rbenv init"
+            if grep -q "rbenv init " "${BASHFILE}" ; then
+               note "rbenv init  already in ${BASHFILE}"
+            else
+               info "Appending rbenv init - in ${BASHFILE} "
+               # shellcheck disable=SC2016 # Expressions don't expand in single quotes, use double quotes for that.
+               echo "eval \"$( rbenv init - )\" " >>"${BASHFILE}"
+               source "${BASHFILE}"
+            fi
+            # This results in display of rbenv().
 
-   git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
-
-         if grep -q ".rbenv/plugins/ruby-build/bin:" ".bashrc" ; then
-            note "rbenv/plugins/ already in .bashrc"
-         else
-            info "Adding rbenv/plugins in .bashrc"
-            echo 'export PATH="$HOME/.rbenv/plugins/ruby-build/bin:$PATH"' >> ~/.bashrc
-            source .bashrc
-         fi
-
-
-   # Install the latest stable build of RVM:
-
-   \curl -sSL https://raw.githubusercontent.com/rvm/rvm/master/binscripts/rvm-installer | bash -s stable
-
-   # Start using RVM without having to close and reopen Terminal.
-   source ~/.rvm/scripts/rvm 
-
-
-   # Based on latest stable release from https://www.ruby-lang.org/en/downloads/
+   # Manually lookup latest stable release in https://www.ruby-lang.org/en/downloads/
    RUBY_RELEASE="2.7.0"
-   rbenv install "${RUBY_RELEASE}"
-   rbenv global  "${RUBY_RELEASE}"
+   RUBY_VERSION="2.7"
 
-   # Verify:
+   h2 "Install Ruby $RUBY_RELEASE using rbenv ..."
+   # Check if the particular Ruby version is already installed by rbenv
+   RUBY_RELEASE_RESPONSE="$( rbenv install -l | grep $RUBY_RELEASE )"
+   if [ -z "$RUBY_RELEASE_RESPONSE" ]; then  # not found:
+      rbenv install "${RUBY_RELEASE}"
+      # Downloading ...
+   fi
+
+   h2 "rbenv global"
+   rbenv global "${RUBY_RELEASE}"   # insted of -l (latest)
+
+   h2 "Verify ruby version"
    ruby -v
 
-   # upgrade Ruby
-   rvm install ruby --latest
+   h2 "To avoid Gem:ConfigMap is deprecated in gem 1.8.x"
+   # See https://ryenus.tumblr.com/post/5450167670/eliminate-rubygems-deprecation-warnings
+   ruby -e "`gem -v 2>&1 | grep called | sed -r -e 's#^.*specifications/##' -e 's/-[0-9].*$//'`.split.each {|x| `gem pristine #{x} -- --build-arg`}"
+   
+   h2 "gem update --system"
+   sudo gem update --system
 
-   # Install MySQL Server
-   sudo apt-get install mysql-client mysql-server libmysqlclient-dev
+   h2 "create .gemrc"  # https://www.digitalocean.com/community/tutorials/how-to-install-ruby-on-rails-with-rbenv-on-ubuntu-16-04
+   if [ ! -f "~/.gemrc" ]; then   # file NOT found, so create it:
+      echo "gem: --no-document" > ~/.gemrc
+   else
+      if grep -q "gem: --no-document" "~/.gemrc" ; then   # found in file:
+         note "gem: --no-document already in ~/.gemrc "
+      else
+         info "Adding gem --no-document in ~/.gemrc "
+         echo "gem: --no-document" >> ~/.gemrc
+      fi
+   fi
 
-   # Install Rails
-   curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
-   sudo apt-get install -y nodejs
+   h2 "gem install bundler"  # https://bundler.io/v1.12/rationale.html
+   sudo gem install bundler   # 1.17.3 to 2.14?
 
-   note "$( rails --version | grep Rails )"  # Rails 3.2.22.5
+   # To avoid Ubuntu rails install ERROR: Failed to build gem native extension.
+   # h2 "gem install ruby-dev"  # https://stackoverflow.com/questions/22544754/failed-to-build-gem-native-extension-installing-compass
+   h2 "Install ruby${RUBY_VERSION}-dev for Ruby Development Headers native extensions ..."
+   silent-apt-get-install "ruby${RUBY_VERSION}-dev"
 
-   gem update --system
+   h2 "gem install rails"  # https://gorails.com/setup/ubuntu/16.04
+   sudo gem install rails    # latest
+   if ! command -v rails ; then
+      fatal "rails not found. Aborting for script fix ..."
+      exit 1
+   fi
+   note "$( rails --version | grep "Rails" )"  # Rails 3.2.22.5
+      # See https://rubyonrails.org/
 
-   gem install bundler
+   h2 "rbenv rehash to make the rails executable available:"  # https://github.com/rbenv/rbenv
+   sudo rbenv rehash
 
-   gem install rails -v 5.2.1
+   h2 "gem install rdoc"
+   sudo gem install rdoc
 
-   gem install rdoc
+   h2 "gem install execjs"
+   sudo gem install execjs
 
-   brew install imagemagick
+   h2 "gem install refinerycms"
+   sudo gem install refinerycms
+       # /usr/lib/ruby/include
 
-   gem install execjs
-
-   gem install refinerycms
-
-   rbenv rehash
-
-   ## Build refinery app:
-  APPNAME="rockstar"
+   h2 "Build refinery app"
    refinerycms "${APPNAME}"
+   # TODO: if not error
+      cd "${APPNAME}"
+
+   # TODO: Add RoR app resources from GitHub  (gem file)
+   # TODO: containing Internationalize Refinery
+
+   h2 "Starting rails server at ${APPNAME} ..."
    cd "${APPNAME}"
-
-   # TODO: Internationalize Refinery
-
-   # TODO: Add YWAM resources from GitHub
-
-   info "Done installing RoR with ."
-
-   h2 "start the Rails server ..."
+   note "Now at $PWD ..."
    rails server
 
-   # http://localhost:3000/refinery
+   h2 "Opening website ..."
+      curl -s -I -X POST http://localhost:3000/refinery
+      curl -s       POST http://localhost:3000/ | head -n 10  # first 10 lines
 
-   # Manually logon to the backend using the admin address and password…
+   # TODO: Use Selenium to manually logon to the backend using the admin address and password…
 
    exit
 
 fi # if [ "${RUBY_INSTALL}" = true ]; then  # -I
-
 
 
 # TODO: Build docker image.
@@ -702,32 +836,32 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
 
       if ! command -v docker ; then
          h2 "Installing docker using apt-get ..."
-         sudo apt-get install docker
+         silent-apt-get-install "docker"
       else
          if [ "${UPDATE_PKGS}" = true ]; then
             h2 "Upgrading docker ..."
-            sudo apt-get install docker
+            silent-apt-get-install "docker"
          fi
       fi
 
       if ! command -v docker-compose ; then
          h2 "Installing docker-compose using apt-get ..."
-         sudo apt-get install docker-compose
+         silent-apt-get-install "docker-compose"
       else
          if [ "${UPDATE_PKGS}" = true ]; then
             h2 "Upgrading docker-compose ..."
-            sudo apt-get install docker-compose
+            silent-apt-get-install "docker-compose"
          fi
       fi
 
    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
       if ! command -v docker ; then
          h2 "Installing docker using yum ..."
-         yum install docker
+         sudo yum install docker
       else
          if [ "${UPDATE_PKGS}" = true ]; then
             h2 "Upgrading docker ..."
-            sudo apt-get install docker
+            sudo yum install docker
          fi
       fi
 
@@ -737,7 +871,7 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
       else
          if [ "${UPDATE_PKGS}" = true ]; then
             h2 "Upgrading docker-compose ..."
-            sudo apt-yum install docker-compose
+            yum install docker-compose
          fi
       fi
 
@@ -780,6 +914,7 @@ Start_Docker(){
 # From https://gist.github.com/peterver/ca2d60abc015d334e1054302265b27d9
 # https://medium.com/@valkyrie_be/quicktip-a-universal-way-to-check-if-docker-is-running-ffa6567f8426
 rep=$(curl -s --unix-socket /var/run/docker.sock http://ping > /dev/null)
+note "$rep"
 status=$?
 if [ "$status" == "7" ]; then   # Not Docker connected:
 #if (! pgrep -f docker ); then   # No docker process IDs found:
@@ -845,7 +980,7 @@ if [ "$RUN_DELETE_AFTER" = true ]; then  # -D
       # https://www.thegeekdiary.com/how-to-list-start-stop-delete-docker-containers/
    h2 "Deleting docker-compose active containers ..."
    CONTAINERS_RUNNING="$( docker ps -a -q )"
-#   note "Active containers: $CONTAINERS_RUNNING"
+   note "Active containers: $CONTAINERS_RUNNING"
 
    note "Stopping containers:"
    docker stop "$( docker ps -a -q )"
@@ -865,9 +1000,8 @@ fi
 note "$( docker images -a )"
 
 
-if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -R
+if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -C
    Delete_GitHub_clone    # defined above in this file.
 fi
 
-# END
-
+# EOF
