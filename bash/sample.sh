@@ -2,7 +2,7 @@
 # shellcheck disable=SC2001 # See if you can use ${variable//search/replace} instead.
 # shellcheck disable=SC1090 # Can't follow non-constant source. Use a directive to specify location.
 
-# sample.sh in https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh
+# sample.sh in https://github.com/wilsonmar/DevSecOps/blob/master/bash/sample.sh
 # coded based on bash scripting techniques described at https://wilsonmar.github.io/bash-scripting.
 
 # This downloads and installs all the utilities, then invokes programs to prove they work
@@ -10,7 +10,7 @@
 
 # After you obtain a Terminal (console) in your enviornment,
 # cd to folder, copy this line and paste in the terminal:
-# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -E -i
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -E -I -a
 
 SCRIPT_VERSION="v0.50"
 clear  # screen (but not history)
@@ -388,7 +388,7 @@ fi
 note "$( pwd )"
 
 
-### Get secrets from $HOME/.secrets.sh file:
+### Get secrets from $HOME/.secrets.sample.sh file:
 
 Input_GitHub_User_Info(){
       # https://www.shellcheck.net/wiki/SC2162: read without -r will mangle backslashes.
