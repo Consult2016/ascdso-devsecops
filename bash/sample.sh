@@ -44,6 +44,7 @@ args_prompt() {
    echo "   -r           start Docker before -run"
    echo "   -a           to -actually run docker-compose"
 #   echo "   -t           to run -tests"
+#   echo "   -S          store image built in DockerHub"
    echo "   -w           to open/view -web page in default browser"
    echo "   -D           to -Delete files after run (to save disk space)"
    echo "   -M           to remove Docker iMages pulled from DockerHub"
@@ -761,7 +762,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
    h2 "rbenv rehash to make the rails executable available:"  # https://github.com/rbenv/rbenv
    sudo rbenv rehash
 
-   h2 "gem install rdoc"
+   h2 "gem install rdoc (Ruby doc)"
    sudo gem install rdoc
 
    h2 "gem install execjs"
@@ -777,7 +778,15 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
       cd "${APPNAME}"   
 
    # TODO: Add RoR app resources from GitHub  (gem file)
-   # TODO: Internationalize Refinery
+   # TODO: Internationalize Refinery https://www.refinerycms.com/guides/translate-refinery
+   # create branch for a language (nl=dutch):
+          # git checkout -b i18n_nl
+   # Issue rake task to get a list of missing translations for a given locale:
+   # Add the keys
+   # Run the Refinery tests to be sure you didn't break something, and that your YAML is valid.
+      # bin/rake spec
+
+
 
    h2 "bundle install based on gem file ..."
    bundle install
