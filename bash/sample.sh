@@ -773,11 +773,14 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
    h2 "Build refinery app"
    refinerycms "${APPNAME}"
-   # TODO: if not error
-      cd "${APPNAME}"
+   # TODO: pushd here instead of cd?
+      cd "${APPNAME}"   
 
    # TODO: Add RoR app resources from GitHub  (gem file)
-   # TODO: containing Internationalize Refinery
+   # TODO: Internationalize Refinery
+
+   h2 "bundle install based on gem file ..."
+   bundle install
 
    h2 "Starting rails server at ${APPNAME} ..."
    cd "${APPNAME}"
