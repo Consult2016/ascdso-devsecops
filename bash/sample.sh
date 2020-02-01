@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
-SCRIPT_VERSION="v0.52"
+SCRIPT_VERSION="v0.53"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -746,7 +746,8 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
    # To avoid Ubuntu rails install ERROR: Failed to build gem native extension.
    # h2 "gem install ruby-dev"  # https://stackoverflow.com/questions/22544754/failed-to-build-gem-native-extension-installing-compass
    h2 "Install ruby${RUBY_VERSION}-dev for Ruby Development Headers native extensions ..."
-   silent-apt-get-install "ruby${RUBY_VERSION}-dev"
+   silent-apt-get-install ruby-dev   # "ruby${RUBY_VERSION}-dev"
+        # apt-get install ruby-dev
 
    h2 "gem install rails"  # https://gorails.com/setup/ubuntu/16.04
    sudo gem install rails    # latest
