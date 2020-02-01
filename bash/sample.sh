@@ -789,7 +789,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
    exit
 
-fi # if [ "${RUBY_INSTALL}" = true ]; then  # -I
+fi # if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
 
 # TODO: Build docker image.
