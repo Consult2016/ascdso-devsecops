@@ -10,9 +10,9 @@
 
 # After you obtain a Terminal (console) in your enviornment,
 # cd to folder, copy this line and paste in the terminal:
-# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -E -I -a
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -E -I -a -o
 
-SCRIPT_VERSION="v0.50"
+SCRIPT_VERSION="v0.52"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -25,7 +25,7 @@ LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
    echo "./sample.sh -v -E -i -o  # Ruby app"   
-   echo "./sample.sh -v -E -I -U -c -s -r -a -o  # Python app"
+   echo "./sample.sh -v -E -I -U -c -s -r -a -w  # Python app"
    echo "USAGE EXAMPLE after testing:"
    echo "./sample.sh -v -D -M -C"
    echo "OPTIONS:"
@@ -39,11 +39,11 @@ args_prompt() {
    echo "   -s           -set GitHub user info from ~/.secrets.sh in your user home folder"
    echo "   -n \"John Doe\"            GitHub user -name"
    echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
-   echo "   -P \" \"    Project folder -path "
-   echo "   -r           -start Docker before run"
+   echo "   -P \" \"    Project folder -path"
+   echo "   -r           start Docker before -run"
    echo "   -a           to -actually run docker-compose"
 #   echo "   -t           to run -tests"
-   echo "   -o           to -open web page in default browser"
+   echo "   -w           to open/view -web page in default browser"
    echo "   -D           to -Delete files after run (to save disk space)"
    echo "   -M           to remove Docker iMages pulled from DockerHub"
    echo "   -C           to remove -Cloned files after run (to save disk space)"
@@ -68,7 +68,7 @@ exit_abnormal() {            # Function: Exit with error.
    RUN_ACTUAL=false             # -a  (dry run is default)
    DOWNLOAD_INSTALL=false       # -d
    RUN_DELETE_AFTER=false       # -D
-   RUN_OPEN_BROWSER=false       # -o
+   RUN_OPEN_BROWSER=false       # -w
    CLONE_GITHUB=false           # -c
    REMOVE_GITHUB_AFTER=false    # -R
    USE_SECRETS_FILE=false       # -s
@@ -149,7 +149,7 @@ while test $# -gt 0; do
       export RUN_ACTUAL=true
       shift
       ;;
-    -o)
+    -w)
       export RUN_OPEN_BROWSER=true
       shift
       ;;
@@ -553,10 +553,10 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
    fi # brew
 
-fi # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
+fi # if [ "${DOWNLOAD_INSTALL}" = true ]; then 
 
 
-if [ "${RUBY_INSTALL}" = true ]; then  # -I
+if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
    # https://websiteforstudents.com/install-refinery-cms-ruby-on-rails-on-ubuntu-16-04-18-04-18-10/
 
@@ -962,7 +962,7 @@ fi
          # 7b8aba1d860a        postgres             "docker-entrypoint.s…"   7 days ago          Up 7 days                 0.0.0.0:5432->5432/tcp   snoodle-postgres
 
 
-if [ "$RUN_OPEN_BROWSER" = true ]; then  # -o
+if [ "$RUN_OPEN_BROWSER" = true ]; then  # -w
    if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
       sleep 3
       open http://localhost:8000/
