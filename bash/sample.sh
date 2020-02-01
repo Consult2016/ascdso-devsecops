@@ -482,7 +482,7 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
          # version: 9.2.0.0.1.1510905681
       # TODO: https://gist.github.com/tylergets/90f7e61314821864951e58d57dfc9acd
 
-      if command -v brew ; then
+      if ! command -v brew ; then   # brew not recognized:
          if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
             h2 "Installing brew package manager on macOS using Ruby ..."
             mkdir homebrew && curl -L https://GitHub.com/Homebrew/brew/tarball/master \
@@ -512,7 +512,7 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
                echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>"${BASHFILE}"
                source "${BASHFILE}"
             fi
-         fi
+         fi  # "$OS_TYPE" == "WSL"
       else  # brew found:
          if [ "${UPDATE_PKGS}" = true ]; then
             h2 "Updating brew itself ..."
