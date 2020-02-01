@@ -743,6 +743,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
    h2 "gem install bundler"  # https://bundler.io/v1.12/rationale.html
    sudo gem install bundler   # 1.17.3 to 2.14?
+   note "$( bundler --version )"  # Current Bundler version: bundler (2.1.4)
 
    # To avoid Ubuntu rails install ERROR: Failed to build gem native extension.
    # h2 "gem install ruby-dev"  # https://stackoverflow.com/questions/22544754/failed-to-build-gem-native-extension-installing-compass
