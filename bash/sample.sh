@@ -29,8 +29,9 @@ args_prompt() {
    echo "USAGE EXAMPLE after testing:"
    echo "./sample.sh -v -D -M -C"
    echo "OPTIONS:"
-   echo "   -E           to set -e to stop on error"
-   echo "   -x           to set sudoers -e to stop on error"
+   echo "   -E           to set -e to NOT stop on error"
+   echo "   -X           to set -x to trace command lines"
+#   echo "   -x           to set sudoers -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
    echo "   -i           -install Ruby and Refinery"
    echo "   -I           -Install brew, docker, docker-compose"
@@ -61,6 +62,7 @@ exit_abnormal() {            # Function: Exit with error.
 
 # Defaults (default true so flag turns it true):
    SET_EXIT=true                # -E
+   SET_TRACE=false              # -X
    RUN_VERBOSE=false            # -v
    RUBY_INSTALL=false           # -i
    UPDATE_PKGS=false            # -U
@@ -97,7 +99,11 @@ while test $# -gt 0; do
       shift
       ;;
     -E)
-      export SET_EXIT=true
+      export SET_EXIT=false
+      shift
+      ;;
+    -X)
+      export SET_XTRACE=true
       shift
       ;;
     -I)
@@ -344,9 +350,12 @@ if [ "${SET_EXIT}" = false ]; then
    h2 "Set -e ..."
    set -e  # exits script when a command fails
 # set -eu pipefail  # pipefail counts as a parameter
-# set -x  # (-o xtrace) to show commands for specific issues.
-# set -o nounset
 fi
+if [ "${SET_XTRACE}" = true ]; then
+   h2 "Set -x ..."
+   set -x  # (-o xtrace) to show commands for specific issues.
+fi
+# set -o nounset
 
 
 # Capture password manual input once for multiple shares 
