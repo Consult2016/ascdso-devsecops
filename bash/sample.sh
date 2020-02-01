@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
-SCRIPT_VERSION="v0.53"
+SCRIPT_VERSION="v0.54"   # downgrade to Ruby 2.6.5
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -705,8 +705,9 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
             # This results in display of rbenv().
 
    # Manually lookup latest stable release in https://www.ruby-lang.org/en/downloads/
-   RUBY_RELEASE="2.7.0"
-   RUBY_VERSION="2.7"
+   RUBY_RELEASE="2.6.5"  # 2.7.0"
+   RUBY_VERSION="2.6"
+      # To avoid rbenv: version `2.7.0' not installed
 
    h2 "Install Ruby $RUBY_RELEASE using rbenv ..."
    # Check if the particular Ruby version is already installed by rbenv
@@ -723,12 +724,18 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
    ruby -v
 
    h2 "To avoid Gem:ConfigMap deprecated in gem 1.8.x"
-   # See https://ryenus.tumblr.com/post/5450167670/eliminate-rubygems-deprecation-warnings
-   ruby -e "`gem -v 2>&1 | grep called | sed -r -e 's#^.*specifications/##' -e 's/-[0-9].*$//'`.split.each {|x| `gem pristine #{x} -- --build-arg`}"
+   # From https://github.com/rapid7/metasploit-framework/issues/12763
+   gem uninstall #etc
+   # This doesn't work: https://ryenus.tumblr.com/post/5450167670/eliminate-rubygems-deprecation-warnings
+   # ruby -e "`gem -v 2>&1 | grep called | sed -r -e 's#^.*specifications/##' -e 's/-[0-9].*$//'`.split.each {|x| `gem pristine #{x} -- --build-arg`}"
    
    h2 "gem update --system"
-   sudo gem update --system
-
+   # Based on https://github.com/rubygems/rubygems/issues/3068
+   # to get rid of the warnings by downgrading to the latest RubyGems that doesn't have the deprecation warning:
+   sudo gem update --system 3.0.6
+   
+   gem --version
+   
    h2 "create .gemrc"  # https://www.digitalocean.com/community/tutorials/how-to-install-ruby-on-rails-with-rbenv-on-ubuntu-16-04
    if [ ! -f "~/.gemrc" ]; then   # file NOT found, so create it:
       echo "gem: --no-document" > ~/.gemrc
