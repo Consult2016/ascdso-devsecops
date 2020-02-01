@@ -10,7 +10,7 @@
 
 # After you obtain a Terminal (console) in your enviornment,
 # cd to folder, copy this line and paste in the terminal:
-# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i -o
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
 SCRIPT_VERSION="v0.52"
 clear  # screen (but not history)
@@ -346,8 +346,10 @@ fi
 note "$( ls -al )"
 
 
-if [ "${SET_EXIT}" = false ]; then
-   h2 "Set -e ..."
+if [ "${SET_EXIT}" = true ]; then  # don't
+   h2 "Don't set -e (-E parameter)..."
+else
+   h2 "Set -e (no -E parameter  )..."
    set -e  # exits script when a command fails
 # set -eu pipefail  # pipefail counts as a parameter
 fi
@@ -377,13 +379,13 @@ Delete_GitHub_clone(){
    fi
 }
 
-if [ "${CLONE_GITHUB}" = true ]; then
+if [ "${CLONE_GITHUB}" = true ]; then   # -c specified:
    Delete_GitHub_clone    # defined above in this file.
    if [ -d "$GitHub_REPO_NAME" ]; then  # directory not available, so clone into it:
       rm -rf "$GitHub_REPO_NAME" 
    fi
-      h2 "Downloading repo ..."
-      git clone https://github.com/nickjj/build-a-saas-app-with-flask.git "$GitHub_REPO_NAME"   
+      h2 "Downloading repo $GitHub_REPO_NAME ..."
+      git clone https://github.com/nickjj/build-a-saas-app-with-flask.git "$GitHub_REPO_NAME"
       cd "$GitHub_REPO_NAME"
    
    # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
@@ -394,7 +396,7 @@ else
       cd "$GitHub_REPO_NAME"
    fi
 fi
-note "$( pwd )"
+note "Now at $PWD ..."
 
 
 ### Get secrets from $HOME/.secrets.sample.sh file:
@@ -480,7 +482,7 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
          # version: 9.2.0.0.1.1510905681
       # TODO: https://gist.github.com/tylergets/90f7e61314821864951e58d57dfc9acd
 
-      if ! command -v brew ; then
+      if command -v brew ; then
          if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
             h2 "Installing brew package manager on macOS using Ruby ..."
             mkdir homebrew && curl -L https://GitHub.com/Homebrew/brew/tarball/master \
@@ -719,7 +721,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
    h2 "Verify ruby version"
    ruby -v
 
-   h2 "To avoid Gem:ConfigMap is deprecated in gem 1.8.x"
+   h2 "To avoid Gem:ConfigMap deprecated in gem 1.8.x"
    # See https://ryenus.tumblr.com/post/5450167670/eliminate-rubygems-deprecation-warnings
    ruby -e "`gem -v 2>&1 | grep called | sed -r -e 's#^.*specifications/##' -e 's/-[0-9].*$//'`.split.each {|x| `gem pristine #{x} -- --build-arg`}"
    
