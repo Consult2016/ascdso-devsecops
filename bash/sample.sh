@@ -10,7 +10,7 @@
 
 # After you obtain a Terminal (console) in your enviornment,
 # cd to folder, copy this line and paste in the terminal:
-# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -E -I -a -o
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i -o
 
 SCRIPT_VERSION="v0.52"
 clear  # screen (but not history)
@@ -24,8 +24,8 @@ LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
-   echo "./sample.sh -v -E -i -o  # Ruby app"   
-   echo "./sample.sh -v -E -I -U -c -s -r -a -w  # Python app"
+   echo "./sample.sh -v -i -o  # Ruby app"   
+   echo "./sample.sh -v -I -U -c -s -r -a -w  # Python app"
    echo "USAGE EXAMPLE after testing:"
    echo "./sample.sh -v -D -M -C"
    echo "OPTIONS:"
@@ -60,7 +60,7 @@ exit_abnormal() {            # Function: Exit with error.
 }
 
 # Defaults (default true so flag turns it true):
-   SET_EXIT=false               # -E
+   SET_EXIT=true                # -E
    RUN_VERBOSE=false            # -v
    RUBY_INSTALL=false           # -i
    UPDATE_PKGS=false            # -U
@@ -340,7 +340,7 @@ fi
 note "$( ls -al )"
 
 
-if [ "${SET_EXIT}" = true ]; then
+if [ "${SET_EXIT}" = false ]; then
    h2 "Set -e ..."
    set -e  # exits script when a command fails
 # set -eu pipefail  # pipefail counts as a parameter
