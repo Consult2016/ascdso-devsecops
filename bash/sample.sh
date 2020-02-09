@@ -45,6 +45,7 @@ args_prompt() {
    echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
    echo "   -P \" \"    Project folder -path"
    echo "   -r           start Docker before -run"
+   echo "   -b           to -build Docker image"
    echo "   -a           to -actually run docker-compose"
 #   echo "   -t           to run -tests"
 #   echo "   -S          store image built in DockerHub"
@@ -75,6 +76,7 @@ exit_abnormal() {            # Function: Exit with error.
    NODE_INSTALL=false           # -n
    UPDATE_PKGS=false            # -U
    RESTART_DOCKER=false         # -r
+   BUILD_DOCKER_IMAGE=false     # -b
    RUN_ACTUAL=false             # -a  (dry run is default)
    DOWNLOAD_INSTALL=false       # -d
    RUN_DELETE_AFTER=false       # -D
@@ -176,6 +178,10 @@ while test $# -gt 0; do
       ;;
     -r)
       export RESTART_DOCKER=true
+      shift
+      ;;
+    -b)
+      export BUILD_DOCKER_IMAGE=true
       shift
       ;;
     -a)
@@ -1011,11 +1017,9 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
 fi # if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
 
-# TODO: Build docker image.
-
 if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
 
-# Install Docker and docker-compose:
+   h2 "Install Docker and docker-compose:"
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then
       if ! command -v docker ; then
@@ -1105,15 +1109,15 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
 
    fi # brew
 
-fi  # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
-
-      note "$( docker --version )"
+   note "$( docker --version )"
          # Docker version 19.03.5, build 633a0ea
-      note "$( docker-compose --version )"
+   note "$( docker-compose --version )"
          # docker-compose version 1.24.1, build 4667896b
 
+fi  # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
 
-## Restart Docker DAEMON
+
+if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
 
 Start_Docker(){
    if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
@@ -1201,8 +1205,14 @@ fi
       curl -s -I -X POST http://localhost:8000/ 
       curl -s       POST http://localhost:8000/ | head -n 10  # first 10 lines
 
+fi  # if [ "${BUILD_DOCKER_IMAGE}" = true 
 
-# TODO: Run tests
+
+# if [ "${RUN_TESTS}" = true 
+
+   # TODO: Run tests
+
+# fi  # if [ "${RUN_TESTS}" = true 
 
 
 
