@@ -12,18 +12,19 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
-SCRIPT_VERSION="v0.54"   # downgrade to Ruby 2.6.5
+SCRIPT_VERSION="v0.56"   # downgrade to Ruby 2.6.5
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
 # Capture starting timestamp and display no matter how it ends:
-EPOCH_START="$(date -u +%s)"  # such as 1572634619
-LOG_DATETIME=$(date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
+EPOCH_START="$( date -u +%s )"  # such as 1572634619
+LOG_DATETIME=$( date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 
 
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
+   echo "./sample.sh -v -j -a  # NodeJs app"
    echo "./sample.sh -v -i -o  # Ruby app"   
    echo "./sample.sh -v -I -U -c -s -r -a -w  # Python app"
    echo "USAGE EXAMPLE after testing:"
@@ -34,6 +35,8 @@ args_prompt() {
 #   echo "   -x           to set sudoers -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
    echo "   -i           -install Ruby and Refinery"
+   echo "   -j           -install JavaScript (NodeJs) app with MongoDB"
+   echo "   -y           -install Python in Virtualenv"
    echo "   -I           -Install brew, docker, docker-compose"
    echo "   -U           -Upgrade packages"
    echo "   -c           -clone from GitHub"
@@ -45,6 +48,7 @@ args_prompt() {
    echo "   -a           to -actually run docker-compose"
 #   echo "   -t           to run -tests"
 #   echo "   -S          store image built in DockerHub"
+   echo "   -o           to open/view -web page in default browser"
    echo "   -w           to open/view -web page in default browser"
    echo "   -D           to -Delete files after run (to save disk space)"
    echo "   -M           to remove Docker iMages pulled from DockerHub"
@@ -65,7 +69,9 @@ exit_abnormal() {            # Function: Exit with error.
    SET_EXIT=true                # -E
    SET_TRACE=false              # -X
    RUN_VERBOSE=false            # -v
+   PYTHON_INSTALL=false         # -p
    RUBY_INSTALL=false           # -i
+   NODE_INSTALL=false           # -n
    UPDATE_PKGS=false            # -U
    RESTART_DOCKER=false         # -r
    RUN_ACTUAL=false             # -a  (dry run is default)
@@ -83,12 +89,6 @@ PROJECT_FOLDER_PATH="$HOME/projects"  # -P
 GitHub_USER_NAME="John Doe"                  # -n
 GitHub_USER_EMAIL="john_doe@gmail.com"       # -e
 
-GitHub_REPO_NAME="bsawf"
-#DOCKER_DB_NANE="snakeeyes-postgres"
-#DOCKER_WEB_SVC_NAME="snakeeyes_worker_1"  # from docker-compose ps  
-#APPNAME="snakeeyes"
-APPNAME="rockstar"
-
 while test $# -gt 0; do
   case "$1" in
     -v)
@@ -97,6 +97,26 @@ while test $# -gt 0; do
       ;;
     -i)
       export RUBY_INSTALL=true
+      GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
+      GitHub_REPO_NAME="bsawf"
+      #DOCKER_DB_NANE="snakeeyes-postgres"
+      #DOCKER_WEB_SVC_NAME="snakeeyes_worker_1"  # from docker-compose ps  
+      APPNAME="snakeeyes"
+      shift
+      ;;
+    -n)
+      export NODE_INSTALL=true
+      GitHub_REPO_URL="https://github.com/wesbos/Learn-Node.git"
+      GitHub_REPO_NAME="delicious"
+      APPNAME="delicious"
+      DB_NAME="delicious"
+      shift
+      ;;
+    -p)
+      export PYTHON_INSTALL=true
+      GitHub_REPO_URL="???"
+      GitHub_REPO_NAME="rockstar"
+      APPNAME="rockstar"
       shift
       ;;
     -E)
@@ -374,31 +394,39 @@ Delete_GitHub_clone(){
    # https://www.shellcheck.net/wiki/SC2115 Use "${var:?}" to ensure this never expands to / .
    PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${GitHub_REPO_NAME}"
    if [ -d "${PROJECT_FOLDER_FULL_PATH:?}" ]; then  # path available.
-      h2 "Remove project folder $PROJECT_FOLDER_FULL_PATH ..."
+      h2 "Removing project folder $PROJECT_FOLDER_FULL_PATH ..."
       ls -al "${PROJECT_FOLDER_FULL_PATH}"
       rm -rf "${PROJECT_FOLDER_FULL_PATH}"
    fi
 }
-
-if [ "${CLONE_GITHUB}" = true ]; then   # -c specified:
-   Delete_GitHub_clone    # defined above in this file.
+Clone_GitHub_repo(){
+      git clone "${GitHub_REPO_URL}" "$GitHub_REPO_NAME"
+      cd "$GitHub_REPO_NAME"
+      note "At $PWD"
+}
+if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
    if [ -d "$GitHub_REPO_NAME" ]; then  # directory not available, so clone into it:
       rm -rf "$GitHub_REPO_NAME" 
+      Delete_GitHub_clone    # defined above in this file.
+   else
+      h2 "-clone requested for repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+      Clone_GitHub_repo      # defined above in this file.
+      # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
+      # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
+      # git pull upstream master
    fi
-      h2 "Downloading repo $GitHub_REPO_NAME ..."
-      git clone https://github.com/nickjj/build-a-saas-app-with-flask.git "$GitHub_REPO_NAME"
-      cd "$GitHub_REPO_NAME"
-   
-   # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
-   # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
-   # git pull upstream master
-else
+else   # do not -clone
    if [ -d "${GitHub_REPO_NAME:?}" ]; then  # path available.
+      h2 "Re-using repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+      cd "$GitHub_REPO_NAME"
+   else
+      h2 "Have to download repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+      git clone "${GitHub_REPO_URL}" "$GitHub_REPO_NAME"
       cd "$GitHub_REPO_NAME"
    fi
 fi
 note "Now at $PWD ..."
-
+exit
 
 ### Get secrets from $HOME/.secrets.sample.sh file:
 
@@ -451,7 +479,7 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
    if [ ! -f ".env" ]; then
       cp .env.example  .env
    else
-        note "no .env file"
+      warning "no .env file"
    fi
 
    if [ ! -f "docker-compose.override.yml" ]; then
@@ -566,6 +594,139 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
    fi # brew
 
 fi # if [ "${DOWNLOAD_INSTALL}" = true ]; then 
+
+
+if [ "${NODE_INSTALL}" = true ]; then  # -n
+
+   h2 "Install -node"
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
+      if ! command -v node ; then
+         h2 "Installing node ..."
+         brew install node
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Upgrading node ..."
+            brew upgrade node
+         fi
+      fi
+   fi
+   note "$( node --version )"   # v13.8.0
+   note "$( npm --version )"    # 6.13.7
+
+   h2 "After git clone https://github.com/wesbos/Learn-Node.git ..."
+   pwd
+   cd starter-files   # within repo
+   ls -1
+exit  # xxx
+
+   h2 "dotenv config variables.env ..."
+   if [ ! -f "variables.env" ]; then   # not created
+      cp variables.samples  variables.env
+   else
+      warning "Reusing variables.env from previous run."
+   fi
+
+   h2 "npm install ..."
+   npm install   # based on properties.json
+
+
+   # h2 "Install mongodb-community@4.2 (instead of mLab online) ..."
+   # See https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
+      if ! command -v mongo ; then  # command not found, so:
+         h2 "Installing mmongodb-community@4.2 ..."
+         brew tap mongodb/brew
+         brew install mongodb-community@4.2
+      else  # installed already:
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Re-installing mongodb-community@4.2 ..."
+            brew untap mongodb/brew && brew tap mongodb/brew
+            brew install mongodb-community@4.2
+         fi
+      fi
+   fi
+
+   h2 "TODO: Configuring MongoDB $DB_NAME [4:27] ..."
+   # ???
+
+   # Verify whether MongoDB is running, search for mongod in your running processes:
+   note "$( mongo --version | grep MongoDB )"    # 3.4.0 in video. MongoDB shell version v4.2.3 
+
+   RESPONSE="$( ps aux | grep -v grep | grep mongod )"
+      # root 10318   0.0  0.0  4763196   7700 s002  T     4:02PM   0:00.03 sudo mongod
+                           note "$RESPONSE"
+             MONGO_PSID="$( echo $RESPONSE | awk '{print $2}' )"
+   if [ -z "{MONGO_PSID}" ]; then  # found
+      h2 "Shutting down mongoDB ..."
+      # See https://docs.mongodb.com/manual/tutorial/manage-mongodb-processes/
+      # mongod --shutdown
+      sudo kill -2 "${MONGO_PSID}"
+         # No response expected.
+   fi
+      h2 "Run MongoDB as a background process ..."
+      mongod --config /usr/local/etc/mongod.conf --fork
+         # about to fork child process, waiting until server is ready for connections.
+         # forked process: 16698
+         # child process started successfully, parent exiting
+      # sudo mongod &
+         # RESPONSE EXAMPLE: [1] 10318
+
+   h2 "Current status of mongod process" 
+   cat /usr/local/var/log/mongodb/mongo.log
+
+fi # if [ "${NODE_INSTALL}" = true ]; then 
+
+
+if [ "${PYTHON_INSTALL}" = true ]; then  # -p
+
+   h2 "Install -python"
+      if ! command -v python3 ; then
+         h2 "Installing python3 ..."
+         brew install python3
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Upgrading python3 ..."
+            brew upgrade python3
+         fi
+      fi
+
+   note "$( python3 --version )"  # Python 3.7.6
+   note "$( pip --version )"      # pip 19.3.1 from /Library/Python/2.7/site-packages/pip (python 2.7)
+
+      if ! command -v jq ; then
+         h2 "Installing jq ..."
+         brew install jq
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Upgrading jq ..."
+            brew --upgrade --force-reinstall jq 
+         fi
+      fi
+      # /usr/local/bin/jq
+
+
+   h2 "Install virtualenv"  # https://levipy.com/virtualenv-and-virtualenvwrapper-tutorial
+   # to create isolated Python environments.
+   pip3 install virtualenvwrapper
+
+   h2 "virtualenv venv"
+   virtualenv venv
+
+   h2 "source venv/bin/activate"
+   source venv/bin/activate
+
+   h2 "Within venv ..."
+   h2 "Install cloudinary Within requirements.txt : "
+   pip install cloudinary
+   
+   h2 "Do something at $PWD ..."
+
+
+   h2 "Execute deactivate if the function exists (i.e. has been created by sourcing activate):"
+   # per https://stackoverflow.com/a/57342256
+   declare -Ff deactivate && deactivate
+
+fi # if [ "${PYTHON_INSTALL}" = true ]; then 
 
 
 if [ "${RUBY_INSTALL}" = true ]; then  # -i
@@ -726,13 +887,13 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
    h2 "To avoid Gem:ConfigMap deprecated in gem 1.8.x"
    # From https://github.com/rapid7/metasploit-framework/issues/12763
    gem uninstall #etc
-   # This doesn't work: https://ryenus.tumblr.com/post/5450167670/eliminate-rubygems-deprecation-warnings
+   # This didn't fix: https://ryenus.tumblr.com/post/5450167670/eliminate-rubygems-deprecation-warnings
    # ruby -e "`gem -v 2>&1 | grep called | sed -r -e 's#^.*specifications/##' -e 's/-[0-9].*$//'`.split.each {|x| `gem pristine #{x} -- --build-arg`}"
    
    h2 "gem update --system"
    # Based on https://github.com/rubygems/rubygems/issues/3068
    # to get rid of the warnings by downgrading to the latest RubyGems that doesn't have the deprecation warning:
-   sudo gem update --system 3.0.6
+   sudo gem update --system   # 3.0.6
    
    gem --version
    
@@ -759,13 +920,14 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
         # apt-get install ruby-dev
 
    h2 "gem install rails"  # https://gorails.com/setup/ubuntu/16.04
-   sudo gem install rails    # latest
+   sudo gem install rails    # latest at https://rubygems.org/gems/rails/versions
    if ! command -v rails ; then
       fatal "rails not found. Aborting for script fix ..."
       exit 1
    fi
    note "$( rails --version | grep "Rails" )"  # Rails 3.2.22.5
       # See https://rubyonrails.org/
+      # 6.0.2.1 - December 18, 2019 (6.5 KB)
 
    h2 "rbenv rehash to make the rails executable available:"  # https://github.com/rbenv/rbenv
    sudo rbenv rehash
@@ -963,10 +1125,12 @@ else   # Docker processes found running:
       fi
    fi
    Start_Docker   # function defined in this file above.
+
 fi
 
-
-#   if [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q "$DOCKER_WEB_SVC_NAME")` ]; then
+   h2 "Remove dangling docker images ..."
+   docker rmi -f $(docker images -qf dangling=true) 
+   #   if [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q "$DOCKER_WEB_SVC_NAME")` ]; then
       # --no-trunc flag because docker ps shows short version of IDs by default.
 
 #.   note "If $DOCKER_WEB_SVC_NAME is not running, so run it..."
