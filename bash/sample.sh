@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
-SCRIPT_VERSION="v0.56"   # downgrade to Ruby 2.6.5
+SCRIPT_VERSION="v0.57"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -634,8 +634,11 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
       fatal  "starter-files folder not found. Aborting..."
       exit 9
    else
-      cd starter-files   # within repo
+      # within repo:
+      # cd starter-files 
+      cd "stepped-solutions/45 - Finished App"
       h2 "Now at folder path $PWD ..."
+      ls -1
 
       if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
    
@@ -653,8 +656,9 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
    fi
 
    if [ ! -f "variables.env" ]; then   # not created
-      h2 "dotenv config variables.env ..."
-      cp variables.samples  variables.env
+      h2 "Downloading variables.env ..."
+      curl -s -O https://raw.githubusercontent.com/wesbos/Learn-Node/master/starter-files/variables.env.sample \
+         variables.env
    else
       warning "Reusing variables.env from previous run."
    fi
@@ -676,6 +680,17 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
    fi
 
    h2 "TODO: Configuring MongoDB $DB_NAME [4:27] ..."
+   # sed  ...
+   # NODE_ENV=development
+   # DATABASE=mongodb://user:pass@host.com:port/database
+   # MAIL_USER=123
+   # MAIL_PASS=123
+   # MAIL_HOST=smtp.mailtrap.io
+   # MAIL_PORT=2525
+   # PORT=7777
+   # MAP_KEY=AIzaSyD9ycobB5RiavbXpJBo0Muz2komaqqvGv0
+   # SECRET=snickers
+   # KEY=sweetsesh
 
    # Verify whether MongoDB is running, search for mongod in your running processes:
    note "$( mongo --version | grep MongoDB )"    # 3.4.0 in video. MongoDB shell version v4.2.3 
@@ -690,15 +705,18 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
       info "Killing process $1 ..."
       sudo kill -2 "$1"
    }
-   if [ ! -z "${MONGO_PSID}" ]; then  # found
+   if [ -z "${MONGO_PSID}" ]; then  # found
       h2 "Shutting down mongoDB ..."
       # See https://docs.mongodb.com/manual/tutorial/manage-mongodb-processes/
       # DOESN'T WORK: mongod --shutdown
-      Kill_process "${MONGO_PSID}"  # invoking function above.
+      sudo kill -2 "${MONGO_PSID}"
+      #Kill_process "${MONGO_PSID}"  # invoking function above.
          # No response expected.
+      sleep 2
    fi
-      h2 "Run MongoDB as a background process ..."
+      h2 "Start MongoDB as a background process ..."
       mongod --config /usr/local/etc/mongod.conf --fork
+         # ADDITIONAL: --port 27017 --replSet replset --logpath ~/log/mongo.log
          # about to fork child process, waiting until server is ready for connections.
          # forked process: 16698
       # if successful:
@@ -710,8 +728,8 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
       # sudo mongod &
          # RESPONSE EXAMPLE: [1] 10318
 
-   h2 "Current status of mongod process" 
-   cat /usr/local/var/log/mongodb/mongo.log
+   h2 "List last lines for status of mongod process ..." 
+   tail -5 /usr/local/var/log/mongodb/mongo.log
 
 fi # if [ "${NODE_INSTALL}" = true ]; then 
 
@@ -1248,7 +1266,7 @@ fi
 if [ "$KILL_PROCESSES" = true ]; then  # -K
    h2 "Kill processes"
    if [ "${NODE_INSTALL}" = true ]; then  # -n
-      if [ ! -z "${MONGO_PSID}" ]; then  # found
+      if [ -n "${MONGO_PSID}" ]; then  # not found
          Kill_process "${MONGO_PSID}"  # invoking function above.
       fi
    fi 
