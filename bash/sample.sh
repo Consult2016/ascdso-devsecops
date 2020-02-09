@@ -53,6 +53,7 @@ args_prompt() {
    echo "   -D           to -Delete files after run (to save disk space)"
    echo "   -M           to remove Docker iMages pulled from DockerHub"
    echo "   -C           to remove -Cloned files after run (to save disk space)"
+   echo "   -K           to stop processes at end of run (to save CPU)"
    echo " "
  }
 if [ $# -eq 0 ]; then  # display if no parameters are provided:
@@ -67,7 +68,7 @@ exit_abnormal() {            # Function: Exit with error.
 
 # Defaults (default true so flag turns it true):
    SET_EXIT=true                # -E
-   SET_TRACE=false              # -X
+   SET_TRACE=false              # -x
    RUN_VERBOSE=false            # -v
    PYTHON_INSTALL=false         # -p
    RUBY_INSTALL=false           # -i
@@ -82,6 +83,7 @@ exit_abnormal() {            # Function: Exit with error.
    REMOVE_GITHUB_AFTER=false    # -R
    USE_SECRETS_FILE=false       # -s
    REMOVE_DOCKER_IMAGES=false   # -M
+   KILL_PROCESSES=false         # -K
 
 SECRETS_FILEPATH="$HOME/.secrets.sh"  # -S
 PROJECT_FOLDER_PATH="$HOME/projects"  # -P
@@ -93,6 +95,10 @@ while test $# -gt 0; do
   case "$1" in
     -v)
       export RUN_VERBOSE=true
+      shift
+      ;;
+    -x)
+      export SET_TRACE=true
       shift
       ;;
     -i)
@@ -192,6 +198,10 @@ while test $# -gt 0; do
       export REMOVE_GITHUB_AFTER=true
       shift
       ;;
+    -K)
+      export KILL_PROCESSES=true
+      shift
+      ;;
     *)
       error "Parameter \"$1\" not recognized. Aborting."
       exit 0
@@ -222,7 +232,7 @@ info() {   # output on every run
    printf "\n${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 note() { if [ "${RUN_VERBOSE}" = true ]; then
-   printf "\n${bold}${cyan} ${reset} ${cyan}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${bold}${cyan} ${reset} ${cyan}%s${reset}" "$(echo "$@" | sed '/./,$!d')"
    fi
 }
 success() {
@@ -368,11 +378,11 @@ note "$( ls -al )"
 
 
 if [ "${SET_EXIT}" = true ]; then  # don't
-   h2 "Don't set -e (-E parameter)..."
-else
    h2 "Set -e (no -E parameter  )..."
    set -e  # exits script when a command fails
-# set -eu pipefail  # pipefail counts as a parameter
+   # set -eu pipefail  # pipefail counts as a parameter
+else
+   warning "Don't set -e (-E parameter)..."
 fi
 if [ "${SET_XTRACE}" = true ]; then
    h2 "Set -x ..."
@@ -426,10 +436,9 @@ else   # do not -clone
    fi
 fi
 note "Now at $PWD ..."
-exit
+
 
 ### Get secrets from $HOME/.secrets.sample.sh file:
-
 Input_GitHub_User_Info(){
       # https://www.shellcheck.net/wiki/SC2162: read without -r will mangle backslashes.
       read -r -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
@@ -610,25 +619,39 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
          fi
       fi
    fi
-   note "$( node --version )"   # v13.8.0
-   note "$( npm --version )"    # 6.13.7
+   note "Node version: $( node --version )"   # v13.8.0
+   note "npm version:  $( npm --version )"    # 6.13.7
 
    h2 "After git clone https://github.com/wesbos/Learn-Node.git ..."
    pwd
-   cd starter-files   # within repo
-   ls -1
-exit  # xxx
+   if [ ! -d "starter-files" ]; then   # not found
+      fatal  "starter-files folder not found. Aborting..."
+      exit 9
+   else
+      cd starter-files   # within repo
+      h2 "Now at folder path $PWD ..."
 
-   h2 "dotenv config variables.env ..."
+      if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
+   
+         h2 "npm install ..."
+             npm install   # based on properties.json
+
+         h2 "npm audit fix ..."
+             npm audit fix
+      fi
+   fi
+
+   if [ ! -f "package.json" ]; then   # not found
+      fatal  "package.json not found. Aborting..."
+      exit 9
+   fi
+
    if [ ! -f "variables.env" ]; then   # not created
+      h2 "dotenv config variables.env ..."
       cp variables.samples  variables.env
    else
       warning "Reusing variables.env from previous run."
    fi
-
-   h2 "npm install ..."
-   npm install   # based on properties.json
-
 
    # h2 "Install mongodb-community@4.2 (instead of mLab online) ..."
    # See https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/
@@ -647,27 +670,37 @@ exit  # xxx
    fi
 
    h2 "TODO: Configuring MongoDB $DB_NAME [4:27] ..."
-   # ???
 
    # Verify whether MongoDB is running, search for mongod in your running processes:
    note "$( mongo --version | grep MongoDB )"    # 3.4.0 in video. MongoDB shell version v4.2.3 
 
+   # shellcheck disable=SC2009  # Consider using pgrep instead of grepping ps output.
    RESPONSE="$( ps aux | grep -v grep | grep mongod )"
-      # root 10318   0.0  0.0  4763196   7700 s002  T     4:02PM   0:00.03 sudo mongod
-                           note "$RESPONSE"
-             MONGO_PSID="$( echo $RESPONSE | awk '{print $2}' )"
-   if [ -z "{MONGO_PSID}" ]; then  # found
+         # root 10318   0.0  0.0  4763196   7700 s002  T     4:02PM   0:00.03 sudo mongod
+                            note "${RESPONSE}"
+              MONGO_PSID=$( echo "${RESPONSE}" | awk '{print $2}' )
+
+   Kill_process(){
+      info "Killing process $1 ..."
+      sudo kill -2 "$1"
+   }
+   if [ ! -z "${MONGO_PSID}" ]; then  # found
       h2 "Shutting down mongoDB ..."
       # See https://docs.mongodb.com/manual/tutorial/manage-mongodb-processes/
-      # mongod --shutdown
-      sudo kill -2 "${MONGO_PSID}"
+      # DOESN'T WORK: mongod --shutdown
+      Kill_process "${MONGO_PSID}"  # invoking function above.
          # No response expected.
    fi
       h2 "Run MongoDB as a background process ..."
       mongod --config /usr/local/etc/mongod.conf --fork
          # about to fork child process, waiting until server is ready for connections.
          # forked process: 16698
+      # if successful:
          # child process started successfully, parent exiting
+      # if not succesful:
+         # ERROR: child process failed, exited with error number 48
+         # To see additional information in this output, start without the "--fork" option.
+
       # sudo mongod &
          # RESPONSE EXAMPLE: [1] 10318
 
@@ -713,6 +746,7 @@ if [ "${PYTHON_INSTALL}" = true ]; then  # -p
    virtualenv venv
 
    h2 "source venv/bin/activate"
+   # shellcheck disable=SC1091 # Not following: venv/bin/activate was not specified as input (see shellcheck -x).
    source venv/bin/activate
 
    h2 "Within venv ..."
@@ -720,7 +754,7 @@ if [ "${PYTHON_INSTALL}" = true ]; then  # -p
    pip install cloudinary
    
    h2 "Do something at $PWD ..."
-
+   # ???
 
    h2 "Execute deactivate if the function exists (i.e. has been created by sourcing activate):"
    # per https://stackoverflow.com/a/57342256
@@ -835,7 +869,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
    h2 "Now at path $PWD ..."
 
    h2 "git clone ruby-build.git to use the rbenv install command"
-   FOLDER_PATH="~/.rbenv/plugins/ruby-build"
+   FOLDER_PATH="$HOME/.rbenv/plugins/ruby-build"
    if [   -d "${FOLDER_PATH}" ]; then  # directory found, so remove it first.
       note "Deleting ${FOLDER_PATH} ..."
       rm -rf "${FOLDER_PATH}"
@@ -898,14 +932,14 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
    gem --version
    
    h2 "create .gemrc"  # https://www.digitalocean.com/community/tutorials/how-to-install-ruby-on-rails-with-rbenv-on-ubuntu-16-04
-   if [ ! -f "~/.gemrc" ]; then   # file NOT found, so create it:
+   if [ ! -f "$HOME/.gemrc" ]; then   # file NOT found, so create it:
       echo "gem: --no-document" > ~/.gemrc
    else
-      if grep -q "gem: --no-document" "~/.gemrc" ; then   # found in file:
-         note "gem: --no-document already in ~/.gemrc "
+      if grep -q "gem: --no-document" "$HOME/.gemrc" ; then   # found in file:
+         note "gem: --no-document already in $HOME/.gemrc "
       else
-         info "Adding gem --no-document in ~/.gemrc "
-         echo "gem: --no-document" >> ~/.gemrc
+         info "Adding gem --no-document in $HOME/.gemrc "
+         echo "gem: --no-document" >> "$HOME/.gemrc"
       fi
    fi
 
@@ -1129,7 +1163,7 @@ else   # Docker processes found running:
 fi
 
    h2 "Remove dangling docker images ..."
-   docker rmi -f $(docker images -qf dangling=true) 
+   docker rmi -f "$( docker images -qf dangling=true )"
    #   if [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q "$DOCKER_WEB_SVC_NAME")` ]; then
       # --no-trunc flag because docker ps shows short version of IDs by default.
 
@@ -1195,9 +1229,19 @@ if [ "$REMOVE_DOCKER_IMAGES" = true ]; then  # -M
 fi
 note "$( docker images -a )"
 
-
 if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -C
+   h2 "Delete cloned GitHub at end"
    Delete_GitHub_clone    # defined above in this file.
+fi
+
+
+if [ "$KILL_PROCESSES" = true ]; then  # -K
+   h2 "Kill processes"
+   if [ "${NODE_INSTALL}" = true ]; then  # -n
+      if [ ! -z "${MONGO_PSID}" ]; then  # found
+         Kill_process "${MONGO_PSID}"  # invoking function above.
+      fi
+   fi 
 fi
 
 # EOF
