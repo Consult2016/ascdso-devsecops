@@ -446,7 +446,7 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
       #- key: google-compute-default-region
       # value: us-central1
       #- key: ssh-keys
-   note "RESPONSE=$RESPONSE"
+   #note "RESPONSE=$RESPONSE"
 
    note "Now at $PWD HOME=$HOME"
 
@@ -472,14 +472,14 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 
    # https://google.qwiklabs.com/games/759/labs/2373
    h2 "GCP Speech API"  # https://cloud.google.com/speech/reference/rest/v1/RecognitionConfig
+   # usage limits: https://cloud.google.com/speech-to-text/quotas
    curl -O -s "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/gcp/gcp-speech-to-text/request.json"
    cat request.json
-   # note "$( cat request.json )"
+   # Listen to it at: https://storage.cloud.google.com/speech-demo/brooklyn.wav
    
    curl -s -X POST -H "Content-Type: application/json" --data-binary @request.json \
       "https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_API_KEY}" > result.json
    cat result.json
-   note "$( cat result.json )"  # contains "confidence": 0.98267895"
 
 exit
 fi
