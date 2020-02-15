@@ -469,6 +469,7 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
    # git commit -m "First file using Cloud Source Repositories" myfile.txt
 
    # git push origin master
+set -x
 
    # https://google.qwiklabs.com/games/759/labs/2373
    h2 "GCP Speech API"  # https://cloud.google.com/speech/reference/rest/v1/RecognitionConfig
