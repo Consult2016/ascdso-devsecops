@@ -34,6 +34,7 @@ args_prompt() {
    echo "   -X           to set -x to trace command lines"
 #   echo "   -x           to set sudoers -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
+   echo "   -g           -google cloud"
    echo "   -i           -install Ruby and Refinery"
    echo "   -j           -install JavaScript (NodeJs) app with MongoDB"
    echo "   -y           -install Python in Virtualenv"
@@ -71,6 +72,7 @@ exit_abnormal() {            # Function: Exit with error.
    SET_EXIT=true                # -E
    SET_TRACE=false              # -x
    RUN_VERBOSE=false            # -v
+   USE_GOOGLE_CLOUD=false       # -g
    PYTHON_INSTALL=false         # -p
    RUBY_INSTALL=false           # -i
    NODE_INSTALL=false           # -n
@@ -103,6 +105,10 @@ while test $# -gt 0; do
       export SET_TRACE=true
       shift
       ;;
+    -g)
+      export USE_GOOGLE_CLOUD=true
+      shift
+      ;;
     -i)
       export RUBY_INSTALL=true
       GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
@@ -112,7 +118,7 @@ while test $# -gt 0; do
       APPNAME="snakeeyes"
       shift
       ;;
-    -n)
+    -j)
       export NODE_INSTALL=true
       GitHub_REPO_URL="https://github.com/wesbos/Learn-Node.git"
       GitHub_REPO_NAME="delicious"
@@ -380,7 +386,7 @@ else
    pushd "$PROJECT_FOLDER_PATH" || return  # as suggested by SC2164
    info "Pushed into $PWD during script run ..."
 fi
-note "$( ls -al )"
+# note "$( ls )"
 
 
 if [ "${SET_EXIT}" = true ]; then  # don't
@@ -404,6 +410,64 @@ fi
 #   printf "%s\n" "$szPassword" | sudo --stdin mount \
 #      -t cifs //192.168.1.1/home /media/$USER/home \
 #      -o username=$USER,password="$szPassword"
+
+
+if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
+
+    h2 "gcloud auth list ..."
+   GCP_AUTH=$( gcloud auth list )
+   note "GCP_AUTH=$GCP_AUTH"
+      #           Credentialed Accounts
+      # ACTIVE  ACCOUNT
+      # *       google462324_student@qwiklabs.net
+
+      # To set the active account, run:
+      #    $ gcloud config set account `ACCOUNT`
+
+   GCP_PROJECT=$( gcloud config list project | grep project | awk -F= '{print $2}' )
+      # awk -F= '{print $2}'  extracts 2nd word in response:
+      # project = qwiklabs-gcp-9cf8961c6b431994
+      # Your active configuration is: [cloudshell-19147]
+
+   h2 "gcloud config list project"
+   PROJECT_ID=$( gcloud config list project --format "value(core.project)" )
+      # Your active configuration is: [cloudshell-29462]
+      #  qwiklabs-gcp-252d53a19c85b354
+   info "GCP_PROJECT=$GCP_PROJECT, PROJECT_ID=$PROJECT_ID"
+      # response: "qwiklabs-gcp-9cf8961c6b431994"
+
+   RESPONSE=$( gcloud compute project-info describe --project $GCP_PROJECT )
+      # Extract from:
+      #items:
+      #- key: google-compute-default-zone
+      # value: us-central1-a
+      #- key: google-compute-default-region
+      # value: us-central1
+      #- key: ssh-keys
+   note "RESPONSE=$RESPONSE"
+
+exit  # DEBUGGING
+ 
+   # Create new repository:
+   # gcloud source repos create REPO_DEMO
+
+   # Clone the contents of your new Cloud Source Repository to a local repo:
+   # gcloud source repos clone REPO_DEMO
+
+   # Navigate into the local repository you created:
+   # cd REPO_DEMO
+
+   # Create a file myfile.txt in your local repository:
+   # echo "Hello World!" > myfile.txt
+
+   # Commit the file using the following Git commands:
+   # git config --global user.email "you@example.com"
+   # git config --global user.name "Your Name"
+   # git add myfile.txt
+   # git commit -m "First file using Cloud Source Repositories" myfile.txt
+
+   # git push origin master
+fi
 
 
 Delete_GitHub_clone(){
