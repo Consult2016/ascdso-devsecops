@@ -96,7 +96,8 @@ PROJECT_FOLDER_PATH="$HOME/projects"  # -P
 GitHub_USER_NAME="John Doe"                  # -n
 GitHub_USER_EMAIL="john_doe@gmail.com"       # -e
 
-GitHub_REPO_NAME=""
+      GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
+      GitHub_REPO_NAME="rockstar"
 
 while test $# -gt 0; do
   case "$1" in
@@ -131,7 +132,7 @@ while test $# -gt 0; do
       ;;
     -p)
       export PYTHON_INSTALL=true
-      GitHub_REPO_URL="???"
+      GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
       GitHub_REPO_NAME="rockstar"
       APPNAME="rockstar"
       shift
