@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
-SCRIPT_VERSION="v0.57"
+SCRIPT_VERSION="v0.58"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -95,6 +95,8 @@ PROJECT_FOLDER_PATH="$HOME/projects"  # -P
 
 GitHub_USER_NAME="John Doe"                  # -n
 GitHub_USER_EMAIL="john_doe@gmail.com"       # -e
+
+GitHub_REPO_NAME=""
 
 while test $# -gt 0; do
   case "$1" in
