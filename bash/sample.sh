@@ -469,17 +469,17 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
    # git commit -m "First file using Cloud Source Repositories" myfile.txt
 
    # git push origin master
-set -x
 
    # https://google.qwiklabs.com/games/759/labs/2373
    h2 "GCP Speech API"  # https://cloud.google.com/speech/reference/rest/v1/RecognitionConfig
    curl -O -s "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/gcp/gcp-speech-to-text/request.json"
+   cat request.json
    note "$( cat request.json )"
+exit
    
    curl -s -X POST -H "Content-Type: application/json" --data-binary @request.json \
       "https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_API_KEY}" > result.json
    note "$( cat result.json )"  # contains "confidence": 0.98267895"
-exit
 fi
 
 
