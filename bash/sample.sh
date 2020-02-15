@@ -414,7 +414,7 @@ fi
 
 if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 
-    h2 "gcloud auth list ..."
+   h2 "gcloud auth list ..."
    GCP_AUTH=$( gcloud auth list )
    note "GCP_AUTH=$GCP_AUTH"
       #           Credentialed Accounts
@@ -428,8 +428,6 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
       # awk -F= '{print $2}'  extracts 2nd word in response:
       # project = qwiklabs-gcp-9cf8961c6b431994
       # Your active configuration is: [cloudshell-19147]
-
-   h2 "gcloud config list project"
    PROJECT_ID=$( gcloud config list project --format "value(core.project)" )
       # Your active configuration is: [cloudshell-29462]
       #  qwiklabs-gcp-252d53a19c85b354
@@ -446,8 +444,8 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
       #- key: ssh-keys
    note "RESPONSE=$RESPONSE"
 
-exit  # DEBUGGING
- 
+   note "Now at $PWD HOME=$HOME"
+
    # Create new repository:
    # gcloud source repos create REPO_DEMO
 
@@ -517,7 +515,6 @@ Input_GitHub_User_Info(){
       read -r -p "Enter your GitHub user email [john_doe@gmail.com]: " GitHub_USER_EMAIL
       GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"johb_doe@gmail.com"}
 }
-
 if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
    if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
       warning "File not found in $SECRETS_FILEPATH. Downloading file .secrets.sample.sh ... "
@@ -545,6 +542,7 @@ else
    # since this is hard coded as "John Doe" above
 fi
 
+# TODO: If git user not already configured ...
    info "GitHub_USER_EMAIL and USER_NAME being configured ..."
    git config --global user.name  "$GitHub_USER_NAME"
    git config --global user.email "$GitHub_USER_EMAIL"
