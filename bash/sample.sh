@@ -73,7 +73,7 @@ exit_abnormal() {            # Function: Exit with error.
    SET_TRACE=false              # -x
    RUN_VERBOSE=false            # -v
    USE_GOOGLE_CLOUD=false       # -g
-       GOOGLE_API_KEY=""        # manually from APIs & services > Credentials
+       GOOGLE_API_KEY="AIzaSyCKzmS40nAjhSFLsvFVteJRbeR2rX2RY2E"  # manually copied from APIs & services > Credentials
    PYTHON_INSTALL=false         # -p
    RUBY_INSTALL=false           # -i
    NODE_INSTALL=false           # -n
