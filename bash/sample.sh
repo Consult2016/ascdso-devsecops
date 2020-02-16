@@ -24,6 +24,7 @@ LOG_DATETIME=$( date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
+   echo "./sample.sh -v -g \"AIzaSyCKzmS40nAjhSFLsvFVteJRbeR2rX2RY2E\"  # Google API call"
    echo "./sample.sh -v -j -a  # NodeJs app"
    echo "./sample.sh -v -i -o  # Ruby app"   
    echo "./sample.sh -v -I -U -c -s -r -a -w  # Python app"
@@ -34,7 +35,7 @@ args_prompt() {
    echo "   -X           to set -x to trace command lines"
 #   echo "   -x           to set sudoers -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
-   echo "   -g           -google cloud"
+   echo "   -g \"AIzaSyCKzmS40nAjhSFLsvFVteJRbeR2rX2RY2E\" -google cloud API credentials"
    echo "   -i           -install Ruby and Refinery"
    echo "   -j           -install JavaScript (NodeJs) app with MongoDB"
    echo "   -y           -install Python in Virtualenv"
@@ -73,7 +74,7 @@ exit_abnormal() {            # Function: Exit with error.
    SET_TRACE=false              # -x
    RUN_VERBOSE=false            # -v
    USE_GOOGLE_CLOUD=false       # -g
-       GOOGLE_API_KEY="AIzaSyCKzmS40nAjhSFLsvFVteJRbeR2rX2RY2E"  # manually copied from APIs & services > Credentials
+       GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
    PYTHON_INSTALL=false         # -p
    RUBY_INSTALL=false           # -i
    NODE_INSTALL=false           # -n
@@ -96,8 +97,7 @@ PROJECT_FOLDER_PATH="$HOME/projects"  # -P
 GitHub_USER_NAME="John Doe"                  # -n
 GitHub_USER_EMAIL="john_doe@gmail.com"       # -e
 
-      GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
-      GitHub_REPO_NAME="rockstar"
+      GitHub_REPO_NAME=""
 
 while test $# -gt 0; do
   case "$1" in
@@ -110,7 +110,10 @@ while test $# -gt 0; do
       shift
       ;;
     -g)
+      shift
       export USE_GOOGLE_CLOUD=true
+             GOOGLE_API_KEY=$( echo "$1" | sed -e 's/^[^=]*=//g' )
+      export GOOGLE_API_KEY
       shift
       ;;
     -i)
@@ -337,6 +340,7 @@ trap this_ending INT QUIT TERM
 this_ending() {
    EPOCH_END=$(date -u +%s);
    EPOCH_DIFF=$((EPOCH_END-EPOCH_START))
+   # Using BASH_VERSION identified above:
    if [ "${BASH_VERSION}" -lt "4" ]; then
       FREE_DISKBLOCKS_END="0"
    else
@@ -407,7 +411,7 @@ fi
 # set -o nounset
 
 
-# Capture password manual input once for multiple shares 
+# TODO: Capture password manual input once for multiple shares 
 # (without saving password like expect command) https://www.linuxcloudvps.com/blog/how-to-automate-shell-scripts-with-expect-command/
    # From https://askubuntu.com/a/711591
 #   read -p "Password: " -s szPassword
@@ -417,16 +421,59 @@ fi
 
 
 if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
+   # Perhaps in https://console.cloud.google.com/cloudshell  (use on Chromebooks with no Terminal)
+   # Comes with gcloud, node, docker, kubectl, go, python, git, vim, cloudshell dl file, etc.
 
-   h2 "gcloud auth list ..."
-   GCP_AUTH=$( gcloud auth list )
-   note "GCP_AUTH=$GCP_AUTH"
-      #           Credentialed Accounts
-      # ACTIVE  ACCOUNT
-      # *       google462324_student@qwiklabs.net
+      # See https://cloud.google.com/sdk/gcloud
+      if ! command -v gcloud >/dev/null; then  # command not found, so:
+         h2 "Installing Google's gcloud CLI ..."
+         brew install gcloud
+      else  # installed already:
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Re-installing gcloud ..."
+            brew upgrade gcloud
+         fi
+      fi
+   # See https://cloud.google.com/blog/products/management-tools/scripting-with-gcloud-a-beginners-guide-to-automating-gcp-tasks
+      # docker run --name web-test -p 8000:8000 crccheck/hello-world
+
+   # Set cursor to be consistently on left side after a blank line:
+   export PS1="\n  \w\[\033[33m\]\n$ "
+
+   if [ "${RUN_VERBOSE}" = true ]; then
+      h2 "gcloud info & auth list ..."
+      GCP_AUTH=$( gcloud auth list )
+      note "GCP_AUTH=$GCP_AUTH"
+         #           Credentialed Accounts
+         # ACTIVE  ACCOUNT
+         # *       google462324_student@qwiklabs.net
+
+      h2 "gcloud info ..."
+      gcloud info
+         # git: [git version 2.11.0]
+         docker --version  # Docker version 19.03.5, build 633a0ea838
+         kubectl version
+         node --version
+         go version        # go version go1.13 linux/amd64
+         python --version  # Python 2.7.13
 
       # To set the active account, run:
-      #    $ gcloud config set account `ACCOUNT`
+      # gcloud config set account `ACCOUNT`
+
+      gcloud config list
+         # [component_manager]
+         # disable_update_check = True
+         # [compute]
+         # gce_metadata_read_timeout_sec = 5
+         # [core]
+         # account = wilsonmar@gmail.com
+         # disable_usage_reporting = False
+         # project = qwiklabs-gcp-00-3d1faad4cd8f
+         # [metrics]
+         # environment = devshell
+         # Your active configuration is: [cloudshell-17739]
+
+   fi
 
    GCP_PROJECT=$( gcloud config list project | grep project | awk -F= '{print $2}' )
       # awk -F= '{print $2}'  extracts 2nd word in response:
@@ -435,7 +482,7 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
    PROJECT_ID=$( gcloud config list project --format "value(core.project)" )
       # Your active configuration is: [cloudshell-29462]
       #  qwiklabs-gcp-252d53a19c85b354
-   info "GCP_PROJECT=$GCP_PROJECT, PROJECT_ID=$PROJECT_ID"
+   info "GCP_PROJECT=$GCP_PROJECT, PROJECT_ID=$PROJECT_ID, DEVSHELL_PROJECT_ID=$DEVSHELL_PROJECT_ID"
       # response: "qwiklabs-gcp-9cf8961c6b431994"
 
    RESPONSE=$( gcloud compute project-info describe --project $GCP_PROJECT )
@@ -449,8 +496,12 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
    #note "RESPONSE=$RESPONSE"
 
    note "Now at $PWD HOME=$HOME"
+fi
 
-   # Create new repository:
+
+if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
+
+   h2 "Create new repository using gcloud & git commands:"
    # gcloud source repos create REPO_DEMO
 
    # Clone the contents of your new Cloud Source Repository to a local repo:
@@ -469,21 +520,7 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
    # git commit -m "First file using Cloud Source Repositories" myfile.txt
 
    # git push origin master
-
-   # https://google.qwiklabs.com/games/759/labs/2373
-   h2 "GCP Speech API"  # https://cloud.google.com/speech/reference/rest/v1/RecognitionConfig
-   # usage limits: https://cloud.google.com/speech-to-text/quotas
-   curl -O -s "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/gcp/gcp-speech-to-text/request.json"
-   cat request.json
-   # Listen to it at: https://storage.cloud.google.com/speech-demo/brooklyn.wav
-   
-   curl -s -X POST -H "Content-Type: application/json" --data-binary @request.json \
-      "https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_API_KEY}" > result.json
-   cat result.json
-
-exit
 fi
-
 
 Delete_GitHub_clone(){
    # https://www.shellcheck.net/wiki/SC2115 Use "${var:?}" to ensure this never expands to / .
@@ -688,6 +725,46 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
    fi # brew
 
 fi # if [ "${DOWNLOAD_INSTALL}" = true ]; then 
+
+
+if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
+
+   # https://google.qwiklabs.com/games/759/labs/2373
+   h2 "GCP Speech-to-Text API"  # https://cloud.google.com/speech/reference/rest/v1/RecognitionConfig
+   # usage limits: https://cloud.google.com/speech-to-text/quotas
+   curl -O -s "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/gcp/gcp-speech-to-text/request.json"
+   cat request.json
+   # Listen to it at: https://storage.cloud.google.com/speech-demo/brooklyn.wav
+   
+   curl -s -X POST -H "Content-Type: application/json" --data-binary @request.json \
+      "https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_API_KEY}" > result.json
+   cat result.json
+
+exit
+
+   # https://google.qwiklabs.com/games/759/labs/2374
+   h2 "GCP AutoML Vision API"
+   # From the Navigation menu and select APIs & Services > Library https://cloud.google.com/automl/ui/vision
+   # In the search bar type in "Cloud AutoML". Click on the Cloud AutoML API result and then click Enable.
+
+   QWIKLABS_USERNAME="???"
+
+   # Give AutoML permissions:
+   gcloud projects add-iam-policy-binding $DEVSHELL_PROJECT_ID \
+    --member="user:$QWIKLABS_USERNAME" \
+    --role="roles/automl.admin"
+
+   gcloud projects add-iam-policy-binding $DEVSHELL_PROJECT_ID \
+    --member="serviceAccount:custom-vision@appspot.gserviceaccount.com" \
+    --role="roles/ml.admin"
+
+   gcloud projects add-iam-policy-binding $DEVSHELL_PROJECT_ID \
+    --member="serviceAccount:custom-vision@appspot.gserviceaccount.com" \
+    --role="roles/storage.admin"
+
+   # TODO: more steps needed from lab
+
+fi
 
 
 if [ "${NODE_INSTALL}" = true ]; then  # -n
