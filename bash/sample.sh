@@ -35,7 +35,7 @@ args_prompt() {
    echo "   -X           to set -x to trace command lines"
 #   echo "   -x           to set sudoers -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
-   echo "   -g \"AIzaSyCKzmS40nAjhSFLsvFVteJRbeR2rX2RY2E\" -google cloud API credentials"
+   echo "   -g \"AIzaSyCKzmS40nAjhSFLsvFVteJRbeR2rX2RY2E\" -gcloud API credentials for calls"
    echo "   -i           -install Ruby and Refinery"
    echo "   -j           -install JavaScript (NodeJs) app with MongoDB"
    echo "   -y           -install Python in Virtualenv"
@@ -475,7 +475,7 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 
    fi
 
-   GCP_PROJECT=$( gcloud config list project | grep project | awk -F= '{print $2}' )
+   GCP_PROJECT=$( gcloud config list project | grep project | awk -F='{print $2}' )
       # awk -F= '{print $2}'  extracts 2nd word in response:
       # project = qwiklabs-gcp-9cf8961c6b431994
       # Your active configuration is: [cloudshell-19147]
