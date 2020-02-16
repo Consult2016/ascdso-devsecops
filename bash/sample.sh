@@ -24,7 +24,7 @@ LOG_DATETIME=$( date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
-   echo "./sample.sh -v -g \"AIzaSyCKzmS40nAjhSFLsvFVteJRbeR2rX2RY2E\"  # Google API call"
+   echo "./sample.sh -v -g \"AIzaSyCKzmS40nAjhSFLsvFVteJRbeR2rX2RY2E\" -p \"cp100-1094\"  # Google API call"
    echo "./sample.sh -v -j -a  # NodeJs app"
    echo "./sample.sh -v -i -o  # Ruby app"   
    echo "./sample.sh -v -I -U -c -s -r -a -w  # Python app"
@@ -45,7 +45,7 @@ args_prompt() {
    echo "   -s           -set GitHub user info from ~/.secrets.sh in your user home folder"
    echo "   -n \"John Doe\"            GitHub user -name"
    echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
-   echo "   -P \" \"    Project folder -path"
+   echo "   -p \"cp100-1094\"  -project folder"
    echo "   -r           start Docker before -run"
    echo "   -b           to -build Docker image"
    echo "   -a           to -actually run docker-compose"
@@ -75,7 +75,8 @@ exit_abnormal() {            # Function: Exit with error.
    RUN_VERBOSE=false            # -v
    USE_GOOGLE_CLOUD=false       # -g
        GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
-   PYTHON_INSTALL=false         # -p
+   PROJECT_NAME=""              # -p                 
+   PYTHON_INSTALL=false         # -j
    RUBY_INSTALL=false           # -i
    NODE_INSTALL=false           # -n
    UPDATE_PKGS=false            # -U
@@ -96,8 +97,7 @@ PROJECT_FOLDER_PATH="$HOME/projects"  # -P
 
 GitHub_USER_NAME="John Doe"                  # -n
 GitHub_USER_EMAIL="john_doe@gmail.com"       # -e
-
-      GitHub_REPO_NAME=""
+GitHub_REPO_NAME=""
 
 while test $# -gt 0; do
   case "$1" in
@@ -109,11 +109,17 @@ while test $# -gt 0; do
       export SET_TRACE=true
       shift
       ;;
-    -g)
+    -g*)
       shift
       export USE_GOOGLE_CLOUD=true
              GOOGLE_API_KEY=$( echo "$1" | sed -e 's/^[^=]*=//g' )
       export GOOGLE_API_KEY
+      shift
+      ;;
+    -p*)
+      shift
+             PROJECT_NAME=$( echo "$1" | sed -e 's/^[^=]*=//g' )
+      export PROJECT_NAME
       shift
       ;;
     -i)
@@ -133,7 +139,7 @@ while test $# -gt 0; do
       DB_NAME="delicious"
       shift
       ;;
-    -p)
+    -y)
       export PYTHON_INSTALL=true
       GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
       GitHub_REPO_NAME="rockstar"
@@ -171,12 +177,6 @@ while test $# -gt 0; do
       shift
              GitHub_USER_EMAIL=$( echo "$1" | sed -e 's/^[^=]*=//g' )
       export GitHub_USER_EMAIL
-      shift
-      ;;
-    -p*)
-      shift
-             PROJECT_FOLDER_PATH=$( echo "$1" | sed -e 's/^[^=]*=//g' )
-      export PROJECT_FOLDER_PATH
       shift
       ;;
     -s)
@@ -426,28 +426,70 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 
       # See https://cloud.google.com/sdk/gcloud
       if ! command -v gcloud >/dev/null; then  # command not found, so:
-         h2 "Installing Google's gcloud CLI ..."
-         brew install gcloud
+         h2 "Installing gcloud CLI in google-cloud-sdk ..."
+         brew cask install google-cloud-sdk
+         # google-cloud-sdk is installed at /usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk.
+         # anthoscligcl
       else  # installed already:
          if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Re-installing gcloud ..."
-            brew upgrade gcloud
+            h2 "Re-installing gcloud CLI in google-cloud-sdk ..."
+            brew cask upgrade google-cloud-sdk
          fi
       fi
-   # See https://cloud.google.com/blog/products/management-tools/scripting-with-gcloud-a-beginners-guide-to-automating-gcp-tasks
-      # docker run --name web-test -p 8000:8000 crccheck/hello-world
+      note "$( gcloud --version | grep 'Google Cloud SDK' )"
+         # Google Cloud SDK 280.0.0
+         # bq 2.0.53
+         # core 2020.02.07
+         # gsutil 4.47
 
    # Set cursor to be consistently on left side after a blank line:
    export PS1="\n  \w\[\033[33m\]\n$ "
+   note "Now at $PWD HOME=$HOME"
 
-   if [ "${RUN_VERBOSE}" = true ]; then
       h2 "gcloud info & auth list ..."
       GCP_AUTH=$( gcloud auth list )
-      note "GCP_AUTH=$GCP_AUTH"
-         #           Credentialed Accounts
-         # ACTIVE  ACCOUNT
-         # *       google462324_student@qwiklabs.net
+      if [[ $GCP_AUTH == *"No credentialed accounts"* ]]; then
+         gcloud auth login  # for pop-up browser auth.
+      else
+         echo "GCP_AUTH=$GCP_AUTH"
+            #           Credentialed Accounts
+            # ACTIVE  ACCOUNT
+            # *       google462324_student@qwiklabs.net
+      fi
+      # To set the active account, run:
+      # gcloud config set account `ACCOUNT`
 
+   if [ -n "$PROJECT_NAME" ]; then   # variable is NOT empty
+      h2 "Using -project $PROJECT_NAME ..."
+      gcloud config set project "${PROJECT_NAME}"
+   fi
+   GCP_PROJECT=$( gcloud config list project | grep project | awk -F= '{print $2}' )
+      # awk -F= '{print $2}'  extracts 2nd word in response:
+      # project = qwiklabs-gcp-9cf8961c6b431994
+      # Your active configuration is: [cloudshell-19147]
+      if [[ $GCP_PROJECT == *"[default]"* ]]; then
+         gcloud projects list
+         exit 9
+      fi
+
+   PROJECT_ID=$( gcloud config list project --format "value(core.project)" )
+      # Your active configuration is: [cloudshell-29462]
+      #  qwiklabs-gcp-252d53a19c85b354
+   info "GCP_PROJECT=$GCP_PROJECT, PROJECT_ID=$PROJECT_ID"
+       # GCP_PROJECT= qwiklabs-gcp-00-3d1faad4cd8f, PROJECT_ID=qwiklabs-gcp-00-3d1faad4cd8f
+   info "DEVSHELL_PROJECT_ID=$DEVSHELL_PROJECT_ID"
+
+   RESPONSE=$( gcloud compute project-info describe --project $GCP_PROJECT )
+      # Extract from:
+      #items:
+      #- key: google-compute-default-zone
+      # value: us-central1-a
+      #- key: google-compute-default-region
+      # value: us-central1
+      #- key: ssh-keys
+   #note "RESPONSE=$RESPONSE"
+
+   if [ "${RUN_VERBOSE}" = true ]; then
       h2 "gcloud info ..."
       gcloud info
          # git: [git version 2.11.0]
@@ -456,9 +498,6 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
          node --version
          go version        # go version go1.13 linux/amd64
          python --version  # Python 2.7.13
-
-      # To set the active account, run:
-      # gcloud config set account `ACCOUNT`
 
       gcloud config list
          # [component_manager]
@@ -473,29 +512,19 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
          # environment = devshell
          # Your active configuration is: [cloudshell-17739]
 
+      # TODO: Set region?
+      # gcloud functions regions list
+         # projects/.../locations/us-central1, us-east1, europe-west1, asia-northeast1
+
    fi
 
-   GCP_PROJECT=$( gcloud config list project | grep project | awk -F='{print $2}' )
-      # awk -F= '{print $2}'  extracts 2nd word in response:
-      # project = qwiklabs-gcp-9cf8961c6b431994
-      # Your active configuration is: [cloudshell-19147]
-   PROJECT_ID=$( gcloud config list project --format "value(core.project)" )
-      # Your active configuration is: [cloudshell-29462]
-      #  qwiklabs-gcp-252d53a19c85b354
-   info "GCP_PROJECT=$GCP_PROJECT, PROJECT_ID=$PROJECT_ID, DEVSHELL_PROJECT_ID=$DEVSHELL_PROJECT_ID"
-      # response: "qwiklabs-gcp-9cf8961c6b431994"
+   # See https://cloud.google.com/blog/products/management-tools/scripting-with-gcloud-a-beginners-guide-to-automating-gcp-tasks
+      # docker run --name web-test -p 8000:8000 crccheck/hello-world
 
-   RESPONSE=$( gcloud compute project-info describe --project $GCP_PROJECT )
-      # Extract from:
-      #items:
-      #- key: google-compute-default-zone
-      # value: us-central1-a
-      #- key: google-compute-default-region
-      # value: us-central1
-      #- key: ssh-keys
-   #note "RESPONSE=$RESPONSE"
+   # Setup Google's Local Functions Emulator to test functions locally without deploying the live environment every time:
+   # npm install -g @google-cloud/functions-emulator
+      # See https://rominirani.com/google-cloud-functions-tutorial-using-gcloud-tool-ccf3127fdf1a
 
-   note "Now at $PWD HOME=$HOME"
 fi
 
 
@@ -548,7 +577,8 @@ if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
       # git pull upstream master
    fi
 else   # do not -clone
-   if [ -d "${GitHub_REPO_NAME:?}" ]; then  # path available.
+   #if [ -d "${GitHub_REPO_NAME:?}" ]; then  # path available.
+   if [ -d "${GitHub_REPO_NAME}" ]; then  # path available.
       h2 "Re-using repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
       cd "$GitHub_REPO_NAME"
    else
