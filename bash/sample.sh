@@ -56,6 +56,7 @@ args_prompt() {
 #   echo "   -S          store image built in DockerHub"
    echo "   -o           to open/view -web page in default browser"
    echo "   -w           to open/view -web page in default browser"
+
    echo "   -D           to -Delete files after run (to save disk space)"
    echo "   -M           to remove Docker iMages pulled from DockerHub"
    echo "   -C           to remove -Cloned files after run (to save disk space)"
@@ -77,7 +78,6 @@ exit_abnormal() {            # Function: Exit with error.
    SET_TRACE=false              # -x
    RUN_VERBOSE=false            # -v
    RUN_VIRTUALENV=false         # -V
-      NOTEBOOK_FILE="notebook1.ipynb"
    USE_GOOGLE_CLOUD=false       # -g
        GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
    PROJECT_NAME=""              # -p                 
@@ -214,6 +214,10 @@ while test $# -gt 0; do
       GitHub_REPO_URL="https://github.com/PacktPublishing/Hands-On-Machine-Learning-with-Scikit-Learn-and-TensorFlow-2.0.git"
       GitHub_REPO_NAME="scikit"
       APPNAME="scikit"
+      GitHub_FOLDER="section_2"
+      NOTEBOOK_FILE="2-2.ipynb"
+     #NOTEBOOK_FILE="2-3.ipynb"
+      #GitHub_FOLDER="section_3"
       shift
       ;;
     -w)
@@ -1124,20 +1128,6 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
 
       h2 "Within (venv) ..."
 
-   # Running:
-   exit
-
-      if ! command -v jq ; then
-         h2 "Installing jq ..."
-         brew install jq
-      else
-         if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Upgrading jq ..."
-            brew --upgrade --force-reinstall jq 
-         fi
-      fi
-      # /usr/local/bin/jq
-
 
    # from pip freeze > requirements.txt previously.
    if [ -f "requirements.txt" ]; then
@@ -1145,19 +1135,31 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
       conda create -n PDSH python=3.7 --file requirements.txt
       # pip install -r requirements.txt
    else
-      h2 "Install jupyterlab..."
+      h2 "No requirements.txt ..."
       # pip3 install jupyterlab
 
       # h2 "Install cloudinary Within requirements.txt : "
       # pip install cloudinary
+      #if ! command -v jq ; then
+      #   h2 "Installing jq ..."
+      #   brew install jq
+      #else
+      #   if [ "${UPDATE_PKGS}" = true ]; then
+      #      h2 "Upgrading jq ..."
+      #      brew --upgrade --force-reinstall jq 
+      #   fi
+      #fi
+      # /usr/local/bin/jq
    fi
 
-      h2 "Start Jupyter server with Notebook file $NOTEBOOK_FILE "
+      cd "${GitHub_FOLDER}"
+
+      h2 "Starting Jupyter with Notebook file $NOTEBOOK_FILE in $GitHub_FOLDER ..."
       jupyter notebook --port 8888 "${NOTEBOOK_FILE}" &
 
       open http://localhost:8888/tree
    
-   h2 "Do something at $PWD ..."
+   #h2 "Do something at $PWD ..."
    # python3 something.py  ???
 
 
