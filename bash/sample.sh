@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
-SCRIPT_VERSION="v0.59"
+SCRIPT_VERSION="v0.61"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -24,10 +24,11 @@ LOG_DATETIME=$( date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "USAGE EXAMPLE during testing:"
-   echo "./sample.sh -v -g \"AIzaSyCKzmS40nAjhSFLsvFVteJRbeR2rX2RY2E\" -p \"cp100-1094\"  # Google API call"
-   echo "./sample.sh -v -j -a  # NodeJs app"
+   echo "./sample.sh -v -g \"abcdef...89\" -p \"cp100-1094\"  # Google API call"
+   echo "./sample.sh -v -n -a  # NodeJs app with MongoDB"
    echo "./sample.sh -v -i -o  # Ruby app"   
    echo "./sample.sh -v -I -U -c -s -r -a -w  # Python app"
+   echo "./sample.sh -v -V -z   # Jupyter app within Virtualenv"
    echo "USAGE EXAMPLE after testing:"
    echo "./sample.sh -v -D -M -C"
    echo "OPTIONS:"
@@ -35,11 +36,13 @@ args_prompt() {
    echo "   -X           to set -x to trace command lines"
 #   echo "   -x           to set sudoers -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
-   echo "   -g \"AIzaSyCKzmS40nAjhSFLsvFVteJRbeR2rX2RY2E\" -gcloud API credentials for calls"
+   echo "   -V           to run within VirtualEnv"
+   echo "   -g \"abcdef...89\" -gcloud API credentials for calls"
    echo "   -i           -install Ruby and Refinery"
    echo "   -j           -install JavaScript (NodeJs) app with MongoDB"
    echo "   -y           -install Python in Virtualenv"
    echo "   -I           -Install brew, docker, docker-compose"
+   echo "   -s           -install JavaScript (NodeJs) app with MongoDB"
    echo "   -U           -Upgrade packages"
    echo "   -c           -clone from GitHub"
    echo "   -s           -set GitHub user info from ~/.secrets.sh in your user home folder"
@@ -73,12 +76,16 @@ exit_abnormal() {            # Function: Exit with error.
    SET_EXIT=true                # -E
    SET_TRACE=false              # -x
    RUN_VERBOSE=false            # -v
+   RUN_VIRTUALENV=false         # -V
+      NOTEBOOK_FILE="notebook1.ipynb"
    USE_GOOGLE_CLOUD=false       # -g
        GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
    PROJECT_NAME=""              # -p                 
-   PYTHON_INSTALL=false         # -j
+   PYTHON_INSTALL=false         # 
    RUBY_INSTALL=false           # -i
    NODE_INSTALL=false           # -n
+      MONGO_DB_NAME=""
+      MY_FILE="variables.env.sample"
    UPDATE_PKGS=false            # -U
    RESTART_DOCKER=false         # -r
    BUILD_DOCKER_IMAGE=false     # -b
@@ -101,12 +108,34 @@ GitHub_REPO_NAME=""
 
 while test $# -gt 0; do
   case "$1" in
-    -v)
-      export RUN_VERBOSE=true
+    -a)
+      export RUN_ACTUAL=true
       shift
       ;;
-    -x)
-      export SET_TRACE=true
+    -b)
+      export BUILD_DOCKER_IMAGE=true
+      shift
+      ;;
+    -c)
+      export CLONE_GITHUB=true
+      shift
+      ;;
+    -C)
+      export REMOVE_GITHUB_AFTER=true
+      shift
+      ;;
+    -D)
+      export RUN_DELETE_AFTER=true
+      shift
+      ;;
+    -e*)
+      shift
+             GitHub_USER_EMAIL=$( echo "$1" | sed -e 's/^[^=]*=//g' )
+      export GitHub_USER_EMAIL
+      shift
+      ;;
+    -E)
+      export SET_EXIT=false
       shift
       ;;
     -g*)
@@ -114,12 +143,6 @@ while test $# -gt 0; do
       export USE_GOOGLE_CLOUD=true
              GOOGLE_API_KEY=$( echo "$1" | sed -e 's/^[^=]*=//g' )
       export GOOGLE_API_KEY
-      shift
-      ;;
-    -p*)
-      shift
-             PROJECT_NAME=$( echo "$1" | sed -e 's/^[^=]*=//g' )
-      export PROJECT_NAME
       shift
       ;;
     -i)
@@ -131,39 +154,20 @@ while test $# -gt 0; do
       APPNAME="snakeeyes"
       shift
       ;;
+    -I)
+      export DOWNLOAD_INSTALL=true
+      shift
+      ;;
     -j)
       export NODE_INSTALL=true
       GitHub_REPO_URL="https://github.com/wesbos/Learn-Node.git"
       GitHub_REPO_NAME="delicious"
       APPNAME="delicious"
-      DB_NAME="delicious"
+      MONGO_DB_NAME="delicious"
       shift
       ;;
-    -y)
-      export PYTHON_INSTALL=true
-      GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
-      GitHub_REPO_NAME="rockstar"
-      APPNAME="rockstar"
-      shift
-      ;;
-    -E)
-      export SET_EXIT=false
-      shift
-      ;;
-    -X)
-      export SET_XTRACE=true
-      shift
-      ;;
-    -I)
-      export DOWNLOAD_INSTALL=true
-      shift
-      ;;
-    -U)
-      export UPDATE_PKGS=true
-      shift
-      ;;
-    -c)
-      export CLONE_GITHUB=true
+    -M)
+      export REMOVE_DOCKER_IMAGES=true
       shift
       ;;
     -n*)
@@ -173,10 +177,18 @@ while test $# -gt 0; do
       export GitHub_USER_NAME
       shift
       ;;
-    -e*)
+    -p*)
       shift
-             GitHub_USER_EMAIL=$( echo "$1" | sed -e 's/^[^=]*=//g' )
-      export GitHub_USER_EMAIL
+             PROJECT_NAME=$( echo "$1" | sed -e 's/^[^=]*=//g' )
+      export PROJECT_NAME
+      shift
+      ;;
+    -K)
+      export KILL_PROCESSES=true
+      shift
+      ;;
+    -r)
+      export RESTART_DOCKER=true
       shift
       ;;
     -s)
@@ -189,36 +201,38 @@ while test $# -gt 0; do
       export SECRETS_FILEPATH
       shift
       ;;
-    -r)
-      export RESTART_DOCKER=true
+    -U)
+      export UPDATE_PKGS=true
       shift
       ;;
-    -b)
-      export BUILD_DOCKER_IMAGE=true
+    -v)
+      export RUN_VERBOSE=true
       shift
       ;;
-    -a)
-      export RUN_ACTUAL=true
+    -V)
+      export RUN_VIRTUALENV=true
+      GitHub_REPO_URL="https://github.com/PacktPublishing/Hands-On-Machine-Learning-with-Scikit-Learn-and-TensorFlow-2.0.git"
+      GitHub_REPO_NAME="scikit"
+      APPNAME="scikit"
       shift
       ;;
     -w)
       export RUN_OPEN_BROWSER=true
       shift
       ;;
-    -D)
-      export RUN_DELETE_AFTER=true
+    -x)
+      export SET_TRACE=true
       shift
       ;;
-    -M)
-      export REMOVE_DOCKER_IMAGES=true
+    -X)
+      export SET_XTRACE=true
       shift
       ;;
-    -C)
-      export REMOVE_GITHUB_AFTER=true
-      shift
-      ;;
-    -K)
-      export KILL_PROCESSES=true
+    -y)
+      export PYTHON_INSTALL=true
+      GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
+      GitHub_REPO_NAME="rockstar"
+      APPNAME="rockstar"
       shift
       ;;
     *)
@@ -350,7 +364,7 @@ this_ending() {
    MSG="End of script $SCRIPT_VERSION after $((EPOCH_DIFF/360)) seconds and $((FREE_DIFF*512)) bytes on disk."
    # echo 'Elapsed HH:MM:SS: ' $( awk -v t=$beg-seconds 'BEGIN{t=int(t*1000); printf "%d:%02d:%02d\n", t/3600000, t/60000%60, t/1000%60}' )
    success "$MSG"
-   note "Disk $FREE_DISKBLOCKS_START to $FREE_DISKBLOCKS_END"
+   # note "Disk $FREE_DISKBLOCKS_START to $FREE_DISKBLOCKS_END"
 }
 sig_cleanup() {
     trap '' EXIT  # some shells call EXIT after the INT handler.
@@ -490,14 +504,16 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
    #note "RESPONSE=$RESPONSE"
 
    if [ "${RUN_VERBOSE}" = true ]; then
-      h2 "gcloud info ..."
+      h2 "gcloud info and versions ..."
       gcloud info
+      gcloud version
          # git: [git version 2.11.0]
          docker --version  # Docker version 19.03.5, build 633a0ea838
          kubectl version
          node --version
          go version        # go version go1.13 linux/amd64
          python --version  # Python 2.7.13
+         unzip -v | grep Debian   # UnZip 6.00 of 20 April 2009, by Debian. Original by Info-ZIP.
 
       gcloud config list
          # [component_manager]
@@ -521,133 +537,18 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
    # See https://cloud.google.com/blog/products/management-tools/scripting-with-gcloud-a-beginners-guide-to-automating-gcp-tasks
       # docker run --name web-test -p 8000:8000 crccheck/hello-world
 
+   # To manage secrets stored in the Google cloud per https://wilsonmar.github.io/vault
+   # enable APIs for your account: https://console.developers.google.com/project/123456789012/settings%22?pli=1
+   gcloud services enable \
+      cloudfunctions.googleapis.com \
+      storage-component.googleapis.com
+   # See https://cloud.google.com/functions/docs/securing/managing-access-iam
+
+
    # Setup Google's Local Functions Emulator to test functions locally without deploying the live environment every time:
    # npm install -g @google-cloud/functions-emulator
       # See https://rominirani.com/google-cloud-functions-tutorial-using-gcloud-tool-ccf3127fdf1a
 
-fi
-
-
-if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
-
-   h2 "Create new repository using gcloud & git commands:"
-   # gcloud source repos create REPO_DEMO
-
-   # Clone the contents of your new Cloud Source Repository to a local repo:
-   # gcloud source repos clone REPO_DEMO
-
-   # Navigate into the local repository you created:
-   # cd REPO_DEMO
-
-   # Create a file myfile.txt in your local repository:
-   # echo "Hello World!" > myfile.txt
-
-   # Commit the file using the following Git commands:
-   # git config --global user.email "you@example.com"
-   # git config --global user.name "Your Name"
-   # git add myfile.txt
-   # git commit -m "First file using Cloud Source Repositories" myfile.txt
-
-   # git push origin master
-fi
-
-Delete_GitHub_clone(){
-   # https://www.shellcheck.net/wiki/SC2115 Use "${var:?}" to ensure this never expands to / .
-   PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${GitHub_REPO_NAME}"
-   if [ -d "${PROJECT_FOLDER_FULL_PATH:?}" ]; then  # path available.
-      h2 "Removing project folder $PROJECT_FOLDER_FULL_PATH ..."
-      ls -al "${PROJECT_FOLDER_FULL_PATH}"
-      rm -rf "${PROJECT_FOLDER_FULL_PATH}"
-   fi
-}
-Clone_GitHub_repo(){
-      git clone "${GitHub_REPO_URL}" "$GitHub_REPO_NAME"
-      cd "$GitHub_REPO_NAME"
-      note "At $PWD"
-}
-if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
-   if [ -d "$GitHub_REPO_NAME" ]; then  # directory not available, so clone into it:
-      rm -rf "$GitHub_REPO_NAME" 
-      Delete_GitHub_clone    # defined above in this file.
-   else
-      h2 "-clone requested for repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
-      Clone_GitHub_repo      # defined above in this file.
-      # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
-      # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
-      # git pull upstream master
-   fi
-else   # do not -clone
-   #if [ -d "${GitHub_REPO_NAME:?}" ]; then  # path available.
-   if [ -d "${GitHub_REPO_NAME}" ]; then  # path available.
-      h2 "Re-using repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
-      cd "$GitHub_REPO_NAME"
-   else
-      h2 "Have to download repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
-      git clone "${GitHub_REPO_URL}" "$GitHub_REPO_NAME"
-      cd "$GitHub_REPO_NAME"
-   fi
-fi
-note "Now at $PWD ..."
-
-
-### Get secrets from $HOME/.secrets.sample.sh file:
-Input_GitHub_User_Info(){
-      # https://www.shellcheck.net/wiki/SC2162: read without -r will mangle backslashes.
-      read -r -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
-      GitHub_USER_NAME=${GitHub_USER_NAME:-"John Doe"}
-
-      read -r -p "Enter your GitHub user email [john_doe@gmail.com]: " GitHub_USER_EMAIL
-      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"johb_doe@gmail.com"}
-}
-if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
-   if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
-      warning "File not found in $SECRETS_FILEPATH. Downloading file .secrets.sample.sh ... "
-      curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/.secrets.sample.sh
-      warning "Moving downloaded file to $HOME/.secrets.sh ... "
-      mv .secrets.sample.sh  .secrets.sh
-      fatal "Please edit file $HOME/.secrets.sh and run again ..."
-      exit 1
-   else  # file found:
-      h2 "Using settings in $SECRETS_FILEPATH "
-      ls -al "$SECRETS_FILEPATH"
-      chmod +x "$SECRETS_FILEPATH"
-      source   "$SECRETS_FILEPATH"  # run file containing variable definitions.
-      note "GitHub_USER_NAME=\"$GitHub_USER_NAME\" read from file $SECRETS_FILEPATH"
-   fi
-else  # flag not to use file, then manually input:
-   warning "Using default GitHub user info ..."
-   # Input_GitHub_User_Info  # function defined above.
-fi  # USE_SECRETS_FILE
-
-if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
-   Input_GitHub_User_Info  # function defined above.
-else
-   note "Using -u \"$GitHub_USER_NAME\" - e\"GitHub_USER_EMAIL\" ..."
-   # since this is hard coded as "John Doe" above
-fi
-
-# TODO: If git user not already configured ...
-   info "GitHub_USER_EMAIL and USER_NAME being configured ..."
-   git config --global user.name  "$GitHub_USER_NAME"
-   git config --global user.email "$GitHub_USER_EMAIL"
-   # note "$( git config --list )"
-   # note "$( git config --list --show-origin )"
-
-
-if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
-   # Needed by snakeeyes:
-
-   if [ ! -f ".env" ]; then
-      cp .env.example  .env
-   else
-      warning "no .env file"
-   fi
-
-   if [ ! -f "docker-compose.override.yml" ]; then
-      cp docker-compose.override.example.yml  docker-compose.override.yml
-   else
-      warning "no .yml file"
-   fi
 fi
 
 
@@ -757,6 +658,257 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 fi # if [ "${DOWNLOAD_INSTALL}" = true ]; then 
 
 
+
+if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
+
+   h2 "Create new repository using gcloud & git commands:"
+   # gcloud source repos create REPO_DEMO
+
+   # Clone the contents of your new Cloud Source Repository to a local repo:
+   # gcloud source repos clone REPO_DEMO
+
+   # Navigate into the local repository you created:
+   # cd REPO_DEMO
+
+   # Create a file myfile.txt in your local repository:
+   # echo "Hello World!" > myfile.txt
+
+   # Commit the file using the following Git commands:
+   # git config --global user.email "you@example.com"
+   # git config --global user.name "Your Name"
+   # git add myfile.txt
+   # git commit -m "First file using Cloud Source Repositories" myfile.txt
+
+   # git push origin master
+fi
+
+Delete_GitHub_clone(){
+   # https://www.shellcheck.net/wiki/SC2115 Use "${var:?}" to ensure this never expands to / .
+   PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${GitHub_REPO_NAME}"
+   if [ -d "${PROJECT_FOLDER_FULL_PATH:?}" ]; then  # path available.
+      h2 "Removing project folder $PROJECT_FOLDER_FULL_PATH ..."
+      ls -al "${PROJECT_FOLDER_FULL_PATH}"
+      rm -rf "${PROJECT_FOLDER_FULL_PATH}"
+   fi
+}
+Clone_GitHub_repo(){
+      git clone "${GitHub_REPO_URL}" "$GitHub_REPO_NAME"
+      cd "$GitHub_REPO_NAME"
+      note "At $PWD"
+}
+if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
+   if [ -d "$GitHub_REPO_NAME" ]; then  # directory not available, so clone into it:
+      rm -rf "$GitHub_REPO_NAME" 
+      Delete_GitHub_clone    # defined above in this file.
+   else
+      h2 "-clone requested for repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+      Clone_GitHub_repo      # defined above in this file.
+      # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
+      # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
+      # git pull upstream master
+   fi
+else   # do not -clone
+   #if [ -d "${GitHub_REPO_NAME:?}" ]; then  # path available.
+   if [ -d "${GitHub_REPO_NAME}" ]; then  # path available.
+      h2 "Re-using repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+      cd "$GitHub_REPO_NAME"
+   else
+      h2 "Have to download repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+      git clone "${GitHub_REPO_URL}" "$GitHub_REPO_NAME"
+      cd "$GitHub_REPO_NAME"
+   fi
+fi
+note "Now at $PWD ..."
+
+
+### Get secrets from $HOME/.secrets.sample.sh file:
+Input_GitHub_User_Info(){
+      # https://www.shellcheck.net/wiki/SC2162: read without -r will mangle backslashes.
+      read -r -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
+      GitHub_USER_NAME=${GitHub_USER_NAME:-"John Doe"}
+
+      read -r -p "Enter your GitHub user email [john_doe@gmail.com]: " GitHub_USER_EMAIL
+      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"johb_doe@gmail.com"}
+}
+if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
+   if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
+      warning "File not found in $SECRETS_FILEPATH. Downloading file .secrets.sample.sh ... "
+      curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/.secrets.sample.sh
+      warning "Moving downloaded file to $HOME/.secrets.sh ... "
+      mv .secrets.sample.sh  .secrets.sh
+      fatal "Please edit file $HOME/.secrets.sh and run again ..."
+      exit 1
+   else  # file found:
+      h2 "Using settings in $SECRETS_FILEPATH "
+      ls -al "$SECRETS_FILEPATH"
+      chmod +x "$SECRETS_FILEPATH"
+      source   "$SECRETS_FILEPATH"  # run file containing variable definitions.
+      note "GitHub_USER_NAME=\"$GitHub_USER_NAME\" read from file $SECRETS_FILEPATH"
+   fi
+else  # flag not to use file, then manually input:
+   warning "Using default GitHub user info ..."
+   # Input_GitHub_User_Info  # function defined above.
+fi  # USE_SECRETS_FILE
+
+
+if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
+   Input_GitHub_User_Info  # function defined above.
+else
+   note "Using -u \"$GitHub_USER_NAME\" -e \"$GitHub_USER_EMAIL\" \n ..."
+   # since this is hard coded as "John Doe" above
+fi
+
+
+if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
+
+   # This is https://github.com/AGWA/git-crypt      has 4,500 stars.
+   # Whereas https://github.com/sobolevn/git-secret has 1,700 stars.
+   # This script detects whether https://github.com/sobolevn/git-secret was used to store secrets inside a local git repo.
+   # This looks in the repo .gitsecret folder created by the "git secret init" command on this repo (under DevSecOps).
+   # "git secret tell" stores the public key of the current git user email.
+   # "git secret add my-file.txt" then "git secret hide" and "rm my-file.txt"
+   # This approach is not real secure because it's a matter of time before any static secret can be decrypted by brute force.
+   # When someone is out - delete their public key, re-encrypt the files, and they won’t be able to decrypt secrets anymore.
+   if [ -d ".gitsecret" ]; then   # found
+        h2 ".gitsecret folder found ..."
+      # Files in there were encrypted using "git-secret" commands referencing gpg gen'd key pairs based on an email address.
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         if ! command -v gpg >/dev/null; then  # command not found, so:
+            h2 "Brew installing gnupg ..."
+            brew install gnupg  
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading gnupg ..."
+               brew upgrade gnupg
+            fi
+         fi
+         note "$( gpg --version )"  # 2.2.19
+         # See https://github.com/sethvargo/secrets-in-serverless using kv or aws (iam) secrets engine.
+
+         if ! command -v git-secret >/dev/null; then  # command not found, so:
+            h2 "Brew installing git-secret ..."
+            brew install git-secret  
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading git-secret ..."
+               brew upgrade git-secret
+            fi
+         fi
+         note "$( git-secret --version )"  # 0.3.2
+
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "gnupg"
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install gnupg      # please test
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install gnupg   # please test
+      else
+         git clone https://github.com/sobolevn/git-secret.git
+         cd git-secret && make build
+         PREFIX="/usr/local" make install      
+      fi
+
+      if [ -f "${MY_FILE}.secret" ]; then   # found
+         h2 "${MY_FILE}.secret being decrypted using the private key in the bash user's local $HOME folder"
+         git secret reveal
+            # gpg ...
+         if [ -f "${MY_FILE}" ]; then   # found
+            h2 "File ${MY_FILE} decrypted ..."
+         else
+            fatal "File ${MY_FILE} not decrypted ..."
+            exit 9
+         fi
+      fi
+   elif [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
+      # assume setup done by https://wilsonmar.github.io/gcp
+      # See https://cloud.google.com/solutions/secrets-management
+      # https://github.com/GoogleCloudPlatform/berglas is being migrated to Google Secrets Manager.
+      # See https://github.com/sethvargo/secrets-in-serverless/tree/master/gcs to encrypt secrets on Google Cloud Storage accessed inside a serverless Cloud Function.
+      # using gcloud beta secrets create "my-secret" --replication-policy "automatic" --data-file "/tmp/my-secret.txt"
+      h2 "Retrieve secret version from Google Cloud Secret Manager ..."
+      gcloud beta secrets versions access "latest" --secret "my-secret"
+         # A secret version contains the actual contents of a secret. "latest" is the VERSION_ID      
+   #elif [ "${USE_AWS_CLOUD}" = true ]; then   # -w
+      # brew cask install aws-vault
+      # See https://www.davehall.com.au/tags/bash
+   #elif [ "${USE_AZURE_CLOUD}" = true ]; then   # -z
+      # See https://docs.microsoft.com/en-us/cli/azure/keyvault/secret?view=azure-cli-latest
+      # brew cask install azure-vault
+   else
+      # See https://learn.hashicorp.com/vault/getting-started/install  # server
+      # NOTE: vault-cli is a Subversion-like utility to work with Jackrabbit FileVault (not Hashicorp Vault)
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         if ! command -v vault >/dev/null; then  # command not found, so:
+            h2 "Brew installing vault ..."
+            brew install vault
+            # vault -autocomplete-install
+            # exec $SHELL
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading vault ..."
+               brew upgrade vault
+               # vault -autocomplete-install
+               # exec $SHELL
+            fi
+         fi
+         note "$( vault --version )"  # Vault v1.3.2
+         # See https://github.com/sethvargo/secrets-in-serverless using kv or aws (iam) secrets engine.
+
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "vault"
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install vault      # please test
+         exit 9
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install vault   # please test
+         exit 9
+      fi
+   fi
+
+   # https://learn.hashicorp.com/vault/secrets-management/sm-versioned-kv
+   # https://www.vaultproject.io/api/secret/kv/kv-v2.html
+
+
+   # If git user not already configured ...
+      # note "$( git config --list )"
+   RESPONSE="$( git config --get user.email )"
+   if [ -n "${RESPONSE}" ]; then  # not found
+      if [[ $RESPONSE == "$GitHub_USER_EMAIL" ]]; then  # already defined:
+         info "GitHub_USER_EMAIL being configured ..."
+      else
+         git config --global user.email "$GitHub_USER_EMAIL"
+      fi
+      info "$( git config --get user.email )"
+   fi
+
+   RESPONSE="$( git config --get user.name )"
+   if [ -n "${RESPONSE}" ]; then  # not found
+      if [[ $RESPONSE == "$GitHub_USER_NAME" ]]; then  # already defined:
+         info "GitHub_USER_EMAIL being configured ..."
+      else
+         git config --global user.name  "$GitHub_USER_NAME"
+      fi
+      info "$( git config --get user.email )"
+   fi
+
+
+   if [ ! -f ".env" ]; then
+      cp .env.example  .env
+   else
+      warning "no .env file"
+   fi
+
+   if [ ! -f "docker-compose.override.yml" ]; then
+      cp docker-compose.override.example.yml  docker-compose.override.yml
+   else
+      warning "no .yml file"
+   fi
+fi
+
+# echo "wow"; exit  #debugging unexpected end of file
+
+
+
 if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 
    # https://google.qwiklabs.com/games/759/labs/2373
@@ -841,32 +993,57 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
       exit 9
    fi
 
+
    if [ ! -f "variables.env" ]; then   # not created
       h2 "Downloading variables.env ..."
+      # Alternative: Copy from your $HOME/.secrets.env file
       curl -s -O https://raw.githubusercontent.com/wesbos/Learn-Node/master/starter-files/variables.env.sample \
          variables.env
    else
       warning "Reusing variables.env from previous run."
    fi
 
-   # h2 "Install mongodb-community@4.2 (instead of mLab online) ..."
+
    # See https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/
+   # Instead of https://www.mongodb.com/cloud/atlas/mongodb-google-cloud
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
       if ! command -v mongo ; then  # command not found, so:
-         h2 "Installing mmongodb-community@4.2 ..."
+         h2 "Installing mmongodb-compass@4.2 ..."
          brew tap mongodb/brew
-         brew install mongodb-community@4.2
+         brew install mongodb-compass@4.2
       else  # installed already:
          if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Re-installing mongodb-community@4.2 ..."
+            h2 "Re-installing mongodb-compass@4.2 ..."
             brew untap mongodb/brew && brew tap mongodb/brew
-            brew install mongodb-community@4.2
+            brew install mongodb-compass@4.2
          fi
       fi
+   # elif other operating systems:
    fi
+   # Verify whether MongoDB is running, search for mongod in your running processes:
+   note "$( mongo --version | grep MongoDB )"    # 3.4.0 in video. MongoDB shell version v4.2.3 
 
-   h2 "TODO: Configuring MongoDB $DB_NAME [4:27] ..."
-   # sed  ...
+      if [ ! -d "/Applications/mongodb Compass.app" ]; then  # directory not found:
+         h2 "Installing cask mongodb-compass ..."
+         brew cask install mongodb-compass
+            # Downloading https://downloads.mongodb.com/compass/mongodb-compass-1.20.5-darwin-x64.dmg
+      else  # installed already:
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Re-installing cask mongodb-compass ..."
+            brew cask uninstall mongodb-compass
+         fi
+      fi
+
+   h2 "TODO: Configuring MongoDB $MONGO_DB_NAME [4:27] ..."
+   replace_1config () {
+      file=$1
+      var=$2
+      new_value=$3
+      awk -v var="$var" -v new_val="$new_value" 'BEGIN{FS=OFS="="}match($1, "^\\s*" var "\\s*") {$2=" " new_val}1' "$file"
+   }
+   # Use the function defined above: https://stackoverflow.com/questions/5955548/how-do-i-use-sed-to-change-my-configuration-files-with-flexible-keys-and-values/5955591#5955591
+   # replace_1config "conf" "MAIL_USER" "${GitHub_USER_EMAIL}"  # from 123
+   # replace_1config "conf" "MAIL_HOST" "${GitHub_USER_EMAIL}"  # from smpt.mailtrap.io
    # NODE_ENV=development
    # DATABASE=mongodb://user:pass@host.com:port/database
    # MAIL_USER=123
@@ -878,8 +1055,6 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
    # SECRET=snickers
    # KEY=sweetsesh
 
-   # Verify whether MongoDB is running, search for mongod in your running processes:
-   note "$( mongo --version | grep MongoDB )"    # 3.4.0 in video. MongoDB shell version v4.2.3 
 
    # shellcheck disable=SC2009  # Consider using pgrep instead of grepping ps output.
    RESPONSE="$( ps aux | grep -v grep | grep mongod )"
@@ -920,7 +1095,7 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
 fi # if [ "${NODE_INSTALL}" = true ]; then 
 
 
-if [ "${PYTHON_INSTALL}" = true ]; then  # -p
+if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
 
    h2 "Install -python"
       if ! command -v python3 ; then
@@ -932,9 +1107,25 @@ if [ "${PYTHON_INSTALL}" = true ]; then  # -p
             brew upgrade python3
          fi
       fi
-
    note "$( python3 --version )"  # Python 3.7.6
    note "$( pip --version )"      # pip 19.3.1 from /Library/Python/2.7/site-packages/pip (python 2.7)
+
+
+      h2 "Install virtualenv"  # https://levipy.com/virtualenv-and-virtualenvwrapper-tutorial
+      # to create isolated Python environments.
+      pip3 install virtualenvwrapper
+
+      h2 "virtualenv venv"
+      virtualenv venv
+
+      h2 "source venv/bin/activate"
+      # shellcheck disable=SC1091 # Not following: venv/bin/activate was not specified as input (see shellcheck -x).
+      source venv/bin/activate
+
+      h2 "Within (venv) ..."
+
+   # Running:
+   exit
 
       if ! command -v jq ; then
          h2 "Installing jq ..."
@@ -948,29 +1139,33 @@ if [ "${PYTHON_INSTALL}" = true ]; then  # -p
       # /usr/local/bin/jq
 
 
-   h2 "Install virtualenv"  # https://levipy.com/virtualenv-and-virtualenvwrapper-tutorial
-   # to create isolated Python environments.
-   pip3 install virtualenvwrapper
+   # from pip freeze > requirements.txt previously.
+   if [ -f "requirements.txt" ]; then
+      # see https://medium.com/@boscacci/why-and-how-to-make-a-requirements-txt-f329c685181e
+      conda create -n PDSH python=3.7 --file requirements.txt
+      # pip install -r requirements.txt
+   else
+      h2 "Install jupyterlab..."
+      # pip3 install jupyterlab
 
-   h2 "virtualenv venv"
-   virtualenv venv
+      # h2 "Install cloudinary Within requirements.txt : "
+      # pip install cloudinary
+   fi
 
-   h2 "source venv/bin/activate"
-   # shellcheck disable=SC1091 # Not following: venv/bin/activate was not specified as input (see shellcheck -x).
-   source venv/bin/activate
+      h2 "Start Jupyter server with Notebook file $NOTEBOOK_FILE "
+      jupyter notebook --port 8888 "${NOTEBOOK_FILE}" &
 
-   h2 "Within venv ..."
-   h2 "Install cloudinary Within requirements.txt : "
-   pip install cloudinary
+      open http://localhost:8888/tree
    
    h2 "Do something at $PWD ..."
-   # ???
+   # python3 something.py  ???
 
-   h2 "Execute deactivate if the function exists (i.e. has been created by sourcing activate):"
-   # per https://stackoverflow.com/a/57342256
-   declare -Ff deactivate && deactivate
 
-fi # if [ "${PYTHON_INSTALL}" = true ]; then 
+      h2 "Execute deactivate if the function exists (i.e. has been created by sourcing activate):"
+      # per https://stackoverflow.com/a/57342256
+      declare -Ff deactivate && deactivate
+
+fi # if [ "${RUN_VIRTUALENV}" = true ]; then 
 
 
 if [ "${RUBY_INSTALL}" = true ]; then  # -i
