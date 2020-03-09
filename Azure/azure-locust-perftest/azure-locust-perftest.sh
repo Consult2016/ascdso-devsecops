@@ -27,7 +27,7 @@ INSTALL_USING_BREW="no"  # no or yes
 WORK_FOLDER="projects"  # as specified in course materials.
 WORK_REPO="azure-locust-perftest"  # same as script name
 BINARY_STORE_PATH="/usr/local/bin"
-VENV_PATH="venv_contents"
+VENV_PATH="venv"
 SCRIPT_PATH="04-Challenging_DOM.ts"
 #SCRIPT_PATH="./element/fiori/example.ts"
 
@@ -247,7 +247,13 @@ printf ">>> %s\n" "$( tree --version )"
 
 ### 6.5 install locustio
 
-if ! command_exists locustio ; then  # not exist:
+# brew link --overwrite python  # doesn't work.
+brew unlink python && brew link python
+   # Unlinking /usr/local/Cellar/python/3.7.4... 24 symlinks removed
+   # Linking /usr/local/Cellar/python/3.7.4... 24 symlinks created
+python --version
+
+if ! command_exists locust ; then  # not exist:
    if [ "$INSTALL_UTILITIES" = "no" ]; then
       printf "\n>>> locustio not installed but INSTALL_UTILITIES=\"no\". Exiting...\n"
       exit
@@ -255,6 +261,7 @@ if ! command_exists locustio ; then  # not exist:
       if [ "$PLATFORM" = "macos" ]; then
             printf "\n>>> pip install locustio on macOS ...\n"
             pip install locustio
+            # https://docs.locust.io/en/stable/
       else  # linux
          printf "\n>>> Installing locustio on ...\n"
          # install_locustio
@@ -262,8 +269,8 @@ if ! command_exists locustio ; then  # not exist:
 else
       printf ">>> Using existing version:\n" 
 fi
-printf ">>> %s\n" "$( locustio --version )" 
-   # locustio v1.8.0 (c) 1996 - 2018 by Steve Baker, Thomas Moore, Francesc Rocher, Florian Sesser, Kyosuke Tokoro
+printf ">>> %s\n" "$( locust --version )" 
+   # 
 
 
 ### 7. Clone script 
@@ -281,13 +288,15 @@ mkdir app && cd app
 touch __init__.py
 # wget
 curl -o app.py "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Azure/azure-locust-perftest/app.py"
+curl -o locustio.py "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/Azure/azure-locust-perftest/locustio.py"
 
 tree
-##### here is where I'm stuck. The curl command above does not result in a downloaded file.
 
 exit
+##### here is where I stopped.
 
-### 8. Run script 
+
+### 8. Start app server under test
 
    printf "\n>>> Run python app/app.py &  # in background ...\n"
 python app/app.py  &
@@ -301,10 +310,18 @@ curl -X GET http://127.0.0.1:5000/tests
    # "description": "testing individual units of source code", 
    # "name": "unit testing"
 
+### 9. Start our Flask API using 
+
+   python app/app.py 
+   
+   # Start Locust: 
+   
+   locust --host=http://localhost:5000.
+
+
 exit
 
 
-# curl -o https://github.com/github/gitignore/blob/master/Python.gitignore
 
 ### 8. Create Python virtual environment for our Flask application
 

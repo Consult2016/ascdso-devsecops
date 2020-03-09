@@ -3,7 +3,7 @@
 # macos-install-all.sh in https://github.com/wilsonmar/DevSecOps
 # This downloads and installs all the utilities related to use of Git,
 # customized based on specification in file secrets.sh within the same repo.
-# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/???/master/macos-install-all.sh)"
+# sh -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/?`??/master/macos-install-all.sh)"
 
 # See https://github.com/wilsonmar/git-utilities/blob/master/README.md
 # Based on https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup

@@ -137,17 +137,10 @@ cd ..
 
    <pre>ip a</pre>   
 
-1. NOT IN THE VIDEO: Use a more secure approach
 
-   <strong>curl -O https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker4aws/wordpress-stack.yml
-   docker stack deploy -c stack.yml mywordpress
-   </strong>
+### ecs-cli-config.sh for EC2 launch type
 
-### Prepare an EC2 launch type
-
-1. Get an AWS account.
-
-1. Install AWS-CLI and ECS-CLI on your machine:<a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live"><img width="20" height="20" src="https://wilsonmar.github.io/images/Video-icon-800x800.svg">3:40</a>
+1. Install AWS-CLI and ECS-CLI on your machine: <a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live"><img width="20" height="20" src="https://wilsonmar.github.io/images/Video-icon-800x800.svg">3:40</a>
 
    <a target="_blank" href="https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI_installation.html">https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI_installation.html</a>
 
@@ -155,6 +148,31 @@ cd ..
    chmod +x ecs-cli-config.sh
    <strong>./ecs-cli-config.sh</strong></pre>
 
+1. Define the configuration:
+
+   <pre>curl -O https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker4aws/ecs-cli-config-ec2.sh
+   chmod +x ecs-cli-config-ec2.sh
+   <strong>./ecs-cli-config-ec2.sh</strong></pre>
+
+   RESPONSE: "INFO[0000] Saved ECS CLI cluster configuration ec2-test-App."
+
+1. Get an AWS account.
+
+1. Get and edit file <strong>ecs-cli-config-profile.sh</strong> with your own AWS access key and secret key:<a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live"><img width="20" height="20" src="https://wilsonmar.github.io/images/Video-icon-800x800.svg">4:20</a>
+
+   <pre>curl -O https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker4aws/ecs-cli-config-profile.sh
+   nano ecs-cli-config-profile.sh
+   </pre>
+
+1. Get and edit file <strong>ecs-cli-config-profile.sh</strong> with your own AWS access key and secret key:<a target="_blank" href="https://app.pluralsight.com/player?course=using-docker-aws&author=david-clinton&name=440cc04e-14c6-45e5-ba8d-2df97c1b1358&clip=1&mode=live"><img width="20" height="20" src="https://wilsonmar.github.io/images/Video-icon-800x800.svg">4:20</a>
+
+   <pre>curl -O https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker4aws/ecs-cli-compose.sh
+   chmod +x ecs-cli-compose.sh
+   ./ecs-cli-compose.sh
+   </pre>
+
+
+   curl -O https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker4aws/ecs-ec2-launch.yml
    <strong>ecs-ec2-launch.yml</strong>
 
 ### docker-compose.yml for EC2 launch

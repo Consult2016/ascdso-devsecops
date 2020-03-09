@@ -18,7 +18,7 @@
 
 ### 1. Run Parameters controlling this run:
 
-set -e  # stop when $? returnes non-zero.
+set -e  # stop when $? returned non-zero.
 set -o pipefail
 
 FEATURE_INSTALL_UTILITIES="no"  # or yes
@@ -62,31 +62,7 @@ else
    echo ">>> Platform = \"$PLATFORM\" "
 fi
 
-
 ### 3. Shell utility functions:
-
-# https://stackoverflow.com/questions/687014/removing-created-temp-files-in-unexpected-bash-exit
-# See https://wilsonmar.github.io/bash-coding
-
-on_exit() {
-  echo 'Cleaning up...(remove tmp files, etc)'
-  cleanup  # function in this script.
-}
-
-on_preExit() {
-  echo
-  echo 'Exiting...' # Runs just before actual exit,
-                    # shell will execute EXIT(0) after finishing this function
-                    # that we hook also in on_exit function
-  exit 2
-}
-
-trap on_exit EXIT                           # EXIT = 0
-trap on_preExit HUP INT QUIT TERM STOP PWR  # 1 2 3 15 30
-
-sleep 3 # some actual code...
-
-exit
 
 cleanup() {
     err=$?

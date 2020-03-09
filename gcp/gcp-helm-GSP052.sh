@@ -11,6 +11,7 @@
 # adds steps to grep values into variables for variation and verification,
 # so you can spend time learning and experimenting rather than typing and fixing typos.
 # This script deletes folders left over from previous run so can be rerun (within the same session).
+set -e  # stop on error.
 
 uname -a
    # RESPONSE: Linux cs-6000-devshell-vm-91a4d64c-2f9d-4102-8c22-ffbc6448e449 3.16.0-6-amd64 #1 SMP Debian 3.16.56-1+deb8u1 (2018-05-08) x86_64 GNU/Linux
@@ -57,13 +58,15 @@ gcloud container clusters create my-cluster \
    # NAME        ZONE           MASTER_VERSION  MASTER_IP       MACHINE_TYPE   NODE_VERSION  NUM_NODES  STATUS
    # my-cluster  us-central1-f  1.9.7-gke.3           35.188.161.231  n1-standard-1  1.9.7         3          RUNNING
 
+# Install Kubernetes?
+
 # Check for progress here.
 
 echo ">>> kubectl config current-context"
 kubectl config current-context
    # gke_qwiklabs-gcp-0286d80b4438f082_us-central1-f_my-cluster
 
-kubectl cluster-info
+echo ">>> kubectl cluster-info:"
 kubectl cluster-info
    # Kubernetes master is running at https://35.193.168.237
    # GLBCDefaultBackend is running at https://35.193.168.237/api/v1/namespaces/kube-system/services/default-http-backend:http/proxy
@@ -128,11 +131,11 @@ apt-get update && apt-get install mysql-client -y
    # etting up mysql-client (5.7.27-0ubuntu0.16.04.1) ...
    # Processing triggers for libc-bin (2.23-0ubuntu11) ...
 
-echo ">>> Connect to your MYSQL Database"
-mysql -h "$HELM_NAME" -p
+echo ">>> Connect to MYSQL Database with a secret:"
 # mysql -h nihilist-hummingbird-sql -p
-??? supply $HELM_SECRET
-
+mysql -h "$HELM_NAME" -p  <<EOF
+$HELM_SECRET
+EOF
 
 # The cluster role "cluster-admin" is bound to the tiller service account.
 
