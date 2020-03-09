@@ -19,49 +19,97 @@
 # $ ./bash-parms.sh -a
 # etc.
 
+
+### Set color variables (based on aws_code_deploy.sh): 
+bold="\e[1m"
+dim="\e[2m"
+underline="\e[4m"
+blink="\e[5m"
+reset="\e[0m"
+red="\e[31m"
+green="\e[32m"
+blue="\e[34m"
+cyan="\e[36m"
+
+h2() {
+  printf "\n${bold}>>> %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+info() {
+  printf "${dim}➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+success() {
+  printf "${green}✔ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+error() {
+  printf "${red}${bold}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+warnError() {
+  printf "${red}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+warnNotice() {
+  printf "${blue}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+note() {
+  printf "\n${bold}${cyan}Note:${reset} ${cyan}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+}
+
+
+package="$0"
+echo "here $package"
+args_prompt() {
+   echo "$package - something --------------------------------------------"
+   echo " "
+   echo "$package [options] application [arguments]"
+   echo " "
+   echo "options:"
+   echo "-h, --help                show brief help"
+   echo "-a, --action=ACTION       specify an action to use"
+   echo "-o, --output-dir=DIR      specify a directory to store output in"
+   echo "-v                        verbose output for debugging"
+}
+if [ "$#" -eq 0 ]; then 
+#   error "No arugments provided in command call."
+   args_prompt
+fi
 while test $# -gt 0; do
-        case "$1" in
-                -h|--help)
-                        echo "$package - attempt to capture frames"
-                        echo " "
-                        echo "$package [options] application [arguments]"
-                        echo " "
-                        echo "options:"
-                        echo "-h, --help                show brief help"
-                        echo "-a, --action=ACTION       specify an action to use"
-                        echo "-o, --output-dir=DIR      specify a directory to store output in"
-                        exit 0
-                        ;;
-                -a)
-                        shift
-                        if test $# -gt 0; then
-                                export PROCESS=$1
-                        else
-                                echo "no process specified"
-                                exit 1
-                        fi
-                        shift
-                        ;;
-                --action*)
-                        export PROCESS=`echo $1 | sed -e 's/^[^=]*=//g'`
-                        shift
-                        ;;
-                -o)
-                        shift
-                        if test $# -gt 0; then
-                                export OUTPUT=$1
-                        else
-                                echo "no output dir specified"
-                                exit 1
-                        fi
-                        shift
-                        ;;
-                --output-dir*)
-                        export OUTPUT=`echo $1 | sed -e 's/^[^=]*=//g'`
-                        shift
-                        ;;
-                *)
-                        break
-                        ;;
-        esac
+  case "$1" in
+    -h|--help)
+      args_prompt
+      exit 0
+      ;;
+    -v)
+      VERBOSE=true
+      ;;
+    -a)
+      shift
+      if test $# -gt 0; then
+        export PROCESS=$1
+      else
+        echo "no process specified"
+        exit 1
+      fi
+      shift
+      ;;
+    --action*)
+      export PROCESS=`echo $1 | sed -e 's/^[^=]*=//g'`
+      shift
+      ;;
+    -o)
+      shift
+      if test $# -gt 0; then
+        export OUTPUT=$1
+      else
+        echo "no output dir specified"
+        exit 1
+      fi
+      shift
+      ;;
+    --output-dir*)
+      export OUTPUT=`echo $1 | sed -e 's/^[^=]*=//g'`
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
 done
