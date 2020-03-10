@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
-SCRIPT_VERSION="v0.61"
+SCRIPT_VERSION="v0.62"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -1102,6 +1102,7 @@ fi # if [ "${NODE_INSTALL}" = true ]; then
 if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
 
    h2 "Install -python"
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
       if ! command -v python3 ; then
          h2 "Installing python3 ..."
          brew install python3
@@ -1111,23 +1112,31 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
             brew upgrade python3
          fi
       fi
+   elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+      silent-apt-get-install "python3"
+   fi
    note "$( python3 --version )"  # Python 3.7.6
    note "$( pip --version )"      # pip 19.3.1 from /Library/Python/2.7/site-packages/pip (python 2.7)
 
 
-      h2 "Install virtualenv"  # https://levipy.com/virtualenv-and-virtualenvwrapper-tutorial
+      # h2 "Install virtualenv"  # https://levipy.com/virtualenv-and-virtualenvwrapper-tutorial
       # to create isolated Python environments.
-      pip3 install virtualenvwrapper
+      #pip3 install virtualenvwrapper
 
-      h2 "virtualenv venv"
-      virtualenv venv
+      if [ -f "venv" ]; then   # venv already there:
+         note "venv folder found."
+      else
+         h2 "virtualenv venv ..."
+         virtualenv venv
+      fi
 
       h2 "source venv/bin/activate"
       # shellcheck disable=SC1091 # Not following: venv/bin/activate was not specified as input (see shellcheck -x).
       source venv/bin/activate
 
-      h2 "Within (venv) ..."
-
+      RESPONSE=$( python3 -c "import sys; print(sys.version)" )
+      h2 "Within (venv) Python3: "
+      echo "${RESPONSE}"
 
    # from pip freeze > requirements.txt previously.
    if [ -f "requirements.txt" ]; then
@@ -1152,20 +1161,23 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
       # /usr/local/bin/jq
    fi
 
-      cd "${GitHub_FOLDER}"
+      #cd "${GitHub_FOLDER}"
 
-      h2 "Starting Jupyter with Notebook file $NOTEBOOK_FILE in $GitHub_FOLDER ..."
-      jupyter notebook --port 8888 "${NOTEBOOK_FILE}" &
+      h2 "Starting Jupyter with Notebook $GitHub_FOLDER/$NOTEBOOK_FILE ..."
+      jupyter notebook --port 8888 "${GitHub_FOLDER}/${NOTEBOOK_FILE}" 
+      # & for background run
 
-      open http://localhost:8888/tree
+      # open http://localhost:8888/tree
    
-   #h2 "Do something at $PWD ..."
-   # python3 something.py  ???
+      exit   # for debugging
 
 
       h2 "Execute deactivate if the function exists (i.e. has been created by sourcing activate):"
       # per https://stackoverflow.com/a/57342256
       declare -Ff deactivate && deactivate
+
+#[I 16:03:18.236 NotebookApp] Starting buffering for db5328e3-...
+#[I 16:03:19.266 NotebookApp] Restoring connection for db5328e3-aa66-4bc9-94a1-3cf27e330912:84adb360adce4699bccffc00c7671793
 
 fi # if [ "${RUN_VIRTUALENV}" = true ]; then 
 

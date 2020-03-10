@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Open terminal sessions on either macOS or Linux.
 # termsopen.sh at https://github.com/wilsonmar/DevSecOps/blob/master/macos/termsopen.sh
 
 # On macos, based on https://apple.stackexchange.com/a/202424 by https://phollo.me/bbezanson
