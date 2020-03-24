@@ -28,7 +28,7 @@ args_prompt() {
    echo "./sample.sh -v -n -a  # NodeJs app with MongoDB"
    echo "./sample.sh -v -i -o  # Ruby app"   
    echo "./sample.sh -v -I -U -c -s -r -a -w  # Python app"
-   echo "./sample.sh -v -V -z   # Jupyter app within Virtualenv"
+   echo "./sample.sh -v -V -F \"section_2\" -f \"1-2.ipynb\"   # Jupyter anaconda within Virtualenv"
    echo "USAGE EXAMPLE after testing:"
    echo "./sample.sh -v -D -M -C"
    echo "OPTIONS:"
@@ -77,6 +77,7 @@ exit_abnormal() {            # Function: Exit with error.
    SET_EXIT=true                # -E
    SET_TRACE=false              # -x
    RUN_VERBOSE=false            # -v
+   RUN_TESTS=false              # -t
    RUN_VIRTUALENV=false         # -V
    USE_GOOGLE_CLOUD=false       # -g
        GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
@@ -85,7 +86,10 @@ exit_abnormal() {            # Function: Exit with error.
    RUBY_INSTALL=false           # -i
    NODE_INSTALL=false           # -n
       MONGO_DB_NAME=""
-      MY_FILE="variables.env.sample"
+   SECRETS_FILE="variables.env.sample"
+      MY_FOLDER="section_2"
+      MY_FILE="1-2.ipynb"
+     #MY_FILE="2-3.ipynb"
    UPDATE_PKGS=false            # -U
    RESTART_DOCKER=false         # -r
    BUILD_DOCKER_IMAGE=false     # -b
@@ -102,8 +106,8 @@ exit_abnormal() {            # Function: Exit with error.
 SECRETS_FILEPATH="$HOME/.secrets.sh"  # -S
 PROJECT_FOLDER_PATH="$HOME/projects"  # -P
 
-GitHub_USER_NAME="John Doe"                  # -n
-GitHub_USER_EMAIL="john_doe@gmail.com"       # -e
+GitHub_USER_NAME="Wilson Mar"                  # -n
+GitHub_USER_EMAIL="wilson_mar@gmail.com"       # -e
 GitHub_REPO_NAME=""
 
 while test $# -gt 0; do
@@ -136,6 +140,16 @@ while test $# -gt 0; do
       ;;
     -E)
       export SET_EXIT=false
+      shift
+      ;;
+    -f*)
+      shift
+      export MY_FILE=$( echo "$1" | sed -e 's/^[^=]*=//g' )
+      shift
+      ;;
+    -F*)
+      shift
+      export MY_FOLDER=$( echo "$1" | sed -e 's/^[^=]*=//g' )
       shift
       ;;
     -g*)
@@ -205,6 +219,10 @@ while test $# -gt 0; do
       export UPDATE_PKGS=true
       shift
       ;;
+    -t)
+      export RUN_TESTS=true
+      shift
+      ;;
     -v)
       export RUN_VERBOSE=true
       shift
@@ -214,10 +232,7 @@ while test $# -gt 0; do
       GitHub_REPO_URL="https://github.com/PacktPublishing/Hands-On-Machine-Learning-with-Scikit-Learn-and-TensorFlow-2.0.git"
       GitHub_REPO_NAME="scikit"
       APPNAME="scikit"
-      GitHub_FOLDER="section_2"
-      NOTEBOOK_FILE="2-2.ipynb"
-     #NOTEBOOK_FILE="2-3.ipynb"
-      #GitHub_FOLDER="section_3"
+      #MY_FOLDER="section_2" # or ="section_3"
       shift
       ;;
     -w)
@@ -399,6 +414,7 @@ fi
 #      note "$OS_DETAILS"
 #   fi
 
+IFS=$'\n\t'  #  Internal Field Separator for word splitting is line or tab, not spaces.
 
 # Configure location to create new files:
 if [ -z "$PROJECT_FOLDER_PATH" ]; then  # -p ""  override blank (the default)
@@ -812,14 +828,14 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
          PREFIX="/usr/local" make install      
       fi
 
-      if [ -f "${MY_FILE}.secret" ]; then   # found
-         h2 "${MY_FILE}.secret being decrypted using the private key in the bash user's local $HOME folder"
+      if [ -f "${SECRETS_FILE}.secret" ]; then   # found
+         h2 "${SECRETS_FILE}.secret being decrypted using the private key in the bash user's local $HOME folder"
          git secret reveal
             # gpg ...
-         if [ -f "${MY_FILE}" ]; then   # found
-            h2 "File ${MY_FILE} decrypted ..."
+         if [ -f "${SECRETS_FILE}" ]; then   # found
+            h2 "File ${SECRETS_FILE} decrypted ..."
          else
-            fatal "File ${MY_FILE} not decrypted ..."
+            fatal "File ${SECRETS_FILE} not decrypted ..."
             exit 9
          fi
       fi
@@ -1123,7 +1139,7 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
       # to create isolated Python environments.
       #pip3 install virtualenvwrapper
 
-      if [ -f "venv" ]; then   # venv already there:
+      if [ -d "venv" ]; then   # venv folder already there:
          note "venv folder found."
       else
          h2 "virtualenv venv ..."
@@ -1134,18 +1150,46 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
       # shellcheck disable=SC1091 # Not following: venv/bin/activate was not specified as input (see shellcheck -x).
       source venv/bin/activate
 
-      RESPONSE=$( python3 -c "import sys; print(sys.version)" )
+      # RESPONSE=$( python3 -c "import sys; print(sys.version)" )
+      RESPONSE=$( python3 -c "import sys, os; is_conda = os.path.exists(os.path.join(sys.prefix, 'conda-meta'))" )
       h2 "Within (venv) Python3: "
       echo "${RESPONSE}"
+     
+      echo "$PWD/${MY_FOLDER}/${MY_FILE}"
+      # See https://jupyter-notebook.readthedocs.io/en/latest/notebook.html?highlight=trust#signing-notebooks
+      jupyter trust "${MY_FOLDER}/${MY_FILE}"
+         # RESPONSE: Signing notebook: section_2/2-3.ipynb
 
    # from pip freeze > requirements.txt previously.
    if [ -f "requirements.txt" ]; then
       # see https://medium.com/@boscacci/why-and-how-to-make-a-requirements-txt-f329c685181e
-      conda create -n PDSH python=3.7 --file requirements.txt
-      # pip install -r requirements.txt
+      pip3 install -r requirements.txt
    else
-      h2 "No requirements.txt ..."
-      # pip3 install jupyterlab
+      h2 "No requirements.txt, so use pip to install for imports ..."
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
+         if ! command -v anaconda ; then
+            h2 "brew cask install anaconda ..."
+            brew cask install anaconda
+         else
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Upgrading anaconda ..."
+               brew cask upgrade anaconda
+            fi
+         fi
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "anaconda"
+      fi
+      # note "$( anaconda --version )"
+
+           PREFIX="/usr/local/anaconda3"
+      export PATH="/usr/local/anaconda3/bin:$PATH"
+
+      #conda create -n PDSH python=3.7 --file requirements.txt
+
+      # conda create -n tf tensorflow
+
+      # pip3 install jupyterlab   # within conda
+      # pip3 install matplotlib
 
       # h2 "Install cloudinary Within requirements.txt : "
       # pip install cloudinary
@@ -1159,15 +1203,13 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
       #   fi
       #fi
       # /usr/local/bin/jq
-   fi
 
-      #cd "${GitHub_FOLDER}"
+   fi  # requirements.txt or anaconda
 
-      h2 "Starting Jupyter with Notebook $GitHub_FOLDER/$NOTEBOOK_FILE ..."
-      jupyter notebook --port 8888 "${GitHub_FOLDER}/${NOTEBOOK_FILE}" 
+      h2 "Starting Jupyter with Notebook $MY_FOLDER/$MY_FILE ..."
+      jupyter notebook --port 8888 "${MY_FOLDER}/${MY_FILE}" 
       # & for background run
-
-      # open http://localhost:8888/tree
+         # jupyter: open http://localhost:8888/tree
    
       exit   # for debugging
 
@@ -1180,6 +1222,47 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
 #[I 16:03:19.266 NotebookApp] Restoring connection for db5328e3-aa66-4bc9-94a1-3cf27e330912:84adb360adce4699bccffc00c7671793
 
 fi # if [ "${RUN_VIRTUALENV}" = true ]; then 
+
+if [ "${RUN_TESTS}" = true ]; then  # -t
+
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+      if ! command -v selenium ; then
+         h2 "Pip installing selenium ..."
+         pip install selenium
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            # selenium in /usr/local/lib/python3.7/site-packages (3.141.0)
+            # urllib3 in /usr/local/lib/python3.7/site-packages (from selenium) (1.24.3)
+            h2 "Pip upgrading selenium ..."
+            pip install -U selenium
+         fi
+      fi
+      # note "$( selenium --version | grep GnuPG )"  # gpg (GnuPG) 2.2.19
+   fi
+
+   # https://www.guru99.com/selenium-python.html shows use of Eclipse IDE
+   # https://realpython.com/modern-web-automation-with-python-and-selenium/ headless
+   # https://www.seleniumeasy.com/python/example-code-using-selenium-webdriver-python Windows chrome
+
+   h2 "Install drivers of Selenium on browsers"
+   # First find out what version of Chrome at chrome://settings/help
+   # Based on: https://sites.google.com/a/chromium.org/chromedriver/downloads
+   # For 80: https://chromedriver.storage.googleapis.com/80.0.3987.106/chromedriver_mac64.zip
+   # Unzip creates chromedriver (executable with no extension)
+   # Move it to /usr/bin or /usr/local/bin
+   # ls: 14713200 Feb 12 16:47 /Users/wilson_mar/Downloads/chromedriver
+
+   # https://developer.apple.com/documentation/webkit/testing_with_webdriver_in_safari
+   # Safari:	https://webkit.org/blog/6900/webdriver-support-in-safari-10/
+      # /usr/bin/safaridriver is built into macOS.
+      # Run: safaridriver --enable  (needs password)
+
+   # Firefox:	https://github.com/mozilla/geckodriver/releases
+      # geckodriver-v0.26.0-macos.tar expands to geckodriver
+   
+   # reports are produced by TestNG, a plug-in to Selenium.
+
+fi # if [ "${RUN_TESTS}"
 
 
 if [ "${RUBY_INSTALL}" = true ]; then  # -i
@@ -1221,7 +1304,9 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
       h2 "Use apt instead of apt-get since Ubuntu 16.04 (from Linux Mint)"
       sudo apt install curl git
-      note "$( git --version )"  # git version 2.20.1 (Apple Git-117)
+      note "$( git --version --build-options )"
+         # git version 2.20.1 (Apple Git-117), cpu: x86_64, no commit associated with this build
+         # sizeof-long: 8, sizeof-size_t: 8
 
       h2 "apt install imagemagick"
       sudo apt install imagemagick

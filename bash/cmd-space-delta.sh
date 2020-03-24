@@ -19,12 +19,13 @@
 
 
 ### 0. Set display utilities:
+
 # clear  # screen and history?
 
-set -euxo pipefail
+set -euo pipefail  # -x to show commands.
 
 # Capture starting timestamp:
-   start=$(date +%s)
+start=$(date +%s)
 
 ### Set color variables (based on aws_code_deploy.sh): 
 bold="\e[1m"
@@ -58,17 +59,17 @@ note() {
   printf "\n${bold}${blue}Note:${reset} ${blue}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 
-
 # Check if argument is provided and folder exists ..."
 if [ $# -ne 1 ]; then
-   error "Please provide an argument: USAGE: ./cmd-space-delta.sh ~/Documents"
+   error "Please provide an argument: EXAMPLE: ./cmd-space-delta.sh  ~/Documents"
    exit 
+else  # got it:
+  if [ ! -d "$1" ]; then  # not in pwd:
+     error "Folder $1 not found. Exiting..."
+     exit 
+  fi
 fi
 
-if [ ! -d "$1" ]; then  # not in pwd:
-   error "Folder $1 not found. Exiting..."
-   exit 
-fi
 
 
 # Define pre-requisite utility functions:"
@@ -81,12 +82,17 @@ if [ ! -f "folder.space.sh" ]; then  # not in pwd:
 fi
 
 
-h2 "STEP 1 - Check if account/image/tag has already been removed..."
+h2 "STEP 1 - Authenticate and inspect if account/image/tag has already been removed..."
+# curl  oauth
 # ??? Error Message: "account/image/tag already deleted"
 
 
 h2 "STEP 2 - Obtain starting space: "
-folder.space.sh  $1  START_BYTES
+chmod +x folder-space.sh
+source folder-pace.sh  $1  START_BYTES
+
+
+exit  ###############
 
 
 h2 "STEP 3 - Get account/image:tag SHA"
@@ -136,7 +142,7 @@ echo "call Python ???"
 
 
 h2 "STEP 9 - Calculate space delta ..."
-./folder.space.sh  $1  END_BYTES 
+source folder.space.sh  $1  END_BYTES 
 START_BYTES=$(<.START_BYTES)
 END_BYTES=$(<.END_BYTES)
 DIFF_BYTES=$( echo "$END_BYTES - $START_BYTES" | bc )
@@ -148,7 +154,7 @@ h2 "STEP 10 - De-gas storage units to reduce fragmentation ..."
 
 
 h2 "STEP 11 - Obtain final space ..."
-./folder.space.sh  $1  FINAL_BYTES 
+source folder.space.sh  $1  FINAL_BYTES 
 #START_BYTES=$(<.START_BYTES)
 FINISH_BYTES=$(<.FINISH_BYTES)
 DIFF_BYTES=$( echo "$FINISH_BYTES - $START_BYTES" | bc )
