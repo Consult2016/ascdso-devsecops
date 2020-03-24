@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # File osx-init.sh from https://github.com/wilsonmar/DevSecOps/
 # based on https://github.com/sobolevn/dotfiles/blob/master/Brewfile

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # mac-dock-remove.sh in https://github.com/wilsonmar/macos-install-all
 # Removes alias icons on the MacOS Dock (at the bottom of the screen by default)

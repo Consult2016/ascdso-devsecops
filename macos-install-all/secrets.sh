@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 # secrets.sh in https://github.com/wilsonmar/DevSecOps
 # referenced by macos-install-all.sh in the same repo.
 # This file name secrets.sh should be specified in .gitignore so 
