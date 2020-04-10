@@ -1,4 +1,5 @@
-#!/bin/sh 
+#!/usr/bin/env bash
+
 #for POSIX-compliant Bourne shell that runs cross-platform
 
 # wp-docker-swarm.sh in https://github.com/wilsonmar/DevSecOps/wordpress

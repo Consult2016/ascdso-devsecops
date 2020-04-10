@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 # Saved by try.sh
 export CONTAINER_ID="success6"
 echo "CONTAINER_ID=success6"

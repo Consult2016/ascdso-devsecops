@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 # This is pulumi-sample.sh at https://github.com/wilsonmar/DevSecOps/aws/pulumi-sample.md
 # by WilsonMar@gmail.com who explains this at https://wilsonmar.github.io/pulumi
 # To install on Macs what packages are necessary, in this sequence: 

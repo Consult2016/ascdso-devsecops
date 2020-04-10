@@ -1,4 +1,4 @@
-#!/bin/bash #for bash v4 on Mac
+#!/usr/bin/env bash
 
 # This is the-internet-docker.sh in https://github.com/wilsonmar/DevSecOps/the-internet
 # When an Ubuntu terminal is opened, copy and paste this on the Terminal:

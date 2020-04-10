@@ -2,3 +2,5 @@
 node_modules
 out.txt
 .ipynb_checkpoints/
+.gitsecret/keys/random_seed
+!*.secret

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # streamlit-docker.sh at https://github.com/wilsonmar/DevSecOps/blob/master/Streamlit/streamlit-sample1.sh
    # described at https://wilsonmar.github.io/streamlist
@@ -78,6 +78,7 @@ warnError() {
   printf "${red}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 
+info "Bash $BASH_VERSION"
 # Check what operating system is used now.
 if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
    OS_TYPE="macOS"

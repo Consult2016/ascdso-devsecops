@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 CONTAINER_ID="success7"  # temporary for testing
 # if CONTAINER_ID not blank
 # write variable variable in a shell file so calling the script retrieves CONTAINER_ID :
