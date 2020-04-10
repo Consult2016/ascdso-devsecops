@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
-SCRIPT_VERSION="v0.62"
+SCRIPT_VERSION="v0.65"
 clear  # screen (but not history)
 echo "================================================ $SCRIPT_VERSION "
 
@@ -28,24 +28,26 @@ args_prompt() {
    echo "./sample.sh -v -n -a  # NodeJs app with MongoDB"
    echo "./sample.sh -v -i -o  # Ruby app"   
    echo "./sample.sh -v -I -U -c -s -r -a -w  # Python app"
-   echo "./sample.sh -v -V -F \"section_2\" -f \"1-2.ipynb\"   # Jupyter anaconda within Virtualenv"
+   echo "./sample.sh -v -V -c -F \"section_2\" -f \"2-1.ipynb\"   # Jupyter anaconda within Virtualenv"
    echo "USAGE EXAMPLE after testing:"
    echo "./sample.sh -v -D -M -C"
    echo "OPTIONS:"
    echo "   -E           to set -e to NOT stop on error"
    echo "   -X           to set -x to trace command lines"
 #   echo "   -x           to set sudoers -e to stop on error"
+   echo "   -H           install -Hashicorp Vault secret manager"
    echo "   -v           to run -verbose (list space use and each image to console)"
    echo "   -V           to run within VirtualEnv"
    echo "   -g \"abcdef...89\" -gcloud API credentials for calls"
    echo "   -i           -install Ruby and Refinery"
-   echo "   -j           -install JavaScript (NodeJs) app with MongoDB"
-   echo "   -y           -install Python in Virtualenv"
+   echo "   -j            install -JavaScript (NodeJs) app with MongoDB"
+   echo "   -y            install Python in Virtualenv"
    echo "   -I           -Install brew, docker, docker-compose"
-   echo "   -s           -install JavaScript (NodeJs) app with MongoDB"
    echo "   -U           -Upgrade packages"
+   echo "   -d           -delete files before git clone"
    echo "   -c           -clone from GitHub"
-   echo "   -s           -set GitHub user info from ~/.secrets.sh in your user home folder"
+   echo "   -s \"~/.secrets.sh\"  -secrets file (in your user home folder)"
+#  echo "   -S           -Store image built in DockerHub"
    echo "   -n \"John Doe\"            GitHub user -name"
    echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
    echo "   -p \"cp100-1094\"  -project folder"
@@ -53,10 +55,7 @@ args_prompt() {
    echo "   -b           to -build Docker image"
    echo "   -a           to -actually run docker-compose"
 #   echo "   -t           to run -tests"
-#   echo "   -S          store image built in DockerHub"
-   echo "   -o           to open/view -web page in default browser"
    echo "   -w           to open/view -web page in default browser"
-
    echo "   -D           to -Delete files after run (to save disk space)"
    echo "   -M           to remove Docker iMages pulled from DockerHub"
    echo "   -C           to remove -Cloned files after run (to save disk space)"
@@ -83,6 +82,7 @@ exit_abnormal() {            # Function: Exit with error.
        GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
    PROJECT_NAME=""              # -p                 
    PYTHON_INSTALL=false         # 
+   USE_VAULT=false              # -H
    RUBY_INSTALL=false           # -i
    NODE_INSTALL=false           # -n
       MONGO_DB_NAME=""
@@ -98,6 +98,7 @@ exit_abnormal() {            # Function: Exit with error.
    RUN_DELETE_AFTER=false       # -D
    RUN_OPEN_BROWSER=false       # -w
    CLONE_GITHUB=false           # -c
+   REMOVE_GITHUB_BEFORE=false   # -d
    REMOVE_GITHUB_AFTER=false    # -R
    USE_SECRETS_FILE=false       # -s
    REMOVE_DOCKER_IMAGES=false   # -M
@@ -126,6 +127,10 @@ while test $# -gt 0; do
       ;;
     -C)
       export REMOVE_GITHUB_AFTER=true
+      shift
+      ;;
+    -d)
+      export REMOVE_GITHUB_BEFORE=true
       shift
       ;;
     -D)
@@ -157,6 +162,10 @@ while test $# -gt 0; do
       export USE_GOOGLE_CLOUD=true
              GOOGLE_API_KEY=$( echo "$1" | sed -e 's/^[^=]*=//g' )
       export GOOGLE_API_KEY
+      shift
+      ;;
+    -H)
+      export USE_VAULT=true
       shift
       ;;
     -i)
@@ -205,11 +214,8 @@ while test $# -gt 0; do
       export RESTART_DOCKER=true
       shift
       ;;
-    -s)
+    -s*)
       export USE_SECRETS_FILE=true
-      shift
-      ;;
-    -S*)
       shift
              SECRETS_FILEPATH=$( echo "$1" | sed -e 's/^[^=]*=//g' )
       export SECRETS_FILEPATH
@@ -284,7 +290,7 @@ info() {   # output on every run
    printf "\n${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 note() { if [ "${RUN_VERBOSE}" = true ]; then
-   printf "\n${bold}${cyan} ${reset} ${cyan}%s${reset}" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${bold}${cyan} ${reset} ${cyan}%s${reset}" "$(echo "$@" | sed '/./,$!d')\n"
    fi
 }
 success() {
@@ -717,23 +723,25 @@ Clone_GitHub_repo(){
       note "At $PWD"
 }
 if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
-   if [ -d "$GitHub_REPO_NAME" ]; then  # directory not available, so clone into it:
+   h2 "-clone requested for $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+   PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${GitHub_REPO_NAME}"
+   if [ -d "${PROJECT_FOLDER_FULL_PATH:?}" ]; then  # path available.
       rm -rf "$GitHub_REPO_NAME" 
       Delete_GitHub_clone    # defined above in this file.
-   else
-      h2 "-clone requested for repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+   fi
+
       Clone_GitHub_repo      # defined above in this file.
       # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
       # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
       # git pull upstream master
-   fi
+
 else   # do not -clone
    #if [ -d "${GitHub_REPO_NAME:?}" ]; then  # path available.
    if [ -d "${GitHub_REPO_NAME}" ]; then  # path available.
       h2 "Re-using repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
       cd "$GitHub_REPO_NAME"
    else
-      h2 "Have to download repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+      h2 "Cloning repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
       git clone "${GitHub_REPO_URL}" "$GitHub_REPO_NAME"
       cd "$GitHub_REPO_NAME"
    fi
@@ -1155,11 +1163,16 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
       h2 "Within (venv) Python3: "
       echo "${RESPONSE}"
      
-      echo "$PWD/${MY_FOLDER}/${MY_FILE}"
-      # See https://jupyter-notebook.readthedocs.io/en/latest/notebook.html?highlight=trust#signing-notebooks
-      jupyter trust "${MY_FOLDER}/${MY_FILE}"
+      if [ -f "$PWD/${MY_FOLDER}/${MY_FILE}" ]; then
+         echo "$PWD/${MY_FOLDER}/${MY_FILE}"
+         # See https://jupyter-notebook.readthedocs.io/en/latest/notebook.html?highlight=trust#signing-notebooks
+         jupyter trust "${MY_FOLDER}/${MY_FILE}"
          # RESPONSE: Signing notebook: section_2/2-3.ipynb
-
+      else
+         echo "$PWD/${MY_FOLDER}/${MY_FILE} not found among ..."
+         ls   "$PWD/${MY_FOLDER}"
+         exit 9
+      fi
    # from pip freeze > requirements.txt previously.
    if [ -f "requirements.txt" ]; then
       # see https://medium.com/@boscacci/why-and-how-to-make-a-requirements-txt-f329c685181e
@@ -1180,6 +1193,7 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
          silent-apt-get-install "anaconda"
       fi
       # note "$( anaconda --version )"
+   fi  # requirements.txt 
 
            PREFIX="/usr/local/anaconda3"
       export PATH="/usr/local/anaconda3/bin:$PATH"
@@ -1188,7 +1202,14 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
 
       # conda create -n tf tensorflow
 
-      # pip3 install jupyterlab   # within conda
+fi # if [ "${RUN_VIRTUALENV}" = true ]; then 
+
+
+      note "Installing tensorflow ..."
+      pip3 install tensorflow   # includes https://pypi.org/project/tensorboard/
+     
+      # Included in conda/anaconda:
+      # pip3 install jupyterlab 
       # pip3 install matplotlib
 
       # h2 "Install cloudinary Within requirements.txt : "
@@ -1204,14 +1225,26 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
       #fi
       # /usr/local/bin/jq
 
-   fi  # requirements.txt or anaconda
+   if [ ! -d "logs/func/" ]; then 
+      note "/logs folder not found, so tensorboard cannot start ..."
+   else
+      # First, kill previous one (if it's there): https://stackoverflow.com/questions/3510673/find-and-kill-a-process-in-one-line-using-bash-and-regex
+      PSID=$(ps aux | grep 'tensorboard' | awk '{print $2}')
+      if [ -z $PSID ]; then
+         kill "$PSID"
+      fi
+      
+      note "Starting tensorboard --logdir . in background ..."
+      tensorboard --logdir .  &   # See https://www.tensorflow.org/tensorboard/get_started
+      # TensorBoard 2.1.1 at http://localhost:6006/ (Press CTRL+C to quit)
+   fi
 
-      h2 "Starting Jupyter with Notebook $MY_FOLDER/$MY_FILE ..."
-      jupyter notebook --port 8888 "${MY_FOLDER}/${MY_FILE}" 
+   h2 "Starting Jupyter with Notebook $MY_FOLDER/$MY_FILE ..."
+   jupyter notebook --port 8888 "${MY_FOLDER}/${MY_FILE}" 
       # & for background run
          # jupyter: open http://localhost:8888/tree
    
-      exit   # for debugging
+exit   # for debugging while running
 
 
       h2 "Execute deactivate if the function exists (i.e. has been created by sourcing activate):"
@@ -1221,7 +1254,6 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
 #[I 16:03:18.236 NotebookApp] Starting buffering for db5328e3-...
 #[I 16:03:19.266 NotebookApp] Restoring connection for db5328e3-aa66-4bc9-94a1-3cf27e330912:84adb360adce4699bccffc00c7671793
 
-fi # if [ "${RUN_VIRTUALENV}" = true ]; then 
 
 if [ "${RUN_TESTS}" = true ]; then  # -t
 

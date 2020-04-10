@@ -1,11 +1,13 @@
 #!/bin/bash
-# This is hello-world.sh from https://github.com/wilsonmar/DevSecOps/
+# This is docker-setup.sh from 
+# https://github.com/wilsonmar/DevSecOps/master/Docker/docker-setup.sh
 # by WilsonMar@gmail.com
-# Described in https://
+# Described in https://wilsonmar.github.io/docker-setup
+# based on     https://wilsonmar.github.io/bash-coding
 
 # This script is used to verify that scripts can run
 # Copy this command (without the #) and paste in your terminal:
-# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/hello-world.sh)"
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/docker-setup.sh)"
 
 echo "Hello world! v1.4"
 

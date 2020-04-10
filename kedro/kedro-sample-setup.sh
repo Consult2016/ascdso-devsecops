@@ -207,11 +207,13 @@ if [ "$PACKAGE_INSTALLER" = "brew" ]; then
       printf "\n>>> brew cask install anaconda (password needed)...\n"
       brew cask install anaconda
          # anaconda was successfully installed!
+      
    # else
       #brew cask reinstall anaconda
    fi
    printf "\n>>> Conda version installed ==> %s \n" "$( conda --version )"
    printf ">>> Installed to %s \n" "$( which conda )"
+   # conda list --revisions   # list versions of conda.
 
 fi  # brew
 
@@ -388,13 +390,14 @@ if [[ $RESPONSE == *"$CONDA_ENV"* ]]; then
 fi
 
 if [ "$REMOVE_AT_END" = "yes" ]; then
-   printf "\n>>> Removing WORK_REPO=%s in %s \n" "$WORK_REPO" "$PWD"
-   rm -rf "$WORK_REPO"
+   printf "\n>>> Removing %s in %s \n" "~/$WORK_FOLDER/$WORK_REPO" "$PWD"
+   rm -rf "~/$WORK_FOLDER/$WORK_REPO"
 
    # TODO: Remove Conda executables
    # brew cask uninstall conda
 else
    printf "\n>>> REMOVE_AT_END=\"%s\", files remain in %s \n" "$REMOVE_AT_END" "$PWD"
+   tree "~/$WORK_FOLDER/$WORK_REPO"
 fi
 
 # per https://kubedex.com/troubleshooting-aws-iam-authenticator/
