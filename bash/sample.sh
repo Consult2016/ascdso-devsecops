@@ -28,7 +28,7 @@ args_prompt() {
    echo "./sample.sh -v -n -a  # NodeJs app with MongoDB"
    echo "./sample.sh -v -i -o  # Ruby app"   
    echo "./sample.sh -v -I -U -c -s -r -a -w  # Python app"
-   echo "./sample.sh -v -V -c -F \"section_2\" -f \"2-1.ipynb\"   # Jupyter anaconda within Virtualenv"
+   echo "./sample.sh -v -V -c -T -F \"section_2\" -f \"2-1.ipynb\" -K  # Jupyter anaconda Tensorflow in Venv"
    echo "USAGE EXAMPLE after testing:"
    echo "./sample.sh -v -D -M -C"
    echo "OPTIONS:"
@@ -44,22 +44,28 @@ args_prompt() {
    echo "   -y            install Python in Virtualenv"
    echo "   -I           -Install brew, docker, docker-compose"
    echo "   -U           -Upgrade packages"
-   echo "   -d           -delete files before git clone"
+
    echo "   -c           -clone from GitHub"
+   echo "   -F \"abc\"     -Folder for working"
+   echo "   -p \"cp100\"     -project in cloud"
+
    echo "   -s \"~/.secrets.sh\"  -secrets file (in your user home folder)"
 #  echo "   -S           -Store image built in DockerHub"
    echo "   -n \"John Doe\"            GitHub user -name"
    echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
-   echo "   -p \"cp100-1094\"  -project folder"
    echo "   -r           start Docker before -run"
-   echo "   -b           to -build Docker image"
-   echo "   -a           to -actually run docker-compose"
-#   echo "   -t           to run -tests"
-   echo "   -w           to open/view -web page in default browser"
-   echo "   -D           to -Delete files after run (to save disk space)"
-   echo "   -M           to remove Docker iMages pulled from DockerHub"
-   echo "   -C           to remove -Cloned files after run (to save disk space)"
-   echo "   -K           to stop processes at end of run (to save CPU)"
+   echo "   -b           -build Docker image"
+   echo "   -a           -actually run docker-compose"
+
+   echo "   -A           run in -Anaconda "
+   echo "   -T           run -Tensorflow"
+   echo "   -t           run -tests"
+
+   echo "   -w           open/view -web page in default browser"
+   echo "   -D           -Delete files after run (to save disk space)"
+   echo "   -M           remove Docker iMages pulled from DockerHub"
+   echo "   -C           remove -Cloned files after run (to save disk space)"
+   echo "   -K           stop processes at end of run (to save CPU)"
    echo " "
  }
 if [ $# -eq 0 ]; then  # display if no parameters are provided:
@@ -78,6 +84,7 @@ exit_abnormal() {            # Function: Exit with error.
    RUN_VERBOSE=false            # -v
    RUN_TESTS=false              # -t
    RUN_VIRTUALENV=false         # -V
+   RUN_ANACONDA=false           # -A
    USE_GOOGLE_CLOUD=false       # -g
        GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
    PROJECT_NAME=""              # -p                 
@@ -94,11 +101,11 @@ exit_abnormal() {            # Function: Exit with error.
    RESTART_DOCKER=false         # -r
    BUILD_DOCKER_IMAGE=false     # -b
    RUN_ACTUAL=false             # -a  (dry run is default)
-   DOWNLOAD_INSTALL=false       # -d
+   DOWNLOAD_INSTALL=false       # -I
    RUN_DELETE_AFTER=false       # -D
+   RUN_TENSORFLOW               # -T
    RUN_OPEN_BROWSER=false       # -w
    CLONE_GITHUB=false           # -c
-   REMOVE_GITHUB_BEFORE=false   # -d
    REMOVE_GITHUB_AFTER=false    # -R
    USE_SECRETS_FILE=false       # -s
    REMOVE_DOCKER_IMAGES=false   # -M
@@ -115,6 +122,10 @@ while test $# -gt 0; do
   case "$1" in
     -a)
       export RUN_ACTUAL=true
+      shift
+      ;;
+    -A)
+      export RUN_ANACONDA=true
       shift
       ;;
     -b)
@@ -221,16 +232,20 @@ while test $# -gt 0; do
       export SECRETS_FILEPATH
       shift
       ;;
-    -U)
-      export UPDATE_PKGS=true
-      shift
-      ;;
     -t)
       export RUN_TESTS=true
       shift
       ;;
+    -T)
+      export RUN_TENSORFLOW=true
+      shift
+      ;;
     -v)
       export RUN_VERBOSE=true
+      shift
+      ;;
+    -U)
+      export UPDATE_PKGS=true
       shift
       ;;
     -V)
@@ -347,6 +362,17 @@ else
    exit 0
 fi
 note "OS_DETAILS=$OS_DETAILS"
+
+
+# bash function to kill process by name:
+ps_kill(){  # $1=process name
+      PSID=$(ps aux | grep $1 | awk '{print $2}')
+      if [ -z "$PSID" ]; then
+         h2 "Kill $1 PSID= $PSID ..."
+         kill 2 "$PSID"
+         sleep 2
+      fi
+}
 
 
 BASH_VERSION=$( bash --version | grep bash | cut -d' ' -f4 | head -c 1 )
@@ -1093,6 +1119,7 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
    Kill_process(){
       info "Killing process $1 ..."
       sudo kill -2 "$1"
+      sleep 2
    }
    if [ -z "${MONGO_PSID}" ]; then  # found
       h2 "Shutting down mongoDB ..."
@@ -1161,8 +1188,48 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
       # RESPONSE=$( python3 -c "import sys; print(sys.version)" )
       RESPONSE=$( python3 -c "import sys, os; is_conda = os.path.exists(os.path.join(sys.prefix, 'conda-meta'))" )
       h2 "Within (venv) Python3: "
-      echo "${RESPONSE}"
+      # echo "${RESPONSE}"
      
+   # from pip freeze > requirements.txt previously.
+   if [ -f "requirements.txt" ]; then
+      # see https://medium.com/@boscacci/why-and-how-to-make-a-requirements-txt-f329c685181e
+      pip3 install -r requirements.txt
+   else
+      h2 "No requirements.txt, so use pip to install for imports ..."
+
+      if [ "${RUN_ANACONDA}" = true ]; then  # -A
+
+         if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
+            if ! command -v anaconda ; then
+               h2 "brew cask install anaconda ..."
+               brew cask install anaconda
+            else
+               if [ "${UPDATE_PKGS}" = true ]; then
+                  h2 "Upgrading anaconda ..."
+                  brew cask upgrade anaconda
+               fi
+            fi
+         elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+            silent-apt-get-install "anaconda"
+         fi
+         #note "$( conda info )"  # VERBOSE
+         #note "$( conda list anaconda$ )"
+         #note "$( anaconda version )"  
+
+         export PREFIX="/usr/local/anaconda3"
+         export   PATH="/usr/local/anaconda3/bin:$PATH"
+
+         # conda create -n PDSH python=3.7 --file requirements.txt
+         # conda create -n tf tensorflow
+      fi  # RUN_ANACONDA
+
+   fi  # requirements.txt 
+
+fi # if [ "${RUN_VIRTUALENV}" = true ]; then 
+
+
+if [ "${RUN_TENSORFLOW}" = true ]; then 
+
       if [ -f "$PWD/${MY_FOLDER}/${MY_FILE}" ]; then
          echo "$PWD/${MY_FOLDER}/${MY_FILE}"
          # See https://jupyter-notebook.readthedocs.io/en/latest/notebook.html?highlight=trust#signing-notebooks
@@ -1173,37 +1240,6 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
          ls   "$PWD/${MY_FOLDER}"
          exit 9
       fi
-   # from pip freeze > requirements.txt previously.
-   if [ -f "requirements.txt" ]; then
-      # see https://medium.com/@boscacci/why-and-how-to-make-a-requirements-txt-f329c685181e
-      pip3 install -r requirements.txt
-   else
-      h2 "No requirements.txt, so use pip to install for imports ..."
-      if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
-         if ! command -v anaconda ; then
-            h2 "brew cask install anaconda ..."
-            brew cask install anaconda
-         else
-            if [ "${UPDATE_PKGS}" = true ]; then
-               h2 "Upgrading anaconda ..."
-               brew cask upgrade anaconda
-            fi
-         fi
-      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-         silent-apt-get-install "anaconda"
-      fi
-      # note "$( anaconda --version )"
-   fi  # requirements.txt 
-
-           PREFIX="/usr/local/anaconda3"
-      export PATH="/usr/local/anaconda3/bin:$PATH"
-
-      #conda create -n PDSH python=3.7 --file requirements.txt
-
-      # conda create -n tf tensorflow
-
-fi # if [ "${RUN_VIRTUALENV}" = true ]; then 
-
 
       note "Installing tensorflow ..."
       pip3 install tensorflow   # includes https://pypi.org/project/tensorboard/
@@ -1229,11 +1265,8 @@ fi # if [ "${RUN_VIRTUALENV}" = true ]; then
       note "/logs folder not found, so tensorboard cannot start ..."
    else
       # First, kill previous one (if it's there): https://stackoverflow.com/questions/3510673/find-and-kill-a-process-in-one-line-using-bash-and-regex
-      PSID=$(ps aux | grep 'tensorboard' | awk '{print $2}')
-      if [ -z $PSID ]; then
-         kill "$PSID"
-      fi
-      
+      ps_kill 'tensorboard'  # bash function defined in this file.
+
       note "Starting tensorboard --logdir . in background ..."
       tensorboard --logdir .  &   # See https://www.tensorflow.org/tensorboard/get_started
       # TensorBoard 2.1.1 at http://localhost:6006/ (Press CTRL+C to quit)
@@ -1243,9 +1276,19 @@ fi # if [ "${RUN_VIRTUALENV}" = true ]; then
    jupyter notebook --port 8888 "${MY_FOLDER}/${MY_FILE}" 
       # & for background run
          # jupyter: open http://localhost:8888/tree
-   
-exit   # for debugging while running
+      # The Jupyter Notebook is running at:
+      # http://localhost:8888/?token=7df8adf321965117234f22973419bb92ecab4e788537b90f
 
+   if [ "$KILL_PROCESSES" = true ]; then  # -K
+      ps_kill 'tensorboard'   # bash function defined in this file.
+   fi
+
+   exit
+
+fi  # if [ "${RUN_TENSORFLOW}" = true ];
+
+
+if [ "${NODE_INSTALL}" = true ]; then  # -n
 
       h2 "Execute deactivate if the function exists (i.e. has been created by sourcing activate):"
       # per https://stackoverflow.com/a/57342256
