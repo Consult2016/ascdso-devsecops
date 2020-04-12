@@ -27,7 +27,8 @@ args_prompt() {
    echo "./sample.sh -v -g \"abcdef...89\" -p \"cp100-1094\"  # Google API call"
    echo "./sample.sh -v -n -a  # NodeJs app with MongoDB"
    echo "./sample.sh -v -i -o  # Ruby app"   
-   echo "./sample.sh -v -I -U -c -s -r -a -w  # Python app"
+   echo "./sample.sh -v -I -U -c -s -y -r -a -w     # Python Flask web app in Docker"
+   echo "./sample.sh -v -I -U -c -H -G -f \"a9y-sample.py\" -P \"-v\" -w -C  # Python sample app using Vault"
    echo "./sample.sh -v -V -c -T -F \"section_2\" -f \"2-1.ipynb\" -K  # Jupyter anaconda Tensorflow in Venv"
    echo "USAGE EXAMPLE after testing:"
    echo "./sample.sh -v -D -M -C"
@@ -41,16 +42,19 @@ args_prompt() {
    echo "   -g \"abcdef...89\" -gcloud API credentials for calls"
    echo "   -i           -install Ruby and Refinery"
    echo "   -j            install -JavaScript (NodeJs) app with MongoDB"
-   echo "   -y            install Python in Virtualenv"
+   echo "   -y            install Python"
    echo "   -I           -Install brew, docker, docker-compose"
    echo "   -U           -Upgrade packages"
+   echo "   -p \"cp100\"     -project in cloud"
 
    echo "   -c           -clone from GitHub"
    echo "   -F \"abc\"     -Folder for working"
-   echo "   -p \"cp100\"     -project in cloud"
+   echo "   -f \"a9y.py\"  -file for working"
+   echo "   -P \"-v -x\"   -Run parameters controlling program called"
 
-   echo "   -s \"~/.secrets.sh\"  -secrets file (in your user home folder)"
-#  echo "   -S           -Store image built in DockerHub"
+   echo "   -s           -secrets retrieve (in default file within your user HOME folder)"
+#  echo "   -S \"~/.secrets.sh\"  -secrets full file path"
+#  echo "   -?           -Store image built in DockerHub"
    echo "   -n \"John Doe\"            GitHub user -name"
    echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
    echo "   -r           start Docker before -run"
@@ -79,44 +83,44 @@ exit_abnormal() {            # Function: Exit with error.
 }
 
 # Defaults (default true so flag turns it true):
+   RUN_ACTUAL=false             # -a  (dry run is default)
    SET_EXIT=true                # -E
    SET_TRACE=false              # -x
    RUN_VERBOSE=false            # -v
    RUN_TESTS=false              # -t
    RUN_VIRTUALENV=false         # -V
    RUN_ANACONDA=false           # -A
+   RUN_THINGS=false             # -G
+   RUN_PARMS=""                 # -P
    USE_GOOGLE_CLOUD=false       # -g
        GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
    PROJECT_NAME=""              # -p                 
-   PYTHON_INSTALL=false         # 
    USE_VAULT=false              # -H
    RUBY_INSTALL=false           # -i
    NODE_INSTALL=false           # -n
       MONGO_DB_NAME=""
+   USE_SECRETS_FILE=false       # -s
+   SECRETS_FILEPATH="$HOME/.secrets.sh"  # -S
    SECRETS_FILE="variables.env.sample"
-      MY_FOLDER="section_2"
-      MY_FILE="1-2.ipynb"
+   MY_FOLDER=""
+   MY_FILE=""
      #MY_FILE="2-3.ipynb"
    UPDATE_PKGS=false            # -U
    RESTART_DOCKER=false         # -r
    BUILD_DOCKER_IMAGE=false     # -b
-   RUN_ACTUAL=false             # -a  (dry run is default)
    DOWNLOAD_INSTALL=false       # -I
    RUN_DELETE_AFTER=false       # -D
-   RUN_TENSORFLOW               # -T
+   RUN_TENSORFLOW=false         # -T
    RUN_OPEN_BROWSER=false       # -w
    CLONE_GITHUB=false           # -c
    REMOVE_GITHUB_AFTER=false    # -R
-   USE_SECRETS_FILE=false       # -s
    REMOVE_DOCKER_IMAGES=false   # -M
    KILL_PROCESSES=false         # -K
 
-SECRETS_FILEPATH="$HOME/.secrets.sh"  # -S
 PROJECT_FOLDER_PATH="$HOME/projects"  # -P
-
-GitHub_USER_NAME="Wilson Mar"                  # -n
-GitHub_USER_EMAIL="wilson_mar@gmail.com"       # -e
 GitHub_REPO_NAME=""
+GitHub_USER_NAME="Wilson Mar"             # -n
+GitHub_USER_EMAIL="wilson_mar@gmail.com"  # -e
 
 while test $# -gt 0; do
   case "$1" in
@@ -175,6 +179,12 @@ while test $# -gt 0; do
       export GOOGLE_API_KEY
       shift
       ;;
+    -G)
+      export RUN_THINGS=true
+      GitHub_REPO_URL="https://github.com/wilsonmar/python-samples.git"
+      GitHub_REPO_NAME="python-samples"
+      shift
+      ;;
     -H)
       export USE_VAULT=true
       shift
@@ -217,6 +227,12 @@ while test $# -gt 0; do
       export PROJECT_NAME
       shift
       ;;
+    -P*)
+      shift
+             RUN_PARMS=$( echo "$1" | sed -e 's/^[^=]*=//g' )
+      export RUN_PARMS
+      shift
+      ;;
     -K)
       export KILL_PROCESSES=true
       shift
@@ -225,7 +241,11 @@ while test $# -gt 0; do
       export RESTART_DOCKER=true
       shift
       ;;
-    -s*)
+    -s)
+      export USE_SECRETS_FILE=true
+      shift
+      ;;
+    -S*)
       export USE_SECRETS_FILE=true
       shift
              SECRETS_FILEPATH=$( echo "$1" | sed -e 's/^[^=]*=//g' )
@@ -238,14 +258,15 @@ while test $# -gt 0; do
       ;;
     -T)
       export RUN_TENSORFLOW=true
-      shift
-      ;;
-    -v)
-      export RUN_VERBOSE=true
+      export RUN_ANACONDA=true
       shift
       ;;
     -U)
       export UPDATE_PKGS=true
+      shift
+      ;;
+    -v)
+      export RUN_VERBOSE=true
       shift
       ;;
     -V)
@@ -269,7 +290,6 @@ while test $# -gt 0; do
       shift
       ;;
     -y)
-      export PYTHON_INSTALL=true
       GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
       GitHub_REPO_NAME="rockstar"
       APPNAME="rockstar"
@@ -299,13 +319,13 @@ blue="\e[34m"
 cyan="\e[36m"
 
 h2() {     # heading
-   printf "\n${bold}>>> %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${bold}\u2665 %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 info() {   # output on every run
    printf "\n${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 note() { if [ "${RUN_VERBOSE}" = true ]; then
-   printf "\n${bold}${cyan} ${reset} ${cyan}%s${reset}" "$(echo "$@" | sed '/./,$!d')\n"
+   printf "\n${bold}${cyan} ${reset} ${cyan}%s${reset}" "$(echo "$@" | sed '/./,$!d')" " "
    fi
 }
 success() {
@@ -361,7 +381,7 @@ else
    error "Operating system not anticipated. Please update script. Aborting."
    exit 0
 fi
-note "OS_DETAILS=$OS_DETAILS"
+# note "OS_DETAILS=$OS_DETAILS"
 
 
 # bash function to kill process by name:
@@ -438,13 +458,16 @@ else
 fi
 
       note "Running $0 in $PWD"  # $0 = script being run in Present Wording Directory.
-      note "$LOG_DATETIME"
+      note "Start time $LOG_DATETIME"
       note "Bash $BASH_VERSION from $BASHFILE"
       note "OS_TYPE=$OS_TYPE using $PACKAGE_MANAGER from $DISK_PCT_FREE disk free"
       note "on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
-#   if [ -f "$OS_DETAILS" ]; then
-#      note "$OS_DETAILS"
-#   fi
+# print all command arguments submitted:
+#while (( "$#" )); do 
+#  echo $1 
+#  shift 
+#done 
+
 
 IFS=$'\n\t'  #  Internal Field Separator for word splitting is line or tab, not spaces.
 
@@ -705,9 +728,113 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
    #  TODO: elif for Suse Linux "${PACKAGE_MANAGER}" == "zypper" ?
 
-   fi # brew
+   fi # PACKAGE_MANAGER
 
-fi # if [ "${DOWNLOAD_INSTALL}" = true ]; then 
+
+   if [ "${USE_VAULT}" = true ]; then   # -H
+      # Install  
+
+
+
+      # See https://learn.hashicorp.com/vault/getting-started/install for install video
+          # https://learn.hashicorp.com/vault/secrets-management/sm-versioned-kv
+          # https://www.vaultproject.io/api/secret/kv/kv-v2.html
+      # NOTE: vault-cli is a Subversion-like utility to work with Jackrabbit FileVault (not Hashicorp Vault)
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         if ! command -v vault >/dev/null; then  # command not found, so:
+            h2 "Brew installing vault ..."
+            brew install vault
+            # vault -autocomplete-install
+            # exec $SHELL
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading vault ..."
+               brew upgrade vault
+               # vault -autocomplete-install
+               # exec $SHELL
+            fi
+         fi
+         # See https://github.com/sethvargo/secrets-in-serverless using kv or aws (iam) secrets engine.
+
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "vault"
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install vault      # please test
+         exit 9
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install vault   # please test
+         exit 9
+      fi
+      RESPONSE="$( vault --version | cut -d' ' -f2 )"  # 2nd column of "Vault v1.3.4"
+      export VAULT_VERSION="${RESPONSE:1}"   # remove first character.
+      echo "VAULT_VERSION=$VAULT_VERSION"   
+      
+      if [ -z "${VAULT_ADDR}" ]; then  # it's blank:
+         error "VAULT_ADDR is not defined (within secrets file) ..."
+      else
+         if ! ping -c 1 "${VAULT_ADDR}" &> /dev/null ; then 
+            info  "VPN needed."
+            error "VAULT_ADDR=$VAULT_ADDR ping failed. Aborting ..."
+            exit
+         fi
+      fi
+      info "VAULT_ADDR=$VAULT_ADDR"
+
+
+         h2 "Vault login ..."
+         vault login -method=okta username="${VAULT_USERNAME}"  # from secrets.sh
+
+         h2 "govaultenv run ..."
+         export VAULT_GOVC=team/env
+         govaultenv -verbose=debug /bin/bash
+
+      # Instead of vault -autocomplete-install   # for interactive manual use.
+      # which inserts in $HOME/.bashrc and .zsh
+      complete -C /usr/local/bin/vault vault
+         # No response is expected. Requires running exec $SHELL to work.
+
+      # FIXME:
+      ERR_RESPONSE="$( vault status 2>&1 )"  # capture STDERR output
+         # Error checking seal status: Get https://vault..../v1/sys/seal-status: dial tcp: lookup vault....: no such host
+      RESPONSE="$( echo $ERR_RESPONSE | awk '{print $1;}' )"
+      if [ -z "${RESPONSE}" ]; then  # not blank
+         fatal "$RESPONSE"
+         exit
+      fi
+
+exit #debug
+
+   # "Installing govaultenv ..."
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         # https://github.com/jamhed/govaultenv
+         if ! command -v govaultenv >/dev/null; then  # command not found, so:
+            h2 "Brew installing govaultenv ..."
+            brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
+            brew install govaultenv  
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading govaultenv ..."
+               brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
+               brew upgrade jamhed/govaultenv/govaultenv
+            fi
+         fi
+         # note "govaultenv $( govaultenv | grep version | cut -d' ' -f1 )"  
+            # version:0.1.2 commit:d7754e38bb855f6a0c0c259ee2cced29c86a4da5 build by:goreleaser date:2019-11-13T19:47:16Z
+
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "govaultenv"
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install govaultenv      # please test
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install govaultenv   # please test
+      else
+         note "Package not recognized."
+         exit
+      fi
+
+   fi   # USE_VAULT
+
+fi # if [ "${DOWNLOAD_INSTALL}"
 
 
 
@@ -788,9 +915,9 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
    if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
       warning "File not found in $SECRETS_FILEPATH. Downloading file .secrets.sample.sh ... "
       curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/.secrets.sample.sh
-      warning "Moving downloaded file to $HOME/.secrets.sh ... "
-      mv .secrets.sample.sh  .secrets.sh
-      fatal "Please edit file $HOME/.secrets.sh and run again ..."
+      warning "Copying .secrets.sample.sh downloaded to \$HOME/.secrets.sh ... "
+      cp .secrets.sample.sh  .secrets.sh
+      fatal "Please edit file \$HOME/.secrets.sh and run again ..."
       exit 1
    else  # file found:
       h2 "Using settings in $SECRETS_FILEPATH "
@@ -808,7 +935,7 @@ fi  # USE_SECRETS_FILE
 if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
    Input_GitHub_User_Info  # function defined above.
 else
-   note "Using -u \"$GitHub_USER_NAME\" -e \"$GitHub_USER_EMAIL\" \n ..."
+   note "Using -u \"$GitHub_USER_NAME\" -e \"$GitHub_USER_EMAIL\" ..."
    # since this is hard coded as "John Doe" above
 fi
 
@@ -888,39 +1015,7 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
    #elif [ "${USE_AZURE_CLOUD}" = true ]; then   # -z
       # See https://docs.microsoft.com/en-us/cli/azure/keyvault/secret?view=azure-cli-latest
       # brew cask install azure-vault
-   else
-      # See https://learn.hashicorp.com/vault/getting-started/install  # server
-      # NOTE: vault-cli is a Subversion-like utility to work with Jackrabbit FileVault (not Hashicorp Vault)
-      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
-         if ! command -v vault >/dev/null; then  # command not found, so:
-            h2 "Brew installing vault ..."
-            brew install vault
-            # vault -autocomplete-install
-            # exec $SHELL
-         else  # installed already:
-            if [ "${UPDATE_PKGS}" = true ]; then
-               h2 "Brew upgrading vault ..."
-               brew upgrade vault
-               # vault -autocomplete-install
-               # exec $SHELL
-            fi
-         fi
-         note "$( vault --version )"  # Vault v1.3.2
-         # See https://github.com/sethvargo/secrets-in-serverless using kv or aws (iam) secrets engine.
-
-      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-         silent-apt-get-install "vault"
-      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
-         sudo yum install vault      # please test
-         exit 9
-      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
-         sudo zypper install vault   # please test
-         exit 9
-      fi
    fi
-
-   # https://learn.hashicorp.com/vault/secrets-management/sm-versioned-kv
-   # https://www.vaultproject.io/api/secret/kv/kv-v2.html
 
 
    # If git user not already configured ...
@@ -928,9 +1023,9 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
    RESPONSE="$( git config --get user.email )"
    if [ -n "${RESPONSE}" ]; then  # not found
       if [[ $RESPONSE == "$GitHub_USER_EMAIL" ]]; then  # already defined:
-         info "GitHub_USER_EMAIL being configured ..."
+         note "GitHub_USER_EMAIL being configured ..."
       else
-         git config --global user.email "$GitHub_USER_EMAIL"
+         git config user.email "$GitHub_USER_EMAIL"
       fi
       info "$( git config --get user.email )"
    fi
@@ -940,26 +1035,25 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
       if [[ $RESPONSE == "$GitHub_USER_NAME" ]]; then  # already defined:
          info "GitHub_USER_EMAIL being configured ..."
       else
-         git config --global user.name  "$GitHub_USER_NAME"
+         git config user.name  "$GitHub_USER_NAME"
       fi
       info "$( git config --get user.email )"
    fi
 
 
-   if [ ! -f ".env" ]; then
-      cp .env.example  .env
-   else
-      warning "no .env file"
-   fi
+   #if [ ! -f ".env" ]; then
+   #   cp .env.example  .env
+   #else
+   #   warning "no .env file"
+   #fi
 
-   if [ ! -f "docker-compose.override.yml" ]; then
-      cp docker-compose.override.example.yml  docker-compose.override.yml
-   else
-      warning "no .yml file"
-   fi
+   #if [ ! -f "docker-compose.override.yml" ]; then
+   #   cp docker-compose.override.example.yml  docker-compose.override.yml
+   #else
+   #   warning "no .yml file"
+   #fi
+
 fi
-
-# echo "wow"; exit  #debugging unexpected end of file
 
 
 
@@ -976,7 +1070,7 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
       "https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_API_KEY}" > result.json
    cat result.json
 
-exit
+exit  # in dev
 
    # https://google.qwiklabs.com/games/759/labs/2374
    h2 "GCP AutoML Vision API"
@@ -1150,6 +1244,7 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
 fi # if [ "${NODE_INSTALL}" = true ]; then 
 
 
+
 if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
 
    h2 "Install -python"
@@ -1228,6 +1323,29 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
 fi # if [ "${RUN_VIRTUALENV}" = true ]; then 
 
 
+if [ "${RUN_THINGS}" = true ]; then  # -s
+   h2 "-G run things at $PWD ..."
+   if [ -z "${MY_FOLDER}" ]; then  # is empty
+      note "-Folder not specified ..."
+   else
+      note "cd into ${MY_FOLDER} ..."
+      cd  "${MY_FOLDER}"
+   fi
+
+   if [ -z "${MY_FILE}" ]; then  # is empty
+      error "No -f (-file) specified ..."
+   else
+      if [ ! -f "${MY_FILE}" ]; then  # file not found:
+         error "-f (file) ${MY_FILE} not found ..."
+      else
+         note "python3 ${MY_FILE} ..."
+         python3 "${MY_FILE}" "${RUN_PARMS}"
+      fi
+   fi
+fi  # RUN_THINGS
+
+
+
 if [ "${RUN_TENSORFLOW}" = true ]; then 
 
       if [ -f "$PWD/${MY_FOLDER}/${MY_FILE}" ]; then
@@ -1262,7 +1380,7 @@ if [ "${RUN_TENSORFLOW}" = true ]; then
       # /usr/local/bin/jq
 
    if [ ! -d "logs/func/" ]; then 
-      note "/logs folder not found, so tensorboard cannot start ..."
+      note "logs/func folder not found, so tensorboard not started ..."
    else
       # First, kill previous one (if it's there): https://stackoverflow.com/questions/3510673/find-and-kill-a-process-in-one-line-using-bash-and-regex
       ps_kill 'tensorboard'  # bash function defined in this file.
@@ -1283,20 +1401,18 @@ if [ "${RUN_TENSORFLOW}" = true ]; then
       ps_kill 'tensorboard'   # bash function defined in this file.
    fi
 
-   exit
-
-fi  # if [ "${RUN_TENSORFLOW}" = true ];
+fi  # if [ "${RUN_TENSORFLOW}"
 
 
-if [ "${NODE_INSTALL}" = true ]; then  # -n
-
+if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
       h2 "Execute deactivate if the function exists (i.e. has been created by sourcing activate):"
       # per https://stackoverflow.com/a/57342256
       declare -Ff deactivate && deactivate
-
-#[I 16:03:18.236 NotebookApp] Starting buffering for db5328e3-...
-#[I 16:03:19.266 NotebookApp] Restoring connection for db5328e3-aa66-4bc9-94a1-3cf27e330912:84adb360adce4699bccffc00c7671793
-
+         #[I 16:03:18.236 NotebookApp] Starting buffering for db5328e3-...
+         #[I 16:03:19.266 NotebookApp] Restoring connection for db5328e3-aa66-4bc9-94a1-3cf27e330912:84adb360adce4699bccffc00c7671793
+fi
+   
+exit 
 
 if [ "${RUN_TESTS}" = true ]; then  # -t
 
@@ -1338,6 +1454,9 @@ if [ "${RUN_TESTS}" = true ]; then  # -t
    # reports are produced by TestNG, a plug-in to Selenium.
 
 fi # if [ "${RUN_TESTS}"
+
+
+echo "wow1"; exit #debugging
 
 
 if [ "${RUBY_INSTALL}" = true ]; then  # -i
@@ -1570,7 +1689,6 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
       # bin/rake spec
 
 
-
    h2 "bundle install based on gem file ..."
    bundle install
 
@@ -1588,6 +1706,8 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
    exit
 
 fi # if [ "${RUBY_INSTALL}" = true ]; then  # -i
+
+echo "wow2"; exit #debugging
 
 
 if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
