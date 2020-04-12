@@ -14,11 +14,11 @@
 
 SCRIPT_VERSION="v0.65"
 clear  # screen (but not history)
-echo "================================================ $SCRIPT_VERSION "
 
 # Capture starting timestamp and display no matter how it ends:
 EPOCH_START="$( date -u +%s )"  # such as 1572634619
 LOG_DATETIME=$( date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
+echo "=========================== $LOG_DATETIME $SCRIPT_VERSION"
 
 
 # Ensure run variables are based on arguments or defaults ..."
@@ -38,6 +38,7 @@ args_prompt() {
 #   echo "   -x           to set sudoers -e to stop on error"
    echo "   -H           install -Hashicorp Vault secret manager"
    echo "   -v           to run -verbose (list space use and each image to console)"
+   echo "   -q           -quiet headings for each step"
    echo "   -V           to run within VirtualEnv"
    echo "   -g \"abcdef...89\" -gcloud API credentials for calls"
    echo "   -i           -install Ruby and Refinery"
@@ -105,6 +106,7 @@ exit_abnormal() {            # Function: Exit with error.
    MY_FOLDER=""
    MY_FILE=""
      #MY_FILE="2-3.ipynb"
+   RUN_QUIET=false              # -q
    UPDATE_PKGS=false            # -U
    RESTART_DOCKER=false         # -r
    BUILD_DOCKER_IMAGE=false     # -b
@@ -210,6 +212,10 @@ while test $# -gt 0; do
       MONGO_DB_NAME="delicious"
       shift
       ;;
+    -K)
+      export KILL_PROCESSES=true
+      shift
+      ;;
     -M)
       export REMOVE_DOCKER_IMAGES=true
       shift
@@ -233,8 +239,8 @@ while test $# -gt 0; do
       export RUN_PARMS
       shift
       ;;
-    -K)
-      export KILL_PROCESSES=true
+    -q)
+      export RUN_QUIET=true
       shift
       ;;
     -r)
@@ -318,14 +324,15 @@ green="\e[32m"
 blue="\e[34m"
 cyan="\e[36m"
 
-h2() {     # heading
+h2() { if [ "${RUN_QUIET}" = false ]; then    # heading
    printf "\n${bold}\u2665 %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   fi
 }
 info() {   # output on every run
-   printf "\n${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 note() { if [ "${RUN_VERBOSE}" = true ]; then
-   printf "\n${bold}${cyan} ${reset} ${cyan}%s${reset}" "$(echo "$@" | sed '/./,$!d')" " "
+   printf "\n${bold}${cyan} ${reset} ${cyan}%s${reset}" "$(echo "$@" | sed '/./,$!d')"
    fi
 }
 success() {
@@ -450,10 +457,10 @@ HOSTNAME=$( hostname )
 PUBLIC_IP=$( curl -s ifconfig.me )
 
 if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
-   h2  "BASHFILE=~/.bash_profile ..."
+   note "BASHFILE=~/.bash_profile ..."
    BASHFILE="$HOME/.bash_profile"  # on Macs
 else
-   h2  "BASHFILE=~/.bashrc ..."
+   note "BASHFILE=~/.bashrc ..."
    BASHFILE="$HOME/.bashrc"  # on Linux
 fi
 
@@ -462,6 +469,7 @@ fi
       note "Bash $BASH_VERSION from $BASHFILE"
       note "OS_TYPE=$OS_TYPE using $PACKAGE_MANAGER from $DISK_PCT_FREE disk free"
       note "on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
+      note " "
 # print all command arguments submitted:
 #while (( "$#" )); do 
 #  echo $1 
@@ -477,11 +485,11 @@ if [ -z "$PROJECT_FOLDER_PATH" ]; then  # -p ""  override blank (the default)
    pwd
 else
    if [ ! -d "$PROJECT_FOLDER_PATH" ]; then  # path not available.
-      h2 "Creating folder $PROJECT_FOLDER_PATH as -project folder path ..."
+      note "Creating folder $PROJECT_FOLDER_PATH as -project folder path ..."
       mkdir -p "$PROJECT_FOLDER_PATH"
    fi
-   pushd "$PROJECT_FOLDER_PATH" || return  # as suggested by SC2164
-   info "Pushed into $PWD during script run ..."
+   pushd "$PROJECT_FOLDER_PATH" || return # as suggested by SC2164
+   note "Pushed into path $PWD during script run ..."
 fi
 # note "$( ls )"
 
@@ -629,7 +637,7 @@ fi
 
 if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
-   h2 "Install package managers ..."
+   h2 "-Install package managers ..."
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
 
@@ -730,113 +738,7 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
    fi # PACKAGE_MANAGER
 
-
-   if [ "${USE_VAULT}" = true ]; then   # -H
-      # Install  
-
-
-
-      # See https://learn.hashicorp.com/vault/getting-started/install for install video
-          # https://learn.hashicorp.com/vault/secrets-management/sm-versioned-kv
-          # https://www.vaultproject.io/api/secret/kv/kv-v2.html
-      # NOTE: vault-cli is a Subversion-like utility to work with Jackrabbit FileVault (not Hashicorp Vault)
-      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
-         if ! command -v vault >/dev/null; then  # command not found, so:
-            h2 "Brew installing vault ..."
-            brew install vault
-            # vault -autocomplete-install
-            # exec $SHELL
-         else  # installed already:
-            if [ "${UPDATE_PKGS}" = true ]; then
-               h2 "Brew upgrading vault ..."
-               brew upgrade vault
-               # vault -autocomplete-install
-               # exec $SHELL
-            fi
-         fi
-         # See https://github.com/sethvargo/secrets-in-serverless using kv or aws (iam) secrets engine.
-
-      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-         silent-apt-get-install "vault"
-      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
-         sudo yum install vault      # please test
-         exit 9
-      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
-         sudo zypper install vault   # please test
-         exit 9
-      fi
-      RESPONSE="$( vault --version | cut -d' ' -f2 )"  # 2nd column of "Vault v1.3.4"
-      export VAULT_VERSION="${RESPONSE:1}"   # remove first character.
-      echo "VAULT_VERSION=$VAULT_VERSION"   
-      
-      if [ -z "${VAULT_ADDR}" ]; then  # it's blank:
-         error "VAULT_ADDR is not defined (within secrets file) ..."
-      else
-         if ! ping -c 1 "${VAULT_ADDR}" &> /dev/null ; then 
-            info  "VPN needed."
-            error "VAULT_ADDR=$VAULT_ADDR ping failed. Aborting ..."
-            exit
-         fi
-      fi
-      info "VAULT_ADDR=$VAULT_ADDR"
-
-
-         h2 "Vault login ..."
-         vault login -method=okta username="${VAULT_USERNAME}"  # from secrets.sh
-
-         h2 "govaultenv run ..."
-         export VAULT_GOVC=team/env
-         govaultenv -verbose=debug /bin/bash
-
-      # Instead of vault -autocomplete-install   # for interactive manual use.
-      # which inserts in $HOME/.bashrc and .zsh
-      complete -C /usr/local/bin/vault vault
-         # No response is expected. Requires running exec $SHELL to work.
-
-      # FIXME:
-      ERR_RESPONSE="$( vault status 2>&1 )"  # capture STDERR output
-         # Error checking seal status: Get https://vault..../v1/sys/seal-status: dial tcp: lookup vault....: no such host
-      RESPONSE="$( echo $ERR_RESPONSE | awk '{print $1;}' )"
-      if [ -z "${RESPONSE}" ]; then  # not blank
-         fatal "$RESPONSE"
-         exit
-      fi
-
-exit #debug
-
-   # "Installing govaultenv ..."
-      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
-         # https://github.com/jamhed/govaultenv
-         if ! command -v govaultenv >/dev/null; then  # command not found, so:
-            h2 "Brew installing govaultenv ..."
-            brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
-            brew install govaultenv  
-         else  # installed already:
-            if [ "${UPDATE_PKGS}" = true ]; then
-               h2 "Brew upgrading govaultenv ..."
-               brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
-               brew upgrade jamhed/govaultenv/govaultenv
-            fi
-         fi
-         # note "govaultenv $( govaultenv | grep version | cut -d' ' -f1 )"  
-            # version:0.1.2 commit:d7754e38bb855f6a0c0c259ee2cced29c86a4da5 build by:goreleaser date:2019-11-13T19:47:16Z
-
-      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-         silent-apt-get-install "govaultenv"
-      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
-         sudo yum install govaultenv      # please test
-      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
-         sudo zypper install govaultenv   # please test
-      else
-         note "Package not recognized."
-         exit
-      fi
-
-   fi   # USE_VAULT
-
 fi # if [ "${DOWNLOAD_INSTALL}"
-
-
 
 if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 
@@ -920,8 +822,8 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
       fatal "Please edit file \$HOME/.secrets.sh and run again ..."
       exit 1
    else  # file found:
-      h2 "Using settings in $SECRETS_FILEPATH "
-      ls -al "$SECRETS_FILEPATH"
+      h2 "Using -secrets in $SECRETS_FILEPATH "
+      note "$(ls -al $SECRETS_FILEPATH )"
       chmod +x "$SECRETS_FILEPATH"
       source   "$SECRETS_FILEPATH"  # run file containing variable definitions.
       note "GitHub_USER_NAME=\"$GitHub_USER_NAME\" read from file $SECRETS_FILEPATH"
@@ -1017,35 +919,6 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
       # brew cask install azure-vault
    fi
 
-
-   # If git user not already configured ...
-      # note "$( git config --list )"
-   RESPONSE="$( git config --get user.email )"
-   if [ -n "${RESPONSE}" ]; then  # not found
-      if [[ $RESPONSE == "$GitHub_USER_EMAIL" ]]; then  # already defined:
-         note "GitHub_USER_EMAIL being configured ..."
-      else
-         git config user.email "$GitHub_USER_EMAIL"
-      fi
-      info "$( git config --get user.email )"
-   fi
-
-   RESPONSE="$( git config --get user.name )"
-   if [ -n "${RESPONSE}" ]; then  # not found
-      if [[ $RESPONSE == "$GitHub_USER_NAME" ]]; then  # already defined:
-         info "GitHub_USER_EMAIL being configured ..."
-      else
-         git config user.name  "$GitHub_USER_NAME"
-      fi
-      info "$( git config --get user.email )"
-   fi
-
-
-   #if [ ! -f ".env" ]; then
-   #   cp .env.example  .env
-   #else
-   #   warning "no .env file"
-   #fi
 
    #if [ ! -f "docker-compose.override.yml" ]; then
    #   cp docker-compose.override.example.yml  docker-compose.override.yml
@@ -1323,6 +1196,105 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
 fi # if [ "${RUN_VIRTUALENV}" = true ]; then 
 
 
+if [ "${USE_VAULT}" = true ]; then   # -H
+      h2 "-Hashicorp Vault being used ..."
+
+      # See https://learn.hashicorp.com/vault/getting-started/install for install video
+          # https://learn.hashicorp.com/vault/secrets-management/sm-versioned-kv
+          # https://www.vaultproject.io/api/secret/kv/kv-v2.html
+      # NOTE: vault-cli is a Subversion-like utility to work with Jackrabbit FileVault (not Hashicorp Vault)
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         if ! command -v vault >/dev/null; then  # command not found, so:
+            note "Brew installing vault ..."
+            brew install vault
+            # vault -autocomplete-install
+            # exec $SHELL
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               note "Brew upgrading vault ..."
+               brew upgrade vault
+               # vault -autocomplete-install
+               # exec $SHELL
+            fi
+         fi
+         # See https://github.com/sethvargo/secrets-in-serverless using kv or aws (iam) secrets engine.
+
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "vault"
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install vault      # please test
+         exit 9
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install vault   # please test
+         exit 9
+      fi
+      RESPONSE="$( vault --version | cut -d' ' -f2 )"  # 2nd column of "Vault v1.3.4"
+      export VAULT_VERSION="${RESPONSE:1}"   # remove first character.
+      note "VAULT_VERSION=$VAULT_VERSION"   
+      
+      if [ -z "${VAULT_ADDR}" ]; then  # it's blank:
+         error "VAULT_ADDR is not defined (within secrets file) ..."
+      else
+         if ! ping -c 1 "${VAULT_ADDR}" &> /dev/null ; then 
+            error "VAULT_ADDR=$VAULT_ADDR ICMP ping failed. Aborting ..."
+            info  "Is VPN (GlobalProtect) running and you're loggin in?"
+            # exit
+         fi
+      fi
+
+      # Instead of vault -autocomplete-install   # for interactive manual use.
+      # which inserts in $HOME/.bashrc and .zsh
+      complete -C /usr/local/bin/vault vault
+         # No response is expected. Requires running exec $SHELL to work.
+
+      # FIXME:
+      ERR_RESPONSE="$( vault status 2>&1 )"  # capture STDERR output
+         # Error checking seal status: Get https://vault..../v1/sys/seal-status: dial tcp: lookup vault....: no such host
+      RESPONSE="$( echo $ERR_RESPONSE | awk '{print $1;}' )"
+      if [ -z "${RESPONSE}" ]; then  # not blank
+         fatal "$RESPONSE"
+         exit
+      fi
+
+      note "Vault login as ${VAULT_USERNAME} ..."
+      vault login -method=okta username="${VAULT_USERNAME}"  # from secrets.sh
+      # Put https://127.0.0.1:8200/v1/auth/okta/login: dial tcp 127.0.0.1:8200: connect: connection refused
+
+   # "Installing govaultenv ..."
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         # https://github.com/jamhed/govaultenv
+         if ! command -v govaultenv >/dev/null; then  # command not found, so:
+            h2 "Brew installing govaultenv ..."
+            brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
+            brew install govaultenv  
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading govaultenv ..."
+               brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
+               brew upgrade jamhed/govaultenv/govaultenv
+            fi
+         fi
+         # note "govaultenv $( govaultenv | grep version | cut -d' ' -f1 )"  
+            # version:0.1.2 commit:d7754e38bb855f6a0c0c259ee2cced29c86a4da5 build by:goreleaser date:2019-11-13T19:47:16Z
+
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "govaultenv"
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install govaultenv      # please test
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install govaultenv   # please test
+      else
+         note "Package not recognized."
+         exit
+      fi
+
+         h2 "govaultenv run ..."
+         export VAULT_GOVC=team/env
+         govaultenv -verbose=debug /bin/bash
+
+fi   # USE_VAULT
+
+
 if [ "${RUN_THINGS}" = true ]; then  # -s
    h2 "-G run things at $PWD ..."
    if [ -z "${MY_FOLDER}" ]; then  # is empty
@@ -1411,8 +1383,7 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
          #[I 16:03:18.236 NotebookApp] Starting buffering for db5328e3-...
          #[I 16:03:19.266 NotebookApp] Restoring connection for db5328e3-aa66-4bc9-94a1-3cf27e330912:84adb360adce4699bccffc00c7671793
 fi
-   
-exit 
+
 
 if [ "${RUN_TESTS}" = true ]; then  # -t
 
@@ -1454,9 +1425,6 @@ if [ "${RUN_TESTS}" = true ]; then  # -t
    # reports are produced by TestNG, a plug-in to Selenium.
 
 fi # if [ "${RUN_TESTS}"
-
-
-echo "wow1"; exit #debugging
 
 
 if [ "${RUBY_INSTALL}" = true ]; then  # -i
