@@ -28,15 +28,16 @@ args_prompt() {
    echo "./sample.sh -v -n -a  # NodeJs app with MongoDB"
    echo "./sample.sh -v -i -o  # Ruby app"   
    echo "./sample.sh -v -I -U -c -s -y -r -a -w     # Python Flask web app in Docker"
-   echo "./sample.sh -v -I -U -c -H -G -f \"a9y-sample.py\" -P \"-v\" -w -C  # Python sample app using Vault"
+   echo "./sample.sh -v -I -U    -s -H   -t         # Initiate Vault test server"
+   echo "./sample.sh -v -I -U -c    -H -G -f \"a9y-sample.py\" -P \"-v\" -t -w -C  # Python sample app using Vault"
    echo "./sample.sh -v -V -c -T -F \"section_2\" -f \"2-1.ipynb\" -K  # Jupyter anaconda Tensorflow in Venv"
    echo "USAGE EXAMPLE after testing:"
    echo "./sample.sh -v -D -M -C"
    echo "OPTIONS:"
    echo "   -E           to set -e to NOT stop on error"
-   echo "   -X           to set -x to trace command lines"
+   echo "   -x           to set -x to trace command lines"
 #   echo "   -x           to set sudoers -e to stop on error"
-   echo "   -H           install -Hashicorp Vault secret manager"
+   echo "   -H           install/use -Hashicorp Vault secret manager"
    echo "   -v           to run -verbose (list space use and each image to console)"
    echo "   -q           -quiet headings for each step"
    echo "   -V           to run within VirtualEnv"
@@ -47,26 +48,26 @@ args_prompt() {
    echo "   -I           -Install brew, docker, docker-compose"
    echo "   -U           -Upgrade packages"
    echo "   -p \"cp100\"     -project in cloud"
-
+   echo " "
    echo "   -c           -clone from GitHub"
    echo "   -F \"abc\"     -Folder for working"
    echo "   -f \"a9y.py\"  -file for working"
-   echo "   -P \"-v -x\"   -Run parameters controlling program called"
-
+   echo "   -P \"-v -x\"    -Parameters controlling program called"
+   echo " "
    echo "   -s           -secrets retrieve (in default file within your user HOME folder)"
 #  echo "   -S \"~/.secrets.sh\"  -secrets full file path"
 #  echo "   -?           -Store image built in DockerHub"
    echo "   -n \"John Doe\"            GitHub user -name"
    echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
-   echo "   -r           start Docker before -run"
    echo "   -b           -build Docker image"
-   echo "   -a           -actually run docker-compose"
-
+   echo "   -r           start Docker to -run"
+   echo " "
    echo "   -A           run in -Anaconda "
    echo "   -T           run -Tensorflow"
-   echo "   -t           run -tests"
+   echo "   -t           run -tests against test server"
 
-   echo "   -w           open/view -web page in default browser"
+   echo "   -o           -open/view web page in default browser"
+   echo "   -a           -actually run in prod server"
    echo "   -D           -Delete files after run (to save disk space)"
    echo "   -M           remove Docker iMages pulled from DockerHub"
    echo "   -C           remove -Cloned files after run (to save disk space)"
@@ -93,6 +94,8 @@ exit_abnormal() {            # Function: Exit with error.
    RUN_ANACONDA=false           # -A
    RUN_THINGS=false             # -G
    RUN_PARMS=""                 # -P
+   USE_AWS_CLOUD=false          # -a
+   USE_AZURE_CLOUD=false        # -z
    USE_GOOGLE_CLOUD=false       # -g
        GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
    PROJECT_NAME=""              # -p                 
@@ -113,7 +116,7 @@ exit_abnormal() {            # Function: Exit with error.
    DOWNLOAD_INSTALL=false       # -I
    RUN_DELETE_AFTER=false       # -D
    RUN_TENSORFLOW=false         # -T
-   RUN_OPEN_BROWSER=false       # -w
+   RUN_OPEN_BROWSER=false       # -o
    CLONE_GITHUB=false           # -c
    REMOVE_GITHUB_AFTER=false    # -R
    REMOVE_DOCKER_IMAGES=false   # -M
@@ -227,6 +230,10 @@ while test $# -gt 0; do
       export GitHub_USER_NAME
       shift
       ;;
+    -o)
+      export RUN_OPEN_BROWSER=true
+      shift
+      ;;
     -p*)
       shift
              PROJECT_NAME=$( echo "$1" | sed -e 's/^[^=]*=//g' )
@@ -284,21 +291,21 @@ while test $# -gt 0; do
       shift
       ;;
     -w)
-      export RUN_OPEN_BROWSER=true
+      export USE_AWS_CLOUD=true
       shift
       ;;
     -x)
       export SET_TRACE=true
       shift
       ;;
-    -X)
-      export SET_XTRACE=true
-      shift
-      ;;
     -y)
       GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
       GitHub_REPO_NAME="rockstar"
       APPNAME="rockstar"
+      shift
+      ;;
+    -z)
+      export USE_AZURE_CLOUD=true
       shift
       ;;
     *)
@@ -740,9 +747,19 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
 fi # if [ "${DOWNLOAD_INSTALL}"
 
+
 if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 
-   h2 "Create new repository using gcloud & git commands:"
+      # assume setup done by https://wilsonmar.github.io/gcp
+      # See https://cloud.google.com/solutions/secrets-management
+      # https://github.com/GoogleCloudPlatform/berglas is being migrated to Google Secrets Manager.
+      # See https://github.com/sethvargo/secrets-in-serverless/tree/master/gcs to encrypt secrets on Google Cloud Storage accessed inside a serverless Cloud Function.
+      # using gcloud beta secrets create "my-secret" --replication-policy "automatic" --data-file "/tmp/my-secret.txt"
+      h2 "Retrieve secret version from GCP Cloud Secret Manager ..."
+      gcloud beta secrets versions access "latest" --secret "my-secret"
+         # A secret version contains the actual contents of a secret. "latest" is the VERSION_ID      
+
+   h2 "In GCP create new repository using gcloud & git commands:"
    # gcloud source repos create REPO_DEMO
 
    # Clone the contents of your new Cloud Source Repository to a local repo:
@@ -762,6 +779,18 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 
    # git push origin master
 fi
+
+   if [ "${USE_AWS_CLOUD}" = true ]; then   # -w
+      # TODO: Add other clouds and installers.
+      brew cask install aws-vault
+      # See https://www.davehall.com.au/tags/bash
+   fi
+   
+   if [ "${USE_AZURE_CLOUD}" = true ]; then   # -z
+      # See https://docs.microsoft.com/en-us/cli/azure/keyvault/secret?view=azure-cli-latest
+      brew cask install azure-vault
+   fi
+
 
 Delete_GitHub_clone(){
    # https://www.shellcheck.net/wiki/SC2115 Use "${var:?}" to ensure this never expands to / .
@@ -795,10 +824,10 @@ else   # do not -clone
    if [ -d "${GitHub_REPO_NAME}" ]; then  # path available.
       h2 "Re-using repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
       cd "$GitHub_REPO_NAME"
-   else
-      h2 "Cloning repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
-      git clone "${GitHub_REPO_URL}" "$GitHub_REPO_NAME"
-      cd "$GitHub_REPO_NAME"
+   #else
+   #   h2 "Cloning repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+   #   git clone "${GitHub_REPO_URL}" "$GitHub_REPO_NAME"
+   #   cd "$GitHub_REPO_NAME"
    fi
 fi
 note "Now at $PWD ..."
@@ -813,7 +842,11 @@ Input_GitHub_User_Info(){
       read -r -p "Enter your GitHub user email [john_doe@gmail.com]: " GitHub_USER_EMAIL
       GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"johb_doe@gmail.com"}
 }
-if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
+if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
+   warning "Using default GitHub user info ..."
+   # Input_GitHub_User_Info  # function defined above.
+   # flag not to use file, then manually input:
+else  
    if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
       warning "File not found in $SECRETS_FILEPATH. Downloading file .secrets.sample.sh ... "
       curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/.secrets.sample.sh
@@ -828,21 +861,14 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
       source   "$SECRETS_FILEPATH"  # run file containing variable definitions.
       note "GitHub_USER_NAME=\"$GitHub_USER_NAME\" read from file $SECRETS_FILEPATH"
    fi
-else  # flag not to use file, then manually input:
-   warning "Using default GitHub user info ..."
-   # Input_GitHub_User_Info  # function defined above.
-fi  # USE_SECRETS_FILE
 
+   if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
+      Input_GitHub_User_Info  # function defined above.
+   else
+      note "Using -u \"$GitHub_USER_NAME\" -e \"$GitHub_USER_EMAIL\" ..."
+      # since this is hard coded as "John Doe" above
+   fi
 
-if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
-   Input_GitHub_User_Info  # function defined above.
-else
-   note "Using -u \"$GitHub_USER_NAME\" -e \"$GitHub_USER_EMAIL\" ..."
-   # since this is hard coded as "John Doe" above
-fi
-
-
-if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
 
    # This is https://github.com/AGWA/git-crypt      has 4,500 stars.
    # Whereas https://github.com/sobolevn/git-secret has 1,700 stars.
@@ -889,7 +915,7 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
          git clone https://github.com/sobolevn/git-secret.git
          cd git-secret && make build
          PREFIX="/usr/local" make install      
-      fi
+      fi  # PACKAGE_MANAGER
 
       if [ -f "${SECRETS_FILE}.secret" ]; then   # found
          h2 "${SECRETS_FILE}.secret being decrypted using the private key in the bash user's local $HOME folder"
@@ -901,24 +927,8 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
             fatal "File ${SECRETS_FILE} not decrypted ..."
             exit 9
          fi
-      fi
-   elif [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
-      # assume setup done by https://wilsonmar.github.io/gcp
-      # See https://cloud.google.com/solutions/secrets-management
-      # https://github.com/GoogleCloudPlatform/berglas is being migrated to Google Secrets Manager.
-      # See https://github.com/sethvargo/secrets-in-serverless/tree/master/gcs to encrypt secrets on Google Cloud Storage accessed inside a serverless Cloud Function.
-      # using gcloud beta secrets create "my-secret" --replication-policy "automatic" --data-file "/tmp/my-secret.txt"
-      h2 "Retrieve secret version from Google Cloud Secret Manager ..."
-      gcloud beta secrets versions access "latest" --secret "my-secret"
-         # A secret version contains the actual contents of a secret. "latest" is the VERSION_ID      
-   #elif [ "${USE_AWS_CLOUD}" = true ]; then   # -w
-      # brew cask install aws-vault
-      # See https://www.davehall.com.au/tags/bash
-   #elif [ "${USE_AZURE_CLOUD}" = true ]; then   # -z
-      # See https://docs.microsoft.com/en-us/cli/azure/keyvault/secret?view=azure-cli-latest
-      # brew cask install azure-vault
-   fi
-
+      fi 
+   fi  # .gitsecret
 
    #if [ ! -f "docker-compose.override.yml" ]; then
    #   cp docker-compose.override.example.yml  docker-compose.override.yml
@@ -926,14 +936,18 @@ if [ "${USE_SECRETS_FILE}" = true ]; then  # -s
    #   warning "no .yml file"
    #fi
 
-fi
+fi  # USE_SECRETS_FILE  to get into cloud
 
+
+if [ "${USE_AZURE_CLOUD}" = true ]; then   # -z
+   h2 "Azure cloud "  # https://docs.microsoft.com/en-us/azure/key-vault/about-keys-secrets-and-certificates
+fi
 
 
 if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 
    # https://google.qwiklabs.com/games/759/labs/2373
-   h2 "GCP Speech-to-Text API"  # https://cloud.google.com/speech/reference/rest/v1/RecognitionConfig
+   h2 "Using GCP for Speech-to-Text API"  # https://cloud.google.com/speech/reference/rest/v1/RecognitionConfig
    # usage limits: https://cloud.google.com/speech-to-text/quotas
    curl -O -s "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/gcp/gcp-speech-to-text/request.json"
    cat request.json
@@ -1197,7 +1211,7 @@ fi # if [ "${RUN_VIRTUALENV}" = true ]; then
 
 
 if [ "${USE_VAULT}" = true ]; then   # -H
-      h2 "-Hashicorp Vault being used ..."
+      h2 "-HashicorpVault being used ..."
 
       # See https://learn.hashicorp.com/vault/getting-started/install for install video
           # https://learn.hashicorp.com/vault/secrets-management/sm-versioned-kv
@@ -1232,6 +1246,28 @@ if [ "${USE_VAULT}" = true ]; then   # -H
       export VAULT_VERSION="${RESPONSE:1}"   # remove first character.
       note "VAULT_VERSION=$VAULT_VERSION"   
       
+      # Instead of vault -autocomplete-install   # for interactive manual use.
+      # The complete command inserts in $HOME/.bashrc and .zsh
+      complete -C /usr/local/bin/vault vault
+         # No response is expected. Requires running exec $SHELL to work.
+
+   if [ "${RUN_TESTS}" = true ]; then   # -t
+      # WARNING: The dev server is insecure and stores all data in memory only!
+
+      h2 "Starting vault local dev server at $VAULT_ADDR ..."  # https://learn.hashicorp.com/vault/getting-started/dev-server
+      ps_kill 'vault'  # bash function defined in this file.
+      
+      # TODO: Get while running to save Unseal key & Root token as VAULT_DEV_ROOT_TOKEN_ID:
+      RESPONSE="$( vault server -dev  & )"  # & = background job
+      export VAULT_ADDR=http://127.0.0.1:8200
+      # echo -e "RESPONSE=$RESPONSE \n"
+      export UNSEAL_KEY="$( echo "${RESPONSE}" | grep -o 'Unseal Key: [^, }]*' | sed 's/^.*: //' )"
+      export VAULT_DEV_ROOT_TOKEN_ID="$( echo "${RESPONSE}" | grep -o 'Root Token: [^, }]*' | sed 's/^.*: //' )"
+      note -e ">>> UNSEAL_KEY=$UNSEAL_KEY \n"
+      note -e ">>> VAULT_DEV_ROOT_TOKEN_ID=$VAULT_DEV_ROOT_TOKEN_ID \n"
+      #sample      VAULT_DEV_ROOT_TOKEN_ID="s.Lgsh7FXX9cUKQttfFo1mdHjE"
+
+   else  # use production ADDR from secrets
       if [ -z "${VAULT_ADDR}" ]; then  # it's blank:
          error "VAULT_ADDR is not defined (within secrets file) ..."
       else
@@ -1241,32 +1277,37 @@ if [ "${USE_VAULT}" = true ]; then   # -H
             # exit
          fi
       fi
-
-      # Instead of vault -autocomplete-install   # for interactive manual use.
-      # which inserts in $HOME/.bashrc and .zsh
-      complete -C /usr/local/bin/vault vault
-         # No response is expected. Requires running exec $SHELL to work.
+   fi  # RUN_TESTS
 
       # FIXME:
       ERR_RESPONSE="$( vault status 2>&1 )"  # capture STDERR output
          # Error checking seal status: Get https://vault..../v1/sys/seal-status: dial tcp: lookup vault....: no such host
       RESPONSE="$( echo $ERR_RESPONSE | awk '{print $1;}' )"
       if [ -z "${RESPONSE}" ]; then  # not blank
-         fatal "$RESPONSE"
+         fatal "${RESPONSE}"
          exit
       fi
 
+
       note "Vault login as ${VAULT_USERNAME} ..."
       vault login -method=okta username="${VAULT_USERNAME}"  # from secrets.sh
-      # Put https://127.0.0.1:8200/v1/auth/okta/login: dial tcp 127.0.0.1:8200: connect: connection refused
+         # Put https://127.0.0.1:8200/v1/auth/okta/login: dial tcp 127.0.0.1:8200: connect: connection refused
+      
 
-   # "Installing govaultenv ..."
+      # Make CLI calls to the kv secrets engine for key/value pair:
+      #vault kv put secret/hello
+      #vault kv get secret/hello  # to system variable for .py program.
+         # See https://www.vaultproject.io/docs/commands/index.html
+      #vault kv get -format=json secret/hello | jq -r .data.data.excited
+
+
+      # "Installing govaultenv ..."
       if [ "${PACKAGE_MANAGER}" == "brew" ]; then
          # https://github.com/jamhed/govaultenv
          if ! command -v govaultenv >/dev/null; then  # command not found, so:
             h2 "Brew installing govaultenv ..."
             brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
-            brew install govaultenv  
+            brew install govaultenv
          else  # installed already:
             if [ "${UPDATE_PKGS}" = true ]; then
                h2 "Brew upgrading govaultenv ..."
@@ -1274,11 +1315,12 @@ if [ "${USE_VAULT}" = true ]; then   # -H
                brew upgrade jamhed/govaultenv/govaultenv
             fi
          fi
-         # note "govaultenv $( govaultenv | grep version | cut -d' ' -f1 )"  
+         # note "govaultenv $( govaultenv | grep version | cut -d' ' -f1 )"
             # version:0.1.2 commit:d7754e38bb855f6a0c0c259ee2cced29c86a4da5 build by:goreleaser date:2019-11-13T19:47:16Z
 
+      #elif for Alpine? 
       elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-         silent-apt-get-install "govaultenv"
+         silent-apt-get-install "govaultenv"  # please test
       elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
          sudo yum install govaultenv      # please test
       elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
@@ -1288,11 +1330,11 @@ if [ "${USE_VAULT}" = true ]; then   # -H
          exit
       fi
 
-         h2 "govaultenv run ..."
-         export VAULT_GOVC=team/env
-         govaultenv -verbose=debug /bin/bash
+      h2 "govaultenv run ..."
+      export VAULT_GOVC=team/env
+      govaultenv -verbose=debug /bin/bash
 
-fi   # USE_VAULT
+fi  # USE_VAULT
 
 
 if [ "${RUN_THINGS}" = true ]; then  # -s
@@ -1315,7 +1357,6 @@ if [ "${RUN_THINGS}" = true ]; then  # -s
       fi
    fi
 fi  # RUN_THINGS
-
 
 
 if [ "${RUN_TENSORFLOW}" = true ]; then 
@@ -1675,7 +1716,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
 fi # if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
-echo "wow2"; exit #debugging
+# echo "wow2"; exit #debugging
 
 
 if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
@@ -1856,8 +1897,9 @@ fi
          # 52df7a11b666        redis:5.0.7-buster   "docker-entrypoint.s…"   About an hour ago   Up 35 minutes             6379/tcp                 snakeeyes_redis_1
          # 7b8aba1d860a        postgres             "docker-entrypoint.s…"   7 days ago          Up 7 days                 0.0.0.0:5432->5432/tcp   snoodle-postgres
 
+# TODO: Add run in local Kubernetes.
 
-if [ "$RUN_OPEN_BROWSER" = true ]; then  # -w
+if [ "$RUN_OPEN_BROWSER" = true ]; then  # -W
    if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
       sleep 3
       open http://localhost:8000/
