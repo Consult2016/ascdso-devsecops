@@ -28,7 +28,8 @@ args_prompt() {
    echo "./sample.sh -v -n -a  # NodeJs app with MongoDB"
    echo "./sample.sh -v -i -o  # Ruby app"   
    echo "./sample.sh -v -I -U -c -s -y -r -a -w     # Python Flask web app in Docker"
-   echo "./sample.sh -v -I -U    -s -H   -t         # Initiate Vault test server"
+   echo "./sample.sh -v -I -U    -s -H    -t        # Initiate Vault test server"
+   echo "./sample.sh -v -I -U    -s -H -a -t        # Initiate Vault prod server"
    echo "./sample.sh -v -I -U -c    -H -G -f \"a9y-sample.py\" -P \"-v\" -t -w -C  # Python sample app using Vault"
    echo "./sample.sh -v -V -c -T -F \"section_2\" -f \"2-1.ipynb\" -K  # Jupyter anaconda Tensorflow in Venv"
    echo "USAGE EXAMPLE after testing:"
@@ -1252,22 +1253,26 @@ if [ "${USE_VAULT}" = true ]; then   # -H
          # No response is expected. Requires running exec $SHELL to work.
 
    if [ "${RUN_TESTS}" = true ]; then   # -t
-      # WARNING: The dev server is insecure and stores all data in memory only!
+      # CAUTION: Vault dev server is insecure and stores all data in memory only!
 
       h2 "Starting vault local dev server at $VAULT_ADDR ..."  # https://learn.hashicorp.com/vault/getting-started/dev-server
       ps_kill 'vault'  # bash function defined in this file.
-      
-      # TODO: Get while running to save Unseal key & Root token as VAULT_DEV_ROOT_TOKEN_ID:
       RESPONSE="$( vault server -dev  & )"  # & = background job
-      export VAULT_ADDR=http://127.0.0.1:8200
+      # THIS SCRIPT PAUSES HERE. OPEN ANOTHER TERMINAL SESSION.
+      
       # echo -e "RESPONSE=$RESPONSE \n"
+
+      # FIXME: capture output:
       export UNSEAL_KEY="$( echo "${RESPONSE}" | grep -o 'Unseal Key: [^, }]*' | sed 's/^.*: //' )"
       export VAULT_DEV_ROOT_TOKEN_ID="$( echo "${RESPONSE}" | grep -o 'Root Token: [^, }]*' | sed 's/^.*: //' )"
       note -e ">>> UNSEAL_KEY=$UNSEAL_KEY \n"
       note -e ">>> VAULT_DEV_ROOT_TOKEN_ID=$VAULT_DEV_ROOT_TOKEN_ID \n"
       #sample      VAULT_DEV_ROOT_TOKEN_ID="s.Lgsh7FXX9cUKQttfFo1mdHjE"
+   fi  # RUN_TESTS
 
-   else  # use production ADDR from secrets
+
+   if [ "${RUN_ACTUAL}" = true ]; then   # -a
+      # use production ADDR from secrets
       if [ -z "${VAULT_ADDR}" ]; then  # it's blank:
          error "VAULT_ADDR is not defined (within secrets file) ..."
       else
@@ -1277,16 +1282,23 @@ if [ "${USE_VAULT}" = true ]; then   # -H
             # exit
          fi
       fi
-   fi  # RUN_TESTS
+   else  # test:
+      export VAULT_ADDR=http://127.0.0.1:8200
+   fi  # RUN_ACTUAL
 
-      # FIXME:
-      ERR_RESPONSE="$( vault status 2>&1 )"  # capture STDERR output
-         # Error checking seal status: Get https://vault..../v1/sys/seal-status: dial tcp: lookup vault....: no such host
-      RESPONSE="$( echo $ERR_RESPONSE | awk '{print $1;}' )"
-      if [ -z "${RESPONSE}" ]; then  # not blank
-         fatal "${RESPONSE}"
+   note -e "\n"
+   RESPONSE="$( vault status 2>&2)"  # capture STDERR output to &1 (STDOUT)
+         # See https://stackoverflow.com/questions/2990414/echo-that-outputs-to-stderr
+         # STDERR: Error checking seal status: Get https://vault..../v1/sys/seal-status: dial tcp: lookup vault....: no such host
+   ERR_RESPONSE="$( echo $RESPONSE | awk '{print $1;}' )"
+   if [ "Error" = "$ERR_RESPONSE" ]; then
+         fatal "${ERR_RESPONSE}"
          exit
-      fi
+   else
+         note -e ">>> $RESPONSE"
+   fi
+
+    exit
 
 
       note "Vault login as ${VAULT_USERNAME} ..."
