@@ -12,7 +12,7 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
-SCRIPT_VERSION="v0.65"
+SCRIPT_VERSION="v0.66"
 clear  # screen (but not history)
 
 # Capture starting timestamp and display no matter how it ends:
@@ -29,7 +29,8 @@ args_prompt() {
    echo "./sample.sh -v -i -o  # Ruby app"   
    echo "./sample.sh -v -I -U -c -s -y -r -a -w     # Python Flask web app in Docker"
    echo "./sample.sh -v -I -U    -s -H    -t        # Initiate Vault test server"
-   echo "./sample.sh -v -I -U    -s -H -a -t        # Initiate Vault prod server"
+   echo "./sample.sh -v          -s -H              #      Run Vault test program"
+   echo "./sample.sh -q          -s -H    -a        # Initiate Vault prod server"
    echo "./sample.sh -v -I -U -c    -H -G -f \"a9y-sample.py\" -P \"-v\" -t -w -C  # Python sample app using Vault"
    echo "./sample.sh -v -V -c -T -F \"section_2\" -f \"2-1.ipynb\" -K  # Jupyter anaconda Tensorflow in Venv"
    echo "USAGE EXAMPLE after testing:"
@@ -1158,7 +1159,7 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
       #pip3 install virtualenvwrapper
 
       if [ -d "venv" ]; then   # venv folder already there:
-         note "venv folder found."
+         note "venv folder being re-used ..."
       else
          h2 "virtualenv venv ..."
          virtualenv venv
@@ -1257,9 +1258,12 @@ if [ "${USE_VAULT}" = true ]; then   # -H
 
       h2 "Starting vault local dev server at $VAULT_ADDR ..."  # https://learn.hashicorp.com/vault/getting-started/dev-server
       ps_kill 'vault'  # bash function defined in this file.
-      RESPONSE="$( vault server -dev  & )"  # & = background job
+      # Don't RESPONSE="$( vault server -dev  & )"  # & = background job
+      # because this displays Unseal Key and Root Token:
+                    vault server -dev
       # THIS SCRIPT PAUSES HERE. OPEN ANOTHER TERMINAL SESSION.
-      
+      # Press control+C to stop service.
+
       # echo -e "RESPONSE=$RESPONSE \n"
 
       # FIXME: capture output:
@@ -1268,6 +1272,7 @@ if [ "${USE_VAULT}" = true ]; then   # -H
       note -e ">>> UNSEAL_KEY=$UNSEAL_KEY \n"
       note -e ">>> VAULT_DEV_ROOT_TOKEN_ID=$VAULT_DEV_ROOT_TOKEN_ID \n"
       #sample      VAULT_DEV_ROOT_TOKEN_ID="s.Lgsh7FXX9cUKQttfFo1mdHjE"
+
    fi  # RUN_TESTS
 
 
@@ -1282,8 +1287,10 @@ if [ "${USE_VAULT}" = true ]; then   # -H
             # exit
          fi
       fi
+      export VAULT_NAME="prodservermode"  # ???
    else  # test:
       export VAULT_ADDR=http://127.0.0.1:8200
+      export VAULT_NAME="devservermode"
    fi  # RUN_ACTUAL
 
    note -e "\n"
@@ -1298,22 +1305,35 @@ if [ "${USE_VAULT}" = true ]; then   # -H
          note -e ">>> $RESPONSE"
    fi
 
-    exit
-
-
+   if [ -n "${VAULT_USERNAME}" ]; then  # is not empty
       note "Vault login as ${VAULT_USERNAME} ..."
       vault login -method=okta username="${VAULT_USERNAME}"  # from secrets.sh
          # Put https://127.0.0.1:8200/v1/auth/okta/login: dial tcp 127.0.0.1:8200: connect: connection refused
+   fi
+
+   note -e "\n Put secret/hello ..."
+   note -e "\n"
+   # Make CLI calls to the kv secrets engine for key/value pair:
+   vault kv put secret/hello vault="${VAULT_NAME}"
       
-
-      # Make CLI calls to the kv secrets engine for key/value pair:
-      #vault kv put secret/hello
-      #vault kv get secret/hello  # to system variable for .py program.
+   note -e "\n Get secret/hello text ..."
+   note -e "\n"
+   vault kv get secret/hello  # to system variable for .py program.
          # See https://www.vaultproject.io/docs/commands/index.html
-      #vault kv get -format=json secret/hello | jq -r .data.data.excited
 
+   #note -e "\n Get secret/hello as json ..."
+   #note -e "\n"
+   #vault kv get -format=json secret/hello | jq -r .data.data.excited
+   #note -e "\n Cat secret/hello from json ..."
+   #cat .data.data.excited
 
-      # "Installing govaultenv ..."
+   note -e "\n Enable userpass method ..."
+   note -e "\n"
+   vault auth enable userpass  # is only done once.
+      # Success! Enabled userpass auth method at: userpass/
+   
+
+      #### "Installing govaultenv ..."
       if [ "${PACKAGE_MANAGER}" == "brew" ]; then
          # https://github.com/jamhed/govaultenv
          if ! command -v govaultenv >/dev/null; then  # command not found, so:
@@ -1327,7 +1347,7 @@ if [ "${USE_VAULT}" = true ]; then   # -H
                brew upgrade jamhed/govaultenv/govaultenv
             fi
          fi
-         # note "govaultenv $( govaultenv | grep version | cut -d' ' -f1 )"
+         note "govaultenv $( govaultenv | grep version | cut -d' ' -f1 )"
             # version:0.1.2 commit:d7754e38bb855f6a0c0c259ee2cced29c86a4da5 build by:goreleaser date:2019-11-13T19:47:16Z
 
       #elif for Alpine? 
@@ -1338,12 +1358,12 @@ if [ "${USE_VAULT}" = true ]; then   # -H
       elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
          sudo zypper install govaultenv   # please test
       else
-         note "Package not recognized."
+         fatal "Package code not recognized."
          exit
       fi
 
-      h2 "govaultenv run ..."
       export VAULT_GOVC=team/env
+      h2 "govaultenv run $VAULT_GOVC ..."
       govaultenv -verbose=debug /bin/bash
 
 fi  # USE_VAULT
