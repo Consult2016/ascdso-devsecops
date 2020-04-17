@@ -96,6 +96,7 @@ exit_abnormal() {            # Function: Exit with error.
    RUN_ANACONDA=false           # -A
    RUN_THINGS=false             # -G
    RUN_PARMS=""                 # -P
+   USE_DOCKER=false             # -k
    USE_AWS_CLOUD=false          # -a
    USE_AZURE_CLOUD=false        # -z
    USE_GOOGLE_CLOUD=false       # -g
@@ -215,6 +216,10 @@ while test $# -gt 0; do
       GitHub_REPO_NAME="delicious"
       APPNAME="delicious"
       MONGO_DB_NAME="delicious"
+      shift
+      ;;
+    -k)
+      export USE_DOCKER=true
       shift
       ;;
     -K)
@@ -524,7 +529,6 @@ fi
 #   printf "%s\n" "$szPassword" | sudo --stdin mount \
 #      -t cifs //192.168.1.1/home /media/$USER/home \
 #      -o username=$USER,password="$szPassword"
-
 
 if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
    # Perhaps in https://console.cloud.google.com/cloudshell  (use on Chromebooks with no Terminal)
@@ -1851,63 +1855,68 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
 fi  # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
 
 
-if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
+if [ "${USE_DOCKER}" = true ]; then   # -k
 
-Start_Docker(){
-   if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
-      h2 "Opening Docker daemon on macOS ..."
-      open --background -a Docker   # open "/Applications/Docker.app"
-      # /Applications/Docker.app/Contents/MacOS/Docker
-   else
-      h2 "Starting Docker daemon on Linux ..."
-      sudo systemctl start docker
-      sudo service docker start
-   fi
-      sleep 5  # it takes at least that
-      # Wait until Docker daemon is running and has completed initialisation
-      while (! docker stats --no-stream ); do
-         # Docker takes a few seconds to initialize
-         note "Waiting for Docker to launch..."
-         sleep 3  # seconds
-      done
+   if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
+
+      Start_Docker(){
+      if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
+         h2 "Opening Docker daemon on macOS ..."
+         open --background -a Docker   # open "/Applications/Docker.app"
+         # /Applications/Docker.app/Contents/MacOS/Docker
+      else
+         h2 "Starting Docker daemon on Linux ..."
+         sudo systemctl start docker
+         sudo service docker start
+      fi
+         sleep 5  # it takes at least that
+         # Wait until Docker daemon is running and has completed initialisation
+         while (! docker stats --no-stream ); do
+            # Docker takes a few seconds to initialize
+            note "Waiting for Docker to launch..."
+            sleep 3  # seconds
+         done
          # Docker is running when it can list all containers:
          # CONTAINER ID        NAME                  CPU %               MEM USAGE / LIMIT     MEM %               NET I/O             BLOCK I/O           PIDS
          # d6033f8e731a        snakeeyes_web_1       0.32%               40.18MiB / 1.952GiB   2.01%               7.24kB / 43.3kB     1.12MB / 0B         3
          # b8c2f5956e75        snakeeyes_worker_1    0.08%               138.8MiB / 1.952GiB   6.95%               50.9MB / 53.4MB     4.1kB / 0B          8
          # c881a6472995        snakeeyes_webpack_1   4.05%               133.5MiB / 1.952GiB   6.68%               4.63kB / 0B         127kB / 0B          23
          # e28b839510b2        snakeeyes_redis_1     0.25%               1.723MiB / 1.952GiB   0.09%               53.4MB / 50.9MB     49.2kB / 94.2kB     4
-}
-# From https://gist.github.com/peterver/ca2d60abc015d334e1054302265b27d9
-# https://medium.com/@valkyrie_be/quicktip-a-universal-way-to-check-if-docker-is-running-ffa6567f8426
-rep=$(curl -s --unix-socket /var/run/docker.sock http://ping > /dev/null)
-note "$rep"
-status=$?
-if [ "$status" == "7" ]; then   # Not Docker connected:
-#if (! pgrep -f docker ); then   # No docker process IDs found:
-   Start_Docker   # function defined in this file above.
-else   # Docker processes found running:
-   if [ "${RESTART_DOCKER}" = true ]; then
-      if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
-         h2 "Stopping Docker on macOS ..."
-         osascript -e 'quit app "Docker"'
-      else
-         h2 "Stopping Docker on Linux ..."
-         sudo systemctl stop docker
-         sudo service docker stop
-      fi
-   fi
-   Start_Docker   # function defined in this file above.
+   }
+   fi  # if [ "${BUILD_DOCKER_IMAGE}" = true 
 
-fi
+
+   # From https://gist.github.com/peterver/ca2d60abc015d334e1054302265b27d9
+   # https://medium.com/@valkyrie_be/quicktip-a-universal-way-to-check-if-docker-is-running-ffa6567f8426
+   rep=$(curl -s --unix-socket /var/run/docker.sock http://ping > /dev/null)
+   note "$rep"
+   status=$?
+   if [ "$status" == "7" ]; then   # Not Docker connected:
+   #if (! pgrep -f docker ); then   # No docker process IDs found:
+      Start_Docker   # function defined in this file above.
+   else   # Docker processes found running:
+      if [ "${RESTART_DOCKER}" = true ]; then
+         if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
+            h2 "Stopping Docker on macOS ..."
+            osascript -e 'quit app "Docker"'
+         else
+            h2 "Stopping Docker on Linux ..."
+            sudo systemctl stop docker
+            sudo service docker stop
+         fi
+      fi
+      Start_Docker   # function defined in this file above.
+
+   fi
 
    h2 "Remove dangling docker images ..."
    docker rmi -f "$( docker images -qf dangling=true )"
    #   if [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q "$DOCKER_WEB_SVC_NAME")` ]; then
       # --no-trunc flag because docker ps shows short version of IDs by default.
 
-#.   note "If $DOCKER_WEB_SVC_NAME is not running, so run it..."
+   #.   note "If $DOCKER_WEB_SVC_NAME is not running, so run it..."
 
-if [ "${RUN_ACTUAL}" = true ]; then
+   if [ "${RUN_ACTUAL}" = true ]; then
 
       # https://docs.docker.com/compose/reference/up/
       docker-compose up --detach --build
@@ -1918,7 +1927,7 @@ if [ "${RUN_ACTUAL}" = true ]; then
          # Status: Downloaded newer image for node:12.14.0-buster-slim
 
       # worker_1   | [2020-01-17 04:59:42,036: INFO/Beat] beat: Starting...
-fi
+   fi
 
    h2 "docker container ls ..."
    docker container ls
@@ -1929,19 +1938,19 @@ fi
          # 52df7a11b666        redis:5.0.7-buster   "docker-entrypoint.s…"   About an hour ago   Up 35 minutes             6379/tcp                 snakeeyes_redis_1
          # 7b8aba1d860a        postgres             "docker-entrypoint.s…"   7 days ago          Up 7 days                 0.0.0.0:5432->5432/tcp   snoodle-postgres
 
-# TODO: Add run in local Kubernetes.
+   # TODO: Add run in local Kubernetes.
+fi  # if [ "${USE_DOCKER}
+
 
 if [ "$RUN_OPEN_BROWSER" = true ]; then  # -W
    if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
       sleep 3
       open http://localhost:8000/
    fi
+
+   curl -s -I -X POST http://localhost:8000/ 
+   curl -s       POST http://localhost:8000/ | head -n 10  # first 10 lines
 fi
-      curl -s -I -X POST http://localhost:8000/ 
-      curl -s       POST http://localhost:8000/ | head -n 10  # first 10 lines
-
-fi  # if [ "${BUILD_DOCKER_IMAGE}" = true 
-
 
 # if [ "${RUN_TESTS}" = true 
 
