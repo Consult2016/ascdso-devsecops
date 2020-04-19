@@ -12,13 +12,14 @@
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
+THIS_PROGRAM="$0"
 SCRIPT_VERSION="v0.66"
 clear  # screen (but not history)
 
 # Capture starting timestamp and display no matter how it ends:
 EPOCH_START="$( date -u +%s )"  # such as 1572634619
 LOG_DATETIME=$( date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
-echo "=========================== $LOG_DATETIME $SCRIPT_VERSION"
+echo "=========================== $LOG_DATETIME $THIS_PROGRAM $SCRIPT_VERSION"
 
 
 # Ensure run variables are based on arguments or defaults ..."
@@ -31,7 +32,7 @@ args_prompt() {
    echo "./sample.sh -v -I -U    -s -H    -t        # Initiate Vault test server"
    echo "./sample.sh -v          -s -H              #      Run Vault test program"
    echo "./sample.sh -q          -s -H    -a        # Initiate Vault prod server"
-   echo "./sample.sh -v -I -U -c    -H -G -f \"a9y-sample.py\" -P \"-v\" -t -w -C  # Python sample app using Vault"
+   echo "./sample.sh -v -I -U -c    -H -G -N \"python-samples\" -f \"a9y-sample.py\" -P \"-v\" -t -w -C  # Python sample app using Vault"
    echo "./sample.sh -v -V -c -T -F \"section_2\" -f \"2-1.ipynb\" -K  # Jupyter anaconda Tensorflow in Venv"
    echo "USAGE EXAMPLE after testing:"
    echo "./sample.sh -v -D -M -C"
@@ -39,36 +40,43 @@ args_prompt() {
    echo "   -E           to set -e to NOT stop on error"
    echo "   -x           to set -x to trace command lines"
 #   echo "   -x           to set sudoers -e to stop on error"
-   echo "   -H           install/use -Hashicorp Vault secret manager"
    echo "   -v           to run -verbose (list space use and each image to console)"
    echo "   -q           -quiet headings for each step"
-   echo "   -V           to run within VirtualEnv"
-   echo "   -g \"abcdef...89\" -gcloud API credentials for calls"
-   echo "   -i           -install Ruby and Refinery"
-   echo "   -j            install -JavaScript (NodeJs) app with MongoDB"
-   echo "   -y            install Python"
+   echo " "
    echo "   -I           -Install brew, docker, docker-compose"
    echo "   -U           -Upgrade packages"
+   echo " "
+#   echo "   -w            -w in AWS cloud"
+   echo "   -g \"abcdef...89\" -gcloud API credentials for calls"
    echo "   -p \"cp100\"   -project in cloud"
-   echo " "
-   echo "   -c           -clone from GitHub"
-   echo "   -F \"abc\"     -Folder for working"
-   echo "   -f \"a9y.py\"  -file for working"
-   echo "   -P \"-v -x\"   -Parameters controlling program called"
-   echo " "
-   echo "   -s           -secrets retrieve (in default file within your user HOME folder)"
-#  echo "   -S \"~/.secrets.sh\"  -secrets full file path"
-#  echo "   -?           -Store image built in DockerHub"
-   echo "   -n \"John Doe\"            GitHub user -name"
-   echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
-   echo "   -b           -build Docker image"
-   echo "   -r           start Docker to -run"
-   echo " "
-   echo "   -A           run in -Anaconda "
-   echo "   -T           run -Tensorflow"
    echo "   -t           setup -test server to run tests"
    echo "   -a           -actually run in prod server"
+   ehco " "
+   echo "   -A           run with Python -Anaconda "
+   echo "   -T           run -Tensorflow"
+   echo " "
+   echo "   -d           -delete GitHub and pyenv from previous run"
+   echo "   -c           -clone from GitHub"
+   echo "   -F \"abc\"     -Folder inside repo"
+   echo "   -f \"a9y.py\"  -file (program) to run"
+   echo "   -P \"-v -x\"   -Parameters controlling program called"
+   echo " "
+   echo "   -H           install/use -Hashicorp Vault secret manager"
+   echo "   -s           -secrets retrieve (in default file within your user HOME folder)"
+#   echo "   -S \"~/.secrets.sh\"  -secrets full file path"
+   echo "   -n \"John Doe\"            GitHub user -name"
+   echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
+
+   echo "   -b           -build Docker image"
+#   echo "   -?           -Store image built in DockerHub"
+   echo "   -r           start Docker to -run"
+   echo " "
+   echo "   -y            install Python Flask"
+   echo "   -V           to run within VirtualEnv (pipenv is default)"
    echo "   -G           run -GitHub python-samples"
+   echo " "
+   echo "   -i           -install Ruby and Refinery"
+   echo "   -j            install -JavaScript (NodeJs) app with MongoDB"
    echo " "
    echo "   -o           -open/view web page in default browser"
    echo "   -D           -Delete files after run (to save disk space)"
@@ -238,6 +246,12 @@ while test $# -gt 0; do
       export GitHub_USER_NAME
       shift
       ;;
+    -N*)
+      shift
+             GitHub_REPO_NAME=$( echo "$1" | sed -e 's/^[^=]*=//g' )
+      export GitHub_REPO_NAME
+      shift
+      ;;
     -o)
       export RUN_OPEN_BROWSER=true
       shift
@@ -293,8 +307,8 @@ while test $# -gt 0; do
     -V)
       export RUN_VIRTUALENV=true
       GitHub_REPO_URL="https://github.com/PacktPublishing/Hands-On-Machine-Learning-with-Scikit-Learn-and-TensorFlow-2.0.git"
-      GitHub_REPO_NAME="scikit"
-      APPNAME="scikit"
+      export GitHub_REPO_NAME="scikit"
+      export APPNAME="scikit"
       #MY_FOLDER="section_2" # or ="section_3"
       shift
       ;;
@@ -308,8 +322,8 @@ while test $# -gt 0; do
       ;;
     -y)
       GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
-      GitHub_REPO_NAME="rockstar"
-      APPNAME="rockstar"
+      export GitHub_REPO_NAME="rockstar"
+      export APPNAME="rockstar"
       shift
       ;;
     -z)
@@ -340,7 +354,7 @@ blue="\e[34m"
 cyan="\e[36m"
 
 h2() { if [ "${RUN_QUIET}" = false ]; then    # heading
-   printf "\n${bold}\u2665 %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n${bold}\e[33m\u2665 %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
    fi
 }
 info() {   # output on every run
@@ -348,6 +362,7 @@ info() {   # output on every run
 }
 note() { if [ "${RUN_VERBOSE}" = true ]; then
    printf "\n${bold}${cyan} ${reset} ${cyan}%s${reset}" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n"
    fi
 }
 success() {
@@ -375,6 +390,8 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
       OS_TYPE="Ubuntu"
       # TODO: OS_TYPE="WSL" ???
       PACKAGE_MANAGER="apt-get"
+
+      # TODO: sudo dnf install pipenv  # for Fedora 28
 
       silent-apt-get-install(){  # see https://wilsonmar.github.io/bash-scripts/#silent-apt-get-install
          if [ "${RUN_VERBOSE}" = true ]; then
@@ -754,6 +771,7 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
 fi # if [ "${DOWNLOAD_INSTALL}"
 
+echo " "
 
 if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 
@@ -813,28 +831,38 @@ Clone_GitHub_repo(){
       cd "$GitHub_REPO_NAME"
       note "At $PWD"
 }
+
 if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
-   h2 "-clone requested for $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+
+   if [ -z "${GitHub_REPO_NAME}" ]; then   # name not specified:
+      fatal "GitHub_REPO_NAME not specified ..."
+      exit
+   fi 
+
+   if [ -z "${PROJECT_FOLDER_PATH}" ]; then   # No name specified:
+      fatal "PROJECT_FOLDER_PATH not specified ..."
+      exit
+   fi 
+
    PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${GitHub_REPO_NAME}"
+   h2 "-clone requested for $GitHub_REPO_URL $GitHub_REPO_NAME ..."
    if [ -d "${PROJECT_FOLDER_FULL_PATH:?}" ]; then  # path available.
       rm -rf "$GitHub_REPO_NAME" 
       Delete_GitHub_clone    # defined above in this file.
    fi
 
-      Clone_GitHub_repo      # defined above in this file.
+   Clone_GitHub_repo      # defined above in this file.
       # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
       # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
       # git pull upstream master
 
 else   # do not -clone
-   #if [ -d "${GitHub_REPO_NAME:?}" ]; then  # path available.
    if [ -d "${GitHub_REPO_NAME}" ]; then  # path available.
       h2 "Re-using repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
       cd "$GitHub_REPO_NAME"
-   #else
-   #   h2 "Cloning repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
-   #   git clone "${GitHub_REPO_URL}" "$GitHub_REPO_NAME"
-   #   cd "$GitHub_REPO_NAME"
+   else
+      h2 "Git cloning repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+      Clone_GitHub_repo      # defined above in this file.
    fi
 fi
 note "Now at $PWD ..."
@@ -853,6 +881,8 @@ if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
    warning "Using default GitHub user info ..."
    # Input_GitHub_User_Info  # function defined above.
    # flag not to use file, then manually input:
+   # See https://pipenv-fork.readthedocs.io/en/latest/advanced.html#automatic-loading-of-env
+   # PIPENV_DOTENV_LOCATION=/path/to/.env or =1 to not load.
 else  
    if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
       warning "File not found in $SECRETS_FILEPATH. Downloading file .secrets.sample.sh ... "
@@ -1036,6 +1066,8 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
    fi
 
 
+   # See https://pipenv-fork.readthedocs.io/en/latest/advanced.html#automatic-loading-of-env
+   # PIPENV_DOTENV_LOCATION=/path/to/.env
    if [ ! -f "variables.env" ]; then   # not created
       h2 "Downloading variables.env ..."
       # Alternative: Copy from your $HOME/.secrets.env file
@@ -1138,8 +1170,8 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
 fi # if [ "${NODE_INSTALL}" = true ]; then 
 
 
-
-if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
+# Pipenv replaces Virtualenv:
+if [ "${RUN_VIRTUALENV}" = true ]; then  # -V  (not the default)
 
    h2 "Install -python"
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
@@ -1179,12 +1211,88 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
       h2 "Within (venv) Python3: "
       # echo "${RESPONSE}"
      
-   # from pip freeze > requirements.txt previously.
    if [ -f "requirements.txt" ]; then
+      # Created from pip freeze > requirements.txt previously.
       # see https://medium.com/@boscacci/why-and-how-to-make-a-requirements-txt-f329c685181e
+      # Install the latest versions, which may not be backward-compatible:
       pip3 install -r requirements.txt
+   fi
+   # See https://realpython.com/pipenv-guide/
+
+else  # RUN_VIRTUALENV
+
+   h2 "Use Pipenv by default (not overrided by -Virtulenv)"
+
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         # https://pipenv.readthedocs.io/en/latest/
+         if ! command -v pipenv >/dev/null; then  # command not found, so:
+            h2 "Brew installing pipenv ..."
+            brew install pipenv
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading pipenv ..."
+               brew upgrade pipenv
+               pip install --user --upgrade pipenv
+            fi
+         fi
+         note "$( pipenv --version )"
+            # pipenv, version 2018.11.26
+
+      #elif for Alpine? 
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "pipenv"  # please test
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install pipenv      # please test
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install pipenv   # please test
+      else
+         fatal "Package Manager not recognized installing pipenv."
+         exit
+   fi  # PACKAGE_MANAGER
+
+   # pipenv commands: https://pipenv.kennethreitz.org/en/latest/cli/#cmdoption-pipenv-rm
+   # FIXME:
+   RESPONSE="$( ls $HOME/.local/share/virtualenvs/python-samples* 2>&2 )"
+   echo -e "x RESPONSE=\n$RESPONSE="
+   if [ echo "${RESPONSE}" | grep -q "No such file or directory" ]; then  
+      echo -e "1 RESPONSE=\n$RESPONSE="
    else
-      h2 "No requirements.txt, so use pip to install for imports ..."
+      echo -e "0 RESPONSE=\n$RESPONSE="
+   fi
+exit
+   if [ "${REMOVE_GITHUB_BEFORE}" = true ]; then  # -d 
+      pipenv --rm
+      # Uninstalls all packages not specified in Pipfile.lock.
+      #pipenv clean
+      # uninistall all dev dependencies and their dependencies:
+      #pipenv uninstall --all-dev
+   fi
+
+   if [ -f "Pipfile.lock" ]; then  
+      # See https://github.com/pypa/pipenv/blob/master/docs/advanced.rst on deployments
+      # Install based on what's in Pipfile.lock:
+      h2 "Install based on Pipfile.lock ..."
+      pipenv install --ignore-pipfile
+
+   elif [ -f "Pipfile" ]; then  
+
+      # Unless export PIPENV_VENV_IN_PROJECT=1 is defined in your .bashrc/.zshrc,
+      # and export WORKON_HOME=~/.venvs overrides location,
+      # pipenv stores virtualenvs globally with the name of the project’s root directory plus the hash of the full path to the project’s root,
+      # so several can be generated.
+      RESPONSE="$( ls $HOME/.local/share/virtualenvs/python-samples* )"
+      echo -e "RESPONSE=\n$RESPONSE="
+      if echo "${RESPONSE}" | grep -q "No such file or directory" ; then  
+ 
+         h2 "Use pipenv to create env ..."
+         pipenv install "-e ."
+         # ✔ Successfully created virtual environment!
+         # Virtualenv location: /Users/wilson_mar/.local/share/virtualenvs/python-samples-gTkdon9O
+         # where "-gTkdon9O" adds the leading part of a hash of the full path to the project’s root.
+      fi
+
+   else
+      h2 "No requirements.txt/Pipfile, so pip install imports ..."
 
       if [ "${RUN_ANACONDA}" = true ]; then  # -A
 
@@ -1214,7 +1322,7 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
 
    fi  # requirements.txt 
 
-fi # if [ "${RUN_VIRTUALENV}" = true ]; then 
+fi  # RUN_VIRTUALENV
 
 
 if [ "${USE_VAULT}" = true ]; then   # -H
@@ -1375,22 +1483,37 @@ fi  # USE_VAULT
 
 
 if [ "${RUN_THINGS}" = true ]; then  # -s
+
+   # if pipenv
+   #if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
+   #   h2 "Installing Python dependencies ..."
+   #   # To $HOME/Library/Python/3.7/lib/python/...
+   #   pip install -U arrow
+   #   pip install -U python-dotenv
+   #   pip install -U requests
+   #fi
+
    h2 "-G run things at $PWD ..."
    if [ -z "${MY_FOLDER}" ]; then  # is empty
-      note "-Folder not specified ..."
+      note "-Folder not specified for within $PWD ..."
    else
       note "cd into ${MY_FOLDER} ..."
       cd  "${MY_FOLDER}"
    fi
 
    if [ -z "${MY_FILE}" ]; then  # is empty
-      error "No -f (-file) specified ..."
+      error "No program -file specified ..."
    else
       if [ ! -f "${MY_FILE}" ]; then  # file not found:
-         error "-f (file) ${MY_FILE} not found ..."
+         error "-file \"${MY_FILE}\" not found ..."
       else
-         note "python3 ${MY_FILE} ..."
-         python3 "${MY_FILE}" "${RUN_PARMS}"
+         if [ ! -f "Pipenv" ]; then  # file not found:
+            note "Pipenv running ${MY_FILE} ${RUN_PARMS} ..."
+            pipenv run python "${MY_FILE}" "${RUN_PARMS}"
+         else
+            note "Python3 Running ${MY_FILE} ${RUN_PARMS} ..."
+            python3 "${MY_FILE}" "${RUN_PARMS}"
+         fi
       fi
    fi
 fi  # RUN_THINGS
@@ -1753,110 +1876,108 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
 fi # if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
-# echo "wow2"; exit #debugging
-
-
-if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
-
-   h2 "Install Docker and docker-compose:"
-
-   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
-      if ! command -v docker ; then
-         h2 "Installing docker ..."
-         brew install docker
-      else
-         if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Upgrading docker ..."
-            brew upgrade docker
-         fi
-      fi
-
-
-      if ! command -v docker-compose ; then
-         h2 "Installing docker-compose ..."
-         brew install docker-compose
-      else
-         if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Upgrading docker-compose ..."
-            brew upgrade docker-compose
-         fi
-      fi
-
-
-      if ! command -v git ; then
-         h2 "Installing Git ..."
-         brew install git
-      else
-         if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Upgrading Git ..."
-            brew upgrade git
-         fi
-      fi
-
-      if ! command -v curl ; then
-         h2 "Installing Curl ..."
-         brew install curl wget tree
-      else
-         if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Upgrading Curl ..."
-            brew upgrade curl wget tree
-         fi
-      fi
-
-   elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-
-      if ! command -v docker ; then
-         h2 "Installing docker using apt-get ..."
-         silent-apt-get-install "docker"
-      else
-         if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Upgrading docker ..."
-            silent-apt-get-install "docker"
-         fi
-      fi
-
-      if ! command -v docker-compose ; then
-         h2 "Installing docker-compose using apt-get ..."
-         silent-apt-get-install "docker-compose"
-      else
-         if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Upgrading docker-compose ..."
-            silent-apt-get-install "docker-compose"
-         fi
-      fi
-
-   elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
-      if ! command -v docker ; then
-         h2 "Installing docker using yum ..."
-         sudo yum install docker
-      else
-         if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Upgrading docker ..."
-            sudo yum install docker
-         fi
-      fi
-
-      if ! command -v docker-compose ; then
-         h2 "Installing docker-compose using yum ..."
-         yum install docker-compose
-      else
-         if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Upgrading docker-compose ..."
-            yum install docker-compose
-         fi
-      fi
-
-   fi # brew
-
-   note "$( docker --version )"
-         # Docker version 19.03.5, build 633a0ea
-   note "$( docker-compose --version )"
-         # docker-compose version 1.24.1, build 4667896b
-
-fi  # if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -D
-
 
 if [ "${USE_DOCKER}" = true ]; then   # -k
+
+   if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
+
+      h2 "Install Docker and docker-compose:"
+
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+
+         if ! command -v docker ; then
+            h2 "Installing docker ..."
+            brew install docker
+         else
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Upgrading docker ..."
+               brew upgrade docker
+            fi
+          fi
+
+          if ! command -v docker-compose ; then
+             h2 "Installing docker-compose ..."
+             brew install docker-compose
+          else
+             if [ "${UPDATE_PKGS}" = true ]; then
+                h2 "Upgrading docker-compose ..."
+                brew upgrade docker-compose
+             fi
+          fi
+
+          if ! command -v git ; then
+             h2 "Installing Git ..."
+             brew install git
+          else
+             if [ "${UPDATE_PKGS}" = true ]; then
+                h2 "Upgrading Git ..."
+                brew upgrade git
+             fi
+          fi
+
+          if ! command -v curl ; then
+             h2 "Installing Curl ..."
+             brew install curl wget tree
+          else
+             if [ "${UPDATE_PKGS}" = true ]; then
+                h2 "Upgrading Curl ..."
+                brew upgrade curl wget tree
+             fi
+          fi
+
+       elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+
+         if ! command -v docker ; then
+            h2 "Installing docker using apt-get ..."
+            silent-apt-get-install "docker"
+         else
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Upgrading docker ..."
+               silent-apt-get-install "docker"
+            fi
+         fi
+
+         if ! command -v docker-compose ; then
+            h2 "Installing docker-compose using apt-get ..."
+            silent-apt-get-install "docker-compose"
+         else
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Upgrading docker-compose ..."
+               silent-apt-get-install "docker-compose"
+            fi
+         fi
+
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
+      
+         if ! command -v docker ; then
+            h2 "Installing docker using yum ..."
+            sudo yum install docker
+         else
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Upgrading docker ..."
+               sudo yum install docker
+            fi
+         fi
+
+         if ! command -v docker-compose ; then
+            h2 "Installing docker-compose using yum ..."
+            yum install docker-compose
+         else
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Upgrading docker-compose ..."
+               yum install docker-compose
+            fi
+         fi
+
+      fi # brew
+
+      note "$( docker --version )"
+         # Docker version 19.03.5, build 633a0ea
+      note "$( docker-compose --version )"
+         # docker-compose version 1.24.1, build 4667896b
+
+   fi  # DOWNLOAD_INSTALL
+
 
    if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
 
@@ -1883,8 +2004,8 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
          # b8c2f5956e75        snakeeyes_worker_1    0.08%               138.8MiB / 1.952GiB   6.95%               50.9MB / 53.4MB     4.1kB / 0B          8
          # c881a6472995        snakeeyes_webpack_1   4.05%               133.5MiB / 1.952GiB   6.68%               4.63kB / 0B         127kB / 0B          23
          # e28b839510b2        snakeeyes_redis_1     0.25%               1.723MiB / 1.952GiB   0.09%               53.4MB / 50.9MB     49.2kB / 94.2kB     4
-   }
-   fi  # if [ "${BUILD_DOCKER_IMAGE}" = true 
+      }
+   fi  # if [ "${BUILD_DOCKER_IMAGE}
 
 
    # From https://gist.github.com/peterver/ca2d60abc015d334e1054302265b27d9
