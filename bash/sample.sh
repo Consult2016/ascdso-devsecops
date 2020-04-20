@@ -14,7 +14,7 @@
 
 THIS_PROGRAM="$0"
 SCRIPT_VERSION="v0.66"
-clear  # screen (but not history)
+# clear  # screen (but not history)
 
 # Capture starting timestamp and display no matter how it ends:
 EPOCH_START="$( date -u +%s )"  # such as 1572634619
@@ -57,6 +57,7 @@ args_prompt() {
    echo " "
    echo "   -d           -delete GitHub and pyenv from previous run"
    echo "   -c           -clone from GitHub"
+   echo "   -N           -Name of GitHub Repo folder"
    echo "   -F \"abc\"     -Folder inside repo"
    echo "   -f \"a9y.py\"  -file (program) to run"
    echo "   -P \"-v -x\"   -Parameters controlling program called"
@@ -525,7 +526,7 @@ else
 fi
 # note "$( ls )"
 
-
+EXIT_CODE=0
 if [ "${SET_EXIT}" = true ]; then  # don't
    h2 "Set -e (no -E parameter  )..."
    set -e  # exits script when a command fails
@@ -881,6 +882,7 @@ if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
    warning "Using default GitHub user info ..."
    # Input_GitHub_User_Info  # function defined above.
    # flag not to use file, then manually input:
+
    # See https://pipenv-fork.readthedocs.io/en/latest/advanced.html#automatic-loading-of-env
    # PIPENV_DOTENV_LOCATION=/path/to/.env or =1 to not load.
 else  
@@ -1167,11 +1169,10 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
    h2 "List last lines for status of mongod process ..." 
    tail -5 /usr/local/var/log/mongodb/mongo.log
 
-fi # if [ "${NODE_INSTALL}" = true ]; then 
+fi # if [ "${NODE_INSTALL}
 
 
-# Pipenv replaces Virtualenv:
-if [ "${RUN_VIRTUALENV}" = true ]; then  # -V  (not the default)
+if [ "${RUN_VIRTUALENV}" = true ]; then  # -V  (not the default pipenv)
 
    h2 "Install -python"
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
@@ -1212,16 +1213,34 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V  (not the default)
       # echo "${RESPONSE}"
      
    if [ -f "requirements.txt" ]; then
-      # Created from pip freeze > requirements.txt previously.
+      # Created by command pip freeze > requirements.txt previously.
       # see https://medium.com/@boscacci/why-and-how-to-make-a-requirements-txt-f329c685181e
       # Install the latest versions, which may not be backward-compatible:
       pip3 install -r requirements.txt
    fi
    # See https://realpython.com/pipenv-guide/
 
-else  # RUN_VIRTUALENV
+else  # RUN_VIRTUALENV means Pipenv default
+
+   # Pipenv is a dependency manager for Python projects like Node.js’ npm or Ruby’s bundler.
+
+   pipenv_create() {
+      if [ -f "Pipfile.lock" ]; then  
+         # See https://github.com/pypa/pipenv/blob/master/docs/advanced.rst on deployments
+         # Install based on what's in Pipfile.lock:
+         h2 "Install based on Pipfile.lock ..."
+         pipenv install --ignore-pipfile
+      else
+         h2 "Use pipenv to create env ..."
+         pipenv install "-e ."
+            # ✔ Successfully created virtual environment!
+         # Virtualenv location: /Users/wilson_mar/.local/share/virtualenvs/python-samples-gTkdon9O
+         # where "-gTkdon9O" adds the leading part of a hash of the full path to the project’s root.
+      fi
+   }
 
    h2 "Use Pipenv by default (not overrided by -Virtulenv)"
+   # https://www.activestate.com/blog/how-to-build-a-ci-cd-pipeline-for-python/
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then
          # https://pipenv.readthedocs.io/en/latest/
@@ -1251,50 +1270,46 @@ else  # RUN_VIRTUALENV
    fi  # PACKAGE_MANAGER
 
    # pipenv commands: https://pipenv.kennethreitz.org/en/latest/cli/#cmdoption-pipenv-rm
-   # FIXME:
-   RESPONSE="$( ls $HOME/.local/share/virtualenvs/python-samples* 2>&2 )"
-   echo -e "x RESPONSE=\n$RESPONSE="
-   if [ echo "${RESPONSE}" | grep -q "No such file or directory" ]; then  
-      echo -e "1 RESPONSE=\n$RESPONSE="
-   else
-      echo -e "0 RESPONSE=\n$RESPONSE="
-   fi
-exit
-   if [ "${REMOVE_GITHUB_BEFORE}" = true ]; then  # -d 
-      pipenv --rm
-      # Uninstalls all packages not specified in Pipfile.lock.
-      #pipenv clean
-      # uninistall all dev dependencies and their dependencies:
-      #pipenv uninstall --all-dev
-   fi
+   note "pipenv in $( pipenv --where )"
+      # pipenv in /Users/wilson_mar/projects/python-samples
+   # pipenv --venv  # no such option¶
+   
+   note "$( pipenv --venv || true )"
 
-   if [ -f "Pipfile.lock" ]; then  
-      # See https://github.com/pypa/pipenv/blob/master/docs/advanced.rst on deployments
-      # Install based on what's in Pipfile.lock:
-      h2 "Install based on Pipfile.lock ..."
-      pipenv install --ignore-pipfile
-
-   elif [ -f "Pipfile" ]; then  
-
+   # If virtualenvs exists for repo, remove it:
+   if [ -n "${WORKON_HOME}" ]; then  # found somethiNg:
       # Unless export PIPENV_VENV_IN_PROJECT=1 is defined in your .bashrc/.zshrc,
       # and export WORKON_HOME=~/.venvs overrides location,
       # pipenv stores virtualenvs globally with the name of the project’s root directory plus the hash of the full path to the project’s root,
       # so several can be generated.
-      RESPONSE="$( ls $HOME/.local/share/virtualenvs/python-samples* )"
-      echo -e "RESPONSE=\n$RESPONSE="
-      if echo "${RESPONSE}" | grep -q "No such file or directory" ; then  
- 
-         h2 "Use pipenv to create env ..."
-         pipenv install "-e ."
-         # ✔ Successfully created virtual environment!
-         # Virtualenv location: /Users/wilson_mar/.local/share/virtualenvs/python-samples-gTkdon9O
-         # where "-gTkdon9O" adds the leading part of a hash of the full path to the project’s root.
-      fi
-
+      PIPENV_PATH="${WORKON_HOME}"
    else
-      h2 "No requirements.txt/Pipfile, so pip install imports ..."
+      PIPENV_PATH="$HOME/.local/share/virtualenvs/"
+   fi
+   RESPONSE="$( find "${PIPENV_PATH}" -type d -name *"${GitHub_REPO_NAME}"* )"
+   if [ -n "${RESPONSE}" ]; then  # found somethiNg:
+      note "${RESPONSE}"
+      if [ "${REMOVE_GITHUB_BEFORE}" = true ]; then  # -d 
+         pipenv --rm
+            # Removing virtualenv (/Users/wilson_mar/.local/share/virtualenvs/bash-8hDxYnPf)…
+            # or "No virtualenv has been created for this project yet!  Aborted!
 
-      if [ "${RUN_ANACONDA}" = true ]; then  # -A
+         # pipenv clean  # creates a virtualenv
+            # uninistall all dev dependencies and their dependencies:
+
+         pipenv_create   # 
+      else
+         h2 "TODO: pipenv using current virtualenv ..."
+      fi
+   else  # no env found, so ...
+      h2 "Creating pipenv - no previous virtualenv ..."
+      pipenv run python main.py    
+   fi 
+
+fi  # RUN_VIRTUALENV
+
+
+if [ "${RUN_ANACONDA}" = true ]; then  # -A
 
          if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
             if ! command -v anaconda ; then
@@ -1318,11 +1333,8 @@ exit
 
          # conda create -n PDSH python=3.7 --file requirements.txt
          # conda create -n tf tensorflow
-      fi  # RUN_ANACONDA
 
-   fi  # requirements.txt 
-
-fi  # RUN_VIRTUALENV
+fi  # RUN_ANACONDA
 
 
 if [ "${USE_VAULT}" = true ]; then   # -H
@@ -1484,14 +1496,7 @@ fi  # USE_VAULT
 
 if [ "${RUN_THINGS}" = true ]; then  # -s
 
-   # if pipenv
-   #if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
-   #   h2 "Installing Python dependencies ..."
-   #   # To $HOME/Library/Python/3.7/lib/python/...
-   #   pip install -U arrow
-   #   pip install -U python-dotenv
-   #   pip install -U requests
-   #fi
+   # https://docs.python-guide.org/dev/virtualenvs/
 
    h2 "-G run things at $PWD ..."
    if [ -z "${MY_FOLDER}" ]; then  # is empty
@@ -1512,7 +1517,8 @@ if [ "${RUN_THINGS}" = true ]; then  # -s
             pipenv run python "${MY_FILE}" "${RUN_PARMS}"
          else
             note "Python3 Running ${MY_FILE} ${RUN_PARMS} ..."
-            python3 "${MY_FILE}" "${RUN_PARMS}"
+            pipenv run python "${MY_FILE}" "${RUN_PARMS}"
+            # python3 "${MY_FILE}" "${RUN_PARMS}"
          fi
       fi
    fi
