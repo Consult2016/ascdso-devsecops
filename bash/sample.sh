@@ -240,7 +240,8 @@ while test $# -gt 0; do
       ;;
     -L)
       export USE_CIRCLECI=true
-      GitHub_REPO_URL="https://github.com/wilsonmar/circleci_demo.git"
+      #GitHub_REPO_URL="https://github.com/wilsonmar/circleci_demo.git"
+      GitHub_REPO_URL="https://github.com/fedekau/terraform-with-circleci-example"
       GitHub_REPO_NAME="circleci_demo"
       shift
       ;;
@@ -581,7 +582,7 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 
    # Set cursor to be consistently on left side after a blank line:
    export PS1="\n  \w\[\033[33m\]\n$ "
-   note "Now at $PWD HOME=$HOME"
+   note "$( ls )"
 
       h2 "gcloud info & auth list ..."
       GCP_AUTH=$( gcloud auth list )
@@ -967,7 +968,7 @@ else   # do not -clone
       Clone_GitHub_repo      # defined above in this file.
    fi
 fi
-note "Now at $PWD ..."
+note "$( ls $PWD )"
 
 
 ### Get secrets from $HOME/.secrets.sh file:
@@ -999,7 +1000,12 @@ else
       note "$(ls -al $SECRETS_FILEPATH )"
       chmod +x "$SECRETS_FILEPATH"
       source   "$SECRETS_FILEPATH"  # run file containing variable definitions.
-      note "GitHub_USER_NAME=\"$GitHub_USER_NAME\" read from file $SECRETS_FILEPATH"
+      if [ "$CIRCLECI_API_TOKEN" == "xxx" ]; then 
+         fatal "Please edit CIRCLECI_API_TOKEN in file \$HOME/.secrets.sh and run again ..."
+         exit 9
+      else
+         note "GitHub_USER_NAME=\"$GitHub_USER_NAME\" read from file $SECRETS_FILEPATH"
+      fi
    fi
 
    if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
@@ -1147,16 +1153,44 @@ if [ "${USE_CIRCLECI}" = true ]; then   # -L
       note "circleci version = $( circleci version)"   # 0.1.7179+e661c13
       # https://github.com/CircleCI-Public/circleci-cli
 
-      circleci setup  <<< input $CIRCLECI_API_TOKEN
+      if [ -f "$HOME/.circleci/cli.yml" ]; then
+         note "Using existing $HOME/.circleci/cli.yml ..."
+      else
+         circleci setup --token "${CIRCLECI_API_TOKEN}" --host "https://circleci.com"
+      fi
    else
       error "CIRCLECI_API_TOKEN missing. Aborting ..."
       exit 9
    fi
 
+   h2 "Loading Circle CI config.yml ..."
+   mkdir -p "$HOME/.circleci"
+
+   echo "-f MY_FILE=$MY_FILE"
+   if [ -z "${MY_FILE}" ]; then   # -f not specified:
+      note "-file not specified. Using config.yml from repo ... "
+      # copy with -force to update:
+      cp -f ".circleci/config.yml" "$HOME/.circleci/config.yml"
+   elif [ -f "${MY_FILE}" ]; then 
+      fatal "${MY_FILE} not found ..."
+      exit 9
+   else
+      mv "${MY_FILE}" "$HOME/.circleci/config.yml"
+   fi
+
+   if [ ! -f "$HOME/.circleci/config.yml" ]; then 
+      ls -al "$HOME/.circleci/config.yml"
+      fatal "$HOME/.circleci/config.yml not found. Aborting ..."
+      exit 9
+   fi
    h2 "Validate Circle CI ..."
    circleci config validate
 
-fi
+   h2 "??? Run Circle CI ..."
+
+   h2 "Done with Circle CI ..."
+   exit
+fi  # USE_CIRCLECI
 
 
 if [ "${NODE_INSTALL}" = true ]; then  # -n
@@ -1632,11 +1666,11 @@ if [ "${RUN_TENSORFLOW}" = true ]; then
       # Included in conda/anaconda: jupyterlab & matplotlib
 
       h2 "installing tensorflow, tensorboard ..."
-      # TODO: pipenv
-      pip3 install tensorflow   # includes https://pypi.org/project/tensorboard/
-      #  if [ "${UPDATE_PKGS}" = true ]; then
-      #  fi
-
+      # TODO: convert to use pipenv instead?
+      pip3 install --upgrade tensorflow   # includes https://pypi.org/project/tensorboard/
+      h2 "pip3 show tensorflow"
+      pip3 show tensorflow
+exit
       # h2 "Install cloudinary Within requirements.txt : "
       # pip install cloudinary
       #if ! command -v jq ; then
@@ -1650,25 +1684,6 @@ if [ "${RUN_TENSORFLOW}" = true ]; then
       #fi
       # /usr/local/bin/jq
 
-   if [ ! -d "logs/func/" ]; then 
-      note "logs/func folder not found, so tensorboard not started ..."
-   else
-      # First, kill previous one (if it's there): https://stackoverflow.com/questions/3510673/find-and-kill-a-process-in-one-line-using-bash-and-regex
-      ps_kill 'tensorboard'  # bash function defined in this file.
-
-   fi
-
-      note "Starting tensorboard --logdir . in background ..."
-      FIT_PATH="$PWD/${MY_FOLDER}/logs/fit"
-      if [ -d "${MY_FILE}" ]; then  # directory exists
-         h2 "Log folder being deleted ..."
-         rm -rf "$FIT_PATH"
-      fi
-      #mkdir "$PWD/${MY_FOLDER}/log"
-      h2 "tensorboard --logdir $FIT_PATH ..."
-      tensorboard --logdir="$FIT_PATH"
-      # See https://www.tensorflow.org/tensorboard/get_started
-      # TensorBoard 2.1.1 at http://localhost:6006/ (Press CTRL+C to quit)
 
    h2 "Starting Jupyter with Notebook $MY_FOLDER/$MY_FILE ..."
    jupyter notebook --port 8888 "${MY_FOLDER}/${MY_FILE}" 

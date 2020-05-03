@@ -3,7 +3,7 @@
 GitHub_USER_NAME="Wilson Mar"
 GitHub_ACCOUNT="wilson-mar"
 GitHub_USER_EMAIL="wilsonmar@gmail.com"
-CIRCLECI_API_TOKEN="a2c738f8cbafbfbe80aaf1ada3b9bbc625dc42a1"
+CIRCLECI_API_TOKEN="xxx"
 
 VAULT_ADDR="https://vault.prod.init.ak8s.mckinsey.com"
 VAULT_USERNAME="wilson mar"
