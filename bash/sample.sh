@@ -46,12 +46,13 @@ args_prompt() {
    echo "   -I           -Install brew, docker, docker-compose"
    echo "   -U           -Upgrade packages"
    echo " "
-#   echo "   -w            -w in AWS cloud"
+   echo "   -L           use CircleCI"
+   echo "   -w            -w in AWS cloud"
    echo "   -g \"abcdef...89\" -gcloud API credentials for calls"
    echo "   -p \"cp100\"   -project in cloud"
    echo "   -t           setup -test server to run tests"
    echo "   -a           -actually run in prod server"
-   ehco " "
+   echo " "
    echo "   -A           run with Python -Anaconda "
    echo "   -T           run -Tensorflow"
    echo " "
@@ -106,8 +107,9 @@ exit_abnormal() {            # Function: Exit with error.
    RUN_ANACONDA=false           # -A
    RUN_THINGS=false             # -G
    RUN_PARMS=""                 # -P
+   USE_CIRCLECI=false           # -L
    USE_DOCKER=false             # -k
-   USE_AWS_CLOUD=false          # -a
+   USE_AWS_CLOUD=false          # -w
    USE_AZURE_CLOUD=false        # -z
    USE_GOOGLE_CLOUD=false       # -g
        GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
@@ -234,6 +236,12 @@ while test $# -gt 0; do
       ;;
     -K)
       export KILL_PROCESSES=true
+      shift
+      ;;
+    -L)
+      export USE_CIRCLECI=true
+      GitHub_REPO_URL="https://github.com/wilsonmar/circleci_demo.git"
+      GitHub_REPO_NAME="circleci_demo"
       shift
       ;;
     -M)
@@ -670,7 +678,6 @@ fi
 if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
    h2 "-Install package managers ..."
-
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
 
       # Install XCode for  Ruby Development Headers:
@@ -806,16 +813,110 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
    # git push origin master
 fi
 
-   if [ "${USE_AWS_CLOUD}" = true ]; then   # -w
-      # TODO: Add other clouds and installers.
-      brew cask install aws-vault
-      # See https://www.davehall.com.au/tags/bash
+pipenv_install() {
+   # Pipenv is a dependency manager for Python projects like Node.js’ npm or Ruby’s bundler.
+   # See https://realpython.com/pipenv-guide/
+   # Pipenv combines pip & virtualenv in a single interface.
+
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         # https://pipenv.readthedocs.io/en/latest/
+         if ! command -v pipenv >/dev/null; then  # command not found, so:
+            h2 "Brew installing pipenv ..."
+            brew install pipenv
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading pipenv ..."
+               brew upgrade pipenv
+               # pip install --user --upgrade pipenv
+            fi
+         fi
+         note "$( pipenv --version )"
+            # pipenv, version 2018.11.26
+
+      #elif for Alpine? 
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "pipenv"  # please test
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install pipenv      # please test
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install pipenv   # please test
+      else
+         fatal "Package Manager not recognized installing pipenv."
+         exit
+   fi  # PACKAGE_MANAGER
+
+   # See https://pipenv-fork.readthedocs.io/en/latest/advanced.html#automatic-loading-of-env
+   # PIPENV_DOTENV_LOCATION=/path/to/.env
+
+     # TODO: if [ "${RUN_ACTUAL}" = true ]; then  # -a for production usage
+         #   pipenv install some-pkg     # production
+         # else
+         #   pipenv install pytest -dev   # include Pipfile [dev-packages] components such as pytest
+
+      if [ -f "Pipfile.lock" ]; then  
+         # See https://github.com/pypa/pipenv/blob/master/docs/advanced.rst on deployments
+         # Install based on what's in Pipfile.lock:
+         h2 "Install based on Pipfile.lock ..."
+         pipenv install --ignore-pipfile
+      elif [ -f "Pipfile" ]; then  # found:
+         h2 "Install based on Pipfile ..."
+         pipenv install
+      elif [ -f "setup.py" ]; then  
+         h2 "Install a local setup.py into your virtual environment/Pipfile ..."
+         pipenv install "-e ."
+            # ✔ Successfully created virtual environment!
+         # Virtualenv location: /Users/wilson_mar/.local/share/virtualenvs/python-samples-gTkdon9O
+         # where "-gTkdon9O" adds the leading part of a hash of the full path to the project’s root.
+      fi
+}  # pipenv_install()
+
+
+if [ "${USE_AWS_CLOUD}" = true ]; then   # -w
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+      #fancy_echo "awscli requires Python3."
+      # See https://docs.aws.amazon.com/cli/latest/userguide/cli-install-macos.html#awscli-install-osx-pip
+      # PYTHON3_INSTALL  # function defined at top of this file.
+      # :  # break out immediately. Not execute the rest of the if strucutre.
+      # TODO: https://github.com/bonusbits/devops_bash_config_examples/blob/master/shared/.bash_aws
+      # For aws-cli commands, see http://docs.aws.amazon.com/cli/latest/userguide/ 
+      if ! command -v aws >/dev/null; then
+         h2 "pipenv install awscli ..."
+         pipenv install awscli --user  # no --upgrade 
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "pipenv upgrade awscli ..."
+            note "Before upgrade: $(aws --version)"  # aws-cli/2.0.9 Python/3.8.2 Darwin/19.4.0 botocore/2.0.0dev13
+               # sudo rm -rf /usr/local/aws
+               # sudo rm /usr/local/bin/aws
+               # curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
+               # unzip awscli-bundle.zip
+               # sudo ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+            pipenv upgrade awscli --upgrade --user
+         fi
+      fi
+      note "$(aws --version)"  # aws-cli/1.11.160 Python/2.7.10 Darwin/17.4.0 botocore/1.7.18
+
+
+         # See https://www.davehall.com.au/tags/bash
+         if ! command -v aws-vault >/dev/null; then  # command not found, so:
+            h2 "Brew cask installing aws-vault ..."
+            brew cask install aws-vault  
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew cask upgrade aws-vault ..."
+               brew upgrade aws-vault
+            fi
+         fi
+         note "$( aws-vault --version )"  # v5.3.2
    fi
+
+fi  # USE_AWS_CLOUD
    
-   if [ "${USE_AZURE_CLOUD}" = true ]; then   # -z
+
+if [ "${USE_AZURE_CLOUD}" = true ]; then   # -z
       # See https://docs.microsoft.com/en-us/cli/azure/keyvault/secret?view=azure-cli-latest
       brew cask install azure-vault
-   fi
+fi
 
 
 Delete_GitHub_clone(){
@@ -869,7 +970,7 @@ fi
 note "Now at $PWD ..."
 
 
-### Get secrets from $HOME/.secrets.sample.sh file:
+### Get secrets from $HOME/.secrets.sh file:
 Input_GitHub_User_Info(){
       # https://www.shellcheck.net/wiki/SC2162: read without -r will mangle backslashes.
       read -r -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
@@ -888,13 +989,13 @@ if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
 else  
    if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
       warning "File not found in $SECRETS_FILEPATH. Downloading file .secrets.sample.sh ... "
-      curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/.secrets.sample.sh
-      warning "Copying .secrets.sample.sh downloaded to \$HOME/.secrets.sh ... "
-      cp .secrets.sample.sh  .secrets.sh
+      curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/secrets.sample.sh
+      warning "Copying secrets.sample.sh downloaded to \$HOME/.secrets.sh ... "
+      cp secrets.sample.sh  .secrets.sh
       fatal "Please edit file \$HOME/.secrets.sh and run again ..."
       exit 1
-   else  # file found:
-      h2 "Using -secrets in $SECRETS_FILEPATH "
+   else  # secrets file found:
+      h2 "Using -secrets.sh in $SECRETS_FILEPATH "
       note "$(ls -al $SECRETS_FILEPATH )"
       chmod +x "$SECRETS_FILEPATH"
       source   "$SECRETS_FILEPATH"  # run file containing variable definitions.
@@ -978,9 +1079,11 @@ else
 fi  # USE_SECRETS_FILE  to get into cloud
 
 
+
 if [ "${USE_AZURE_CLOUD}" = true ]; then   # -z
    h2 "Azure cloud "  # https://docs.microsoft.com/en-us/azure/key-vault/about-keys-secrets-and-certificates
 fi
+
 
 
 if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
@@ -1019,6 +1122,39 @@ exit  # in dev
     --role="roles/storage.admin"
 
    # TODO: more steps needed from lab
+
+fi
+
+
+if [ "${USE_CIRCLECI}" = true ]; then   # -L
+   # https://circleci.com/docs/2.0/getting-started/#setting-up-circleci
+   # h2 "circleci setup ..."
+
+   # Using variables from env file:
+   h2 "circleci setup ..."
+   if [ -n "${CIRCLECI_API_TOKEN}" ]; then  
+      if ! command -v circleci ; then
+         h2 "Installing circleci ..."
+   # No brew:
+         curl -fLSs https://circle.ci/cli | bash
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Removing and installing circleci ..."
+            rm -rf "/usr/local/bin/circleci"
+            curl -fLSs https://circle.ci/cli | bash
+         fi
+      fi
+      note "circleci version = $( circleci version)"   # 0.1.7179+e661c13
+      # https://github.com/CircleCI-Public/circleci-cli
+
+      circleci setup  <<< input $CIRCLECI_API_TOKEN
+   else
+      error "CIRCLECI_API_TOKEN missing. Aborting ..."
+      exit 9
+   fi
+
+   h2 "Validate Circle CI ..."
+   circleci config validate
 
 fi
 
@@ -1068,8 +1204,6 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
    fi
 
 
-   # See https://pipenv-fork.readthedocs.io/en/latest/advanced.html#automatic-loading-of-env
-   # PIPENV_DOTENV_LOCATION=/path/to/.env
    if [ ! -f "variables.env" ]; then   # not created
       h2 "Downloading variables.env ..."
       # Alternative: Copy from your $HOME/.secrets.env file
@@ -1189,12 +1323,12 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V  (not the default pipenv)
       silent-apt-get-install "python3"
    fi
    note "$( python3 --version )"  # Python 3.7.6
-   note "$( pip --version )"      # pip 19.3.1 from /Library/Python/2.7/site-packages/pip (python 2.7)
+   note "$( pip3 --version )"      # pip 19.3.1 from /Library/Python/2.7/site-packages/pip (python 2.7)
 
 
       # h2 "Install virtualenv"  # https://levipy.com/virtualenv-and-virtualenvwrapper-tutorial
       # to create isolated Python environments.
-      #pip3 install virtualenvwrapper
+      #pipenv install virtualenvwrapper
 
       if [ -d "venv" ]; then   # venv folder already there:
          note "venv folder being re-used ..."
@@ -1218,56 +1352,11 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V  (not the default pipenv)
       # Install the latest versions, which may not be backward-compatible:
       pip3 install -r requirements.txt
    fi
-   # See https://realpython.com/pipenv-guide/
 
 else  # RUN_VIRTUALENV means Pipenv default
 
-   # Pipenv is a dependency manager for Python projects like Node.js’ npm or Ruby’s bundler.
-
-   pipenv_create() {
-      if [ -f "Pipfile.lock" ]; then  
-         # See https://github.com/pypa/pipenv/blob/master/docs/advanced.rst on deployments
-         # Install based on what's in Pipfile.lock:
-         h2 "Install based on Pipfile.lock ..."
-         pipenv install --ignore-pipfile
-      else
-         h2 "Use pipenv to create env ..."
-         pipenv install "-e ."
-            # ✔ Successfully created virtual environment!
-         # Virtualenv location: /Users/wilson_mar/.local/share/virtualenvs/python-samples-gTkdon9O
-         # where "-gTkdon9O" adds the leading part of a hash of the full path to the project’s root.
-      fi
-   }
-
    h2 "Use Pipenv by default (not overrided by -Virtulenv)"
    # https://www.activestate.com/blog/how-to-build-a-ci-cd-pipeline-for-python/
-
-   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
-         # https://pipenv.readthedocs.io/en/latest/
-         if ! command -v pipenv >/dev/null; then  # command not found, so:
-            h2 "Brew installing pipenv ..."
-            brew install pipenv
-         else  # installed already:
-            if [ "${UPDATE_PKGS}" = true ]; then
-               h2 "Brew upgrading pipenv ..."
-               brew upgrade pipenv
-               pip install --user --upgrade pipenv
-            fi
-         fi
-         note "$( pipenv --version )"
-            # pipenv, version 2018.11.26
-
-      #elif for Alpine? 
-      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-         silent-apt-get-install "pipenv"  # please test
-      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
-         sudo yum install pipenv      # please test
-      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
-         sudo zypper install pipenv   # please test
-      else
-         fatal "Package Manager not recognized installing pipenv."
-         exit
-   fi  # PACKAGE_MANAGER
 
    # pipenv commands: https://pipenv.kennethreitz.org/en/latest/cli/#cmdoption-pipenv-rm
    note "pipenv in $( pipenv --where )"
@@ -1275,6 +1364,9 @@ else  # RUN_VIRTUALENV means Pipenv default
    # pipenv --venv  # no such option¶
    
    note "$( pipenv --venv || true )"
+
+   #h2 "pipenv lock --clear to flush the pipenv cache"
+   #pipenv lock --clear
 
    # If virtualenvs exists for repo, remove it:
    if [ -n "${WORKON_HOME}" ]; then  # found somethiNg:
@@ -1297,13 +1389,13 @@ else  # RUN_VIRTUALENV means Pipenv default
          # pipenv clean  # creates a virtualenv
             # uninistall all dev dependencies and their dependencies:
 
-         pipenv_create   # 
+         pipenv_install   # 
       else
          h2 "TODO: pipenv using current virtualenv ..."
       fi
    else  # no env found, so ...
       h2 "Creating pipenv - no previous virtualenv ..."
-      pipenv run python main.py    
+      PYTHONPATH='.' pipenv run python main.py    
    fi 
 
 fi  # RUN_VIRTUALENV
@@ -1312,8 +1404,8 @@ fi  # RUN_VIRTUALENV
 if [ "${RUN_ANACONDA}" = true ]; then  # -A
 
          if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
-            if ! command -v anaconda ; then
-               h2 "brew cask install anaconda ..."
+            if ! command -v conda ; then
+               h2 "brew cask install anaconda ..."  # miniconda
                brew cask install anaconda
             else
                if [ "${UPDATE_PKGS}" = true ]; then
@@ -1324,9 +1416,9 @@ if [ "${RUN_ANACONDA}" = true ]; then  # -A
          elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
             silent-apt-get-install "anaconda"
          fi
+         note "$( conda version )"  
          #note "$( conda info )"  # VERBOSE
          #note "$( conda list anaconda$ )"
-         #note "$( anaconda version )"  
 
          export PREFIX="/usr/local/anaconda3"
          export   PATH="/usr/local/anaconda3/bin:$PATH"
@@ -1512,13 +1604,12 @@ if [ "${RUN_THINGS}" = true ]; then  # -s
       if [ ! -f "${MY_FILE}" ]; then  # file not found:
          error "-file \"${MY_FILE}\" not found ..."
       else
-         if [ ! -f "Pipenv" ]; then  # file not found:
-            note "Pipenv running ${MY_FILE} ${RUN_PARMS} ..."
-            pipenv run python "${MY_FILE}" "${RUN_PARMS}"
+         if [ ! -f "Pipfile" ]; then  # file not found:
+            note "Pipfile found, run Pipenv ${MY_FILE} ${RUN_PARMS} ..."
+            PYTHONPATH='.' pipenv run python "${MY_FILE}" "${RUN_PARMS}"
          else
             note "Python3 Running ${MY_FILE} ${RUN_PARMS} ..."
-            pipenv run python "${MY_FILE}" "${RUN_PARMS}"
-            # python3 "${MY_FILE}" "${RUN_PARMS}"
+            python3 "${MY_FILE}" "${RUN_PARMS}"
          fi
       fi
    fi
@@ -1538,12 +1629,13 @@ if [ "${RUN_TENSORFLOW}" = true ]; then
          exit 9
       fi
 
-      note "Installing tensorflow ..."
+      # Included in conda/anaconda: jupyterlab & matplotlib
+
+      h2 "installing tensorflow, tensorboard ..."
+      # TODO: pipenv
       pip3 install tensorflow   # includes https://pypi.org/project/tensorboard/
-     
-      # Included in conda/anaconda:
-      # pip3 install jupyterlab 
-      # pip3 install matplotlib
+      #  if [ "${UPDATE_PKGS}" = true ]; then
+      #  fi
 
       # h2 "Install cloudinary Within requirements.txt : "
       # pip install cloudinary
@@ -1564,10 +1656,19 @@ if [ "${RUN_TENSORFLOW}" = true ]; then
       # First, kill previous one (if it's there): https://stackoverflow.com/questions/3510673/find-and-kill-a-process-in-one-line-using-bash-and-regex
       ps_kill 'tensorboard'  # bash function defined in this file.
 
-      note "Starting tensorboard --logdir . in background ..."
-      tensorboard --logdir .  &   # See https://www.tensorflow.org/tensorboard/get_started
-      # TensorBoard 2.1.1 at http://localhost:6006/ (Press CTRL+C to quit)
    fi
+
+      note "Starting tensorboard --logdir . in background ..."
+      FIT_PATH="$PWD/${MY_FOLDER}/logs/fit"
+      if [ -d "${MY_FILE}" ]; then  # directory exists
+         h2 "Log folder being deleted ..."
+         rm -rf "$FIT_PATH"
+      fi
+      #mkdir "$PWD/${MY_FOLDER}/log"
+      h2 "tensorboard --logdir $FIT_PATH ..."
+      tensorboard --logdir="$FIT_PATH"
+      # See https://www.tensorflow.org/tensorboard/get_started
+      # TensorBoard 2.1.1 at http://localhost:6006/ (Press CTRL+C to quit)
 
    h2 "Starting Jupyter with Notebook $MY_FOLDER/$MY_FILE ..."
    jupyter notebook --port 8888 "${MY_FOLDER}/${MY_FILE}" 
@@ -2103,13 +2204,24 @@ fi
 
 
 if [ "$REMOVE_DOCKER_IMAGES" = true ]; then  # -M
+   docker system df
+   
    DOCKER_IMAGES="$( docker images -a -q )"
    if [ -n "$DOCKER_IMAGES" ]; then  # variable is NOT empty
       h2 "Removing all Docker images ..."
       docker rmi "$( docker images -a -q )"
+
+      h2 "docker image prune -all ..."  # https://docs.docker.com/config/pruning/
+      y | docker image prune -a
+         # all stopped containers
+         # all volumes not used by at least one container
+         # all networks not used by at least one container
+         # all images without at least one container associated to
+      # y | docker system prune
    fi
 fi
 note "$( docker images -a )"
+
 
 if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -C
    h2 "Delete cloned GitHub at end"
