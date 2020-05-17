@@ -13,7 +13,7 @@
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
 THIS_PROGRAM="$0"
-SCRIPT_VERSION="v0.66"
+SCRIPT_VERSION="v0.67"
 # clear  # screen (but not history)
 
 # Capture starting timestamp and display no matter how it ends:
@@ -34,6 +34,7 @@ args_prompt() {
    echo "./sample.sh -q          -s -H    -a        # Initiate Vault prod server"
    echo "./sample.sh -v -I -U -c    -H -G -N \"python-samples\" -f \"a9y-sample.py\" -P \"-v\" -t -w -C  # Python sample app using Vault"
    echo "./sample.sh -v -V -c -T -F \"section_2\" -f \"2-1.ipynb\" -K  # Jupyter anaconda Tensorflow in Venv"
+   echo "./sample.sh -v -V -c -L -s    # Use CircLeci based on secrets"
    echo "USAGE EXAMPLE after testing:"
    echo "./sample.sh -v -D -M -C"
    echo "OPTIONS:"
@@ -1186,7 +1187,8 @@ if [ "${USE_CIRCLECI}" = true ]; then   # -L
    h2 "Validate Circle CI ..."
    circleci config validate
 
-   h2 "??? Run Circle CI ..."
+   h2 "??? Run Circle CI ..."  # https://circleci.com/docs/2.0/local-cli/
+   # circleci run ???
 
    h2 "Done with Circle CI ..."
    exit
@@ -1438,7 +1440,7 @@ fi  # RUN_VIRTUALENV
 if [ "${RUN_ANACONDA}" = true ]; then  # -A
 
          if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
-            if ! command -v conda ; then
+            if ! command -v anaconda ; then
                h2 "brew cask install anaconda ..."  # miniconda
                brew cask install anaconda
             else
@@ -1450,12 +1452,13 @@ if [ "${RUN_ANACONDA}" = true ]; then  # -A
          elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
             silent-apt-get-install "anaconda"
          fi
-         note "$( conda version )"  
+         note "$( anaconda version )"  # anaconda Command line client (version 1.7.2)
          #note "$( conda info )"  # VERBOSE
          #note "$( conda list anaconda$ )"
-
+                        
          export PREFIX="/usr/local/anaconda3"
          export   PATH="/usr/local/anaconda3/bin:$PATH"
+         note "PATH=$( $PATH )"
 
          # conda create -n PDSH python=3.7 --file requirements.txt
          # conda create -n tf tensorflow
@@ -1670,7 +1673,7 @@ if [ "${RUN_TENSORFLOW}" = true ]; then
       pip3 install --upgrade tensorflow   # includes https://pypi.org/project/tensorboard/
       h2 "pip3 show tensorflow"
       pip3 show tensorflow
-exit
+
       # h2 "Install cloudinary Within requirements.txt : "
       # pip install cloudinary
       #if ! command -v jq ; then
@@ -1684,6 +1687,8 @@ exit
       #fi
       # /usr/local/bin/jq
 
+   h2 "ipython kernel install --user --name=.venv"
+   ipython kernel install --user --name=venv
 
    h2 "Starting Jupyter with Notebook $MY_FOLDER/$MY_FILE ..."
    jupyter notebook --port 8888 "${MY_FOLDER}/${MY_FILE}" 
