@@ -13,7 +13,7 @@
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
 THIS_PROGRAM="$0"
-SCRIPT_VERSION="v0.67"
+SCRIPT_VERSION="v0.68"
 # clear  # screen (but not history)
 
 # Capture starting timestamp and display no matter how it ends:
@@ -111,12 +111,14 @@ exit_abnormal() {            # Function: Exit with error.
    USE_CIRCLECI=false           # -L
    USE_DOCKER=false             # -k
    USE_AWS_CLOUD=false          # -w
+   USE_YUBIKEY=false            # -Y
    USE_AZURE_CLOUD=false        # -z
    USE_GOOGLE_CLOUD=false       # -g
        GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
    PROJECT_NAME=""              # -p                 
    USE_VAULT=false              # -H
    RUBY_INSTALL=false           # -i
+   MOVE_SECURELY=false          # -m
    NODE_INSTALL=false           # -n
       MONGO_DB_NAME=""
    USE_SECRETS_FILE=false       # -s
@@ -246,6 +248,10 @@ while test $# -gt 0; do
       GitHub_REPO_NAME="circleci_demo"
       shift
       ;;
+    -m)
+      export MOVE_SECURELY=true
+      shift
+      ;;
     -M)
       export REMOVE_DOCKER_IMAGES=true
       shift
@@ -335,6 +341,10 @@ while test $# -gt 0; do
       GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
       export GitHub_REPO_NAME="rockstar"
       export APPNAME="rockstar"
+      shift
+      ;;
+    -Y)
+      export USE_YUBIKEY=true
       shift
       ;;
     -z)
@@ -966,7 +976,7 @@ else   # do not -clone
       cd "$GitHub_REPO_NAME"
    else
       h2 "Git cloning repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
-      Clone_GitHub_repo      # defined above in this file.
+      # Clone_GitHub_repo      # defined above in this file.
    fi
 fi
 note "$( ls $PWD )"
@@ -1195,7 +1205,340 @@ if [ "${USE_CIRCLECI}" = true ]; then   # -L
 fi  # USE_CIRCLECI
 
 
+
+if [ "${USE_YUBIKEY}" = true ]; then   # -Y
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         if ! command -v ykman >/dev/null; then  # command not found, so:
+            note "Brew installing ykman ..."
+            brew install ykman
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               note "Brew upgrading ykman ..."
+               brew upgrade ykman
+            fi
+         fi
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "ykman"
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install ykman      ; echo "TODO: please test"
+         exit 9                      
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install ykman   ; echo "TODO: please test"
+         exit 9
+      fi
+      note "$( ykman --version )"
+         # RESPONSE: YubiKey Manager (ykman) version: 3.1.1
+
+
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         if ! command -v yubico-piv-tool >/dev/null; then  # command not found, so:
+            note "Brew installing yubico-piv-tool ..."
+            brew install yubico-piv-tool
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               note "Brew upgrading yubico-piv-tool ..."
+               brew upgrade yubico-piv-tool
+            fi
+         fi
+         #  /usr/local/Cellar/yubico-piv-tool/2.0.0: 18 files, 626.7KB
+
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "yubico-piv-tool"
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install yubico-piv-tool      ; echo "TODO: please test"
+         exit 9                      
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install yubico-piv-tool   ; echo "TODO: please test"
+         exit 9
+      fi
+      note "$( yubico-piv-tool --version )"   # RESPONSE: yubico-piv-tool 2.0.0
+
+
+   # TODO: Verify code below
+   h2 "PIV application reset to remove all existing keys ..."
+   ykman piv reset
+      # RESPONSE: Resetting PIV data...
+
+   h2 "Generating new certificate ..."
+   yubico-piv-tool -a generate -s 9c -A RSA2048 --pin-policy=once --touch-policy=never -o public.pem
+   yubico-piv-tool -a verify  -S "/CN=SSH key/" -a selfsign -s 9c -i public.pem -o cert.pem
+   yubico-piv-tool -a import-certificate -s 9c -i cert.pem
+
+   h2 "Export SSH public key ..."
+   ssh-keygen -f public.pem -i -mPKCS8 | tee ./yubi.pub
+
+   h2 "Sign key on CA using vault ..."
+   vault write -field=signed_key  "${SSH_CLIENT_SIGNER_PATH}/sign/oleksii_samorukov public_key=@./yubi.pub" \
+      | tee ./yubi-cert.pub
+
+   h2 "Test whethef connection is working ..."
+   ssh  git@github.com -I /usr/local/lib/libykcs11.dylib -o "CertificateFile ./yubi-cert.pub"
+
+fi  # USE_YUBIKEY
+
+
+
+if [ "${USE_VAULT}" = true ]; then   # -H
+      h2 "-HashicorpVault being used ..."
+
+      # See https://learn.hashicorp.com/vault/getting-started/install for install video
+          # https://learn.hashicorp.com/vault/secrets-management/sm-versioned-kv
+          # https://www.vaultproject.io/api/secret/kv/kv-v2.html
+      # NOTE: vault-cli is a Subversion-like utility to work with Jackrabbit FileVault (not Hashicorp Vault)
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         if ! command -v vault >/dev/null; then  # command not found, so:
+            note "Brew installing vault ..."
+            brew install vault
+            # vault -autocomplete-install
+            # exec $SHELL
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               note "Brew upgrading vault ..."
+               brew upgrade vault
+               # vault -autocomplete-install
+               # exec $SHELL
+            fi
+         fi
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "vault"
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install vault      # please test
+         exit 9
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install vault   # please test
+         exit 9
+      fi
+      RESPONSE="$( vault --version | cut -d' ' -f2 )"  # 2nd column of "Vault v1.3.4"
+      export VAULT_VERSION="${RESPONSE:1}"   # remove first character.
+      note "VAULT_VERSION=$VAULT_VERSION"   
+      
+      # Instead of vault -autocomplete-install   # for interactive manual use.
+      # The complete command inserts in $HOME/.bashrc and .zsh
+      complete -C /usr/local/bin/vault vault
+         # No response is expected. Requires running exec $SHELL to work.
+
+   if [ "${RUN_TESTS}" = true ]; then   # -t
+      # CAUTION: Vault dev server is insecure and stores all data in memory only!
+
+      h2 "Starting vault local dev server at $VAULT_ADDR ..."  # https://learn.hashicorp.com/vault/getting-started/dev-server
+      ps_kill 'vault'  # bash function defined in this file.
+      # Don't RESPONSE="$( vault server -dev  & )"  # & = background job
+      # because this displays Unseal Key and Root Token:
+                    vault server -dev
+      # THIS SCRIPT PAUSES HERE. OPEN ANOTHER TERMINAL SESSION.
+      # Press control+C to stop service.
+
+      # echo -e "RESPONSE=$RESPONSE \n"
+
+      # FIXME: capture output:
+      export UNSEAL_KEY="$( echo "${RESPONSE}" | grep -o 'Unseal Key: [^, }]*' | sed 's/^.*: //' )"
+      export VAULT_DEV_ROOT_TOKEN_ID="$( echo "${RESPONSE}" | grep -o 'Root Token: [^, }]*' | sed 's/^.*: //' )"
+      note -e ">>> UNSEAL_KEY=$UNSEAL_KEY \n"
+      note -e ">>> VAULT_DEV_ROOT_TOKEN_ID=$VAULT_DEV_ROOT_TOKEN_ID \n"
+      #sample      VAULT_DEV_ROOT_TOKEN_ID="s.Lgsh7FXX9cUKQttfFo1mdHjE"
+
+   fi  # RUN_TESTS
+
+
+   if [ "${RUN_ACTUAL}" = true ]; then   # -a
+      # use production ADDR from secrets
+      if [ -z "${VAULT_ADDR}" ]; then  # it's blank:
+         error "VAULT_ADDR is not defined (within secrets file) ..."
+      else
+         if ! ping -c 1 "${VAULT_ADDR}" &> /dev/null ; then 
+            error "VAULT_ADDR=$VAULT_ADDR ICMP ping failed. Aborting ..."
+            info  "Is VPN (GlobalProtect) running and you're loggin in?"
+            # exit
+         fi
+      fi
+      export VAULT_NAME="prodservermode"  # ???
+   else  # test:
+      export VAULT_ADDR=http://127.0.0.1:8200
+      export VAULT_NAME="devservermode"
+   fi  # RUN_ACTUAL
+
+   note -e "\n"
+   RESPONSE="$( vault status 2>&2)"  # capture STDERR output to &1 (STDOUT)
+         # See https://stackoverflow.com/questions/2990414/echo-that-outputs-to-stderr
+         # STDERR: Error checking seal status: Get https://vault..../v1/sys/seal-status: dial tcp: lookup vault....: no such host
+   ERR_RESPONSE="$( echo $RESPONSE | awk '{print $1;}' )"
+   if [ "Error" = "$ERR_RESPONSE" ]; then
+         fatal "${ERR_RESPONSE}"
+         exit
+   else
+         note -e ">>> $RESPONSE"
+   fi
+
+   if [ -n "${VAULT_USERNAME}" ]; then  # is not empty
+      note "Vault login as ${VAULT_USERNAME} ..."
+      vault login -method=okta username="${VAULT_USERNAME}"  # from secrets.sh
+         # Put https://127.0.0.1:8200/v1/auth/okta/login: dial tcp 127.0.0.1:8200: connect: connection refused
+   fi
+
+   note -e "\n Put secret/hello ..."
+   note -e "\n"
+   # Make CLI calls to the kv secrets engine for key/value pair:
+   vault kv put secret/hello vault="${VAULT_NAME}"
+      
+   note -e "\n Get secret/hello text ..."
+   note -e "\n"
+   vault kv get secret/hello  # to system variable for .py program.
+         # See https://www.vaultproject.io/docs/commands/index.html
+
+   #note -e "\n Get secret/hello as json ..."
+   #note -e "\n"
+   #vault kv get -format=json secret/hello | jq -r .data.data.excited
+   #note -e "\n Cat secret/hello from json ..."
+   #cat .data.data.excited
+
+   note -e "\n Enable userpass method ..."
+   note -e "\n"
+   vault auth enable userpass  # is only done once.
+      # Success! Enabled userpass auth method at: userpass/
+   
+
+      #### "Installing govaultenv ..."
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         # https://github.com/jamhed/govaultenv
+         if ! command -v govaultenv >/dev/null; then  # command not found, so:
+            h2 "Brew installing govaultenv ..."
+            brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
+            brew install govaultenv
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading govaultenv ..."
+               brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
+               brew upgrade jamhed/govaultenv/govaultenv
+            fi
+         fi
+         note "govaultenv $( govaultenv | grep version | cut -d' ' -f1 )"
+            # version:0.1.2 commit:d7754e38bb855f6a0c0c259ee2cced29c86a4da5 build by:goreleaser date:2019-11-13T19:47:16Z
+
+      #elif for Alpine? 
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "govaultenv"  # please test
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install govaultenv      # please test
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install govaultenv   # please test
+      else
+         fatal "Package code not recognized."
+         exit
+      fi
+
+      export VAULT_GOVC=team/env
+      h2 "govaultenv run $VAULT_GOVC ..."
+      govaultenv -verbose=debug /bin/bash
+
+fi  # USE_VAULT
+
+
+
+if [ "${MOVE_SECURELY}" = true ]; then   # -m
+   # See https://github.com/settings/keys 
+   # See https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/about-ssh-certificate-authorities
+   # See https://github.blog/2019-08-14-ssh-certificate-authentication-for-github-enterprise-cloud/
+   
+   LOCAL_SSH_KEYFILE="test-ssh"
+   if [ ! -f "${LOCAL_SSH_KEYFILE}" ]; then  # not exists
+      h2 "Generating SSH key file $LOCAL_SSH_KEYFILE ..."
+      ssh-keygen -t rsa -f "${LOCAL_SSH_KEYFILE}" -N ""
+   else
+      info "Using existing SSH key file ${LOCAL_SSH_KEYFILE}"
+   fi
+   note "$( ls -al ${LOCAL_SSH_KEYFILE} )"
+ 
+
+   CA_KEY_FULLPATH="./ca_key"  # "~/.ssh/ca_key"  # "./ca_key" for current (project) folder  
+   if [ ! -f "${CA_KEY_FULLPATH}" ]; then  # not exists
+      h2 "CA key file $CA_KEY_FULLPATH not found, so generating for ADMIN ..."
+      ssh-keygen -t rsa -f "${CA_KEY_FULLPATH}" -N ""
+      # see https://unix.stackexchange.com/questions/69314/automated-ssh-keygen-without-passphrase-how
+
+      h2 "ADMIN: In GitHub.com GUI SSH Certificate Authorities, manually click New CA and paste CA cert. ..."
+      # On macOS
+         cat "${CA_KEY_FULLPATH}.pub" | pbcopy
+         open https://github.com/organizations/Mck-Internal-Test/settings/security
+      # On Windows
+         ## ???
+      # Linux: See https://www.ostechnix.com/how-to-use-pbcopy-and-pbpaste-commands-on-linux/
+      read -t 30 -p "Pausing -t 30 seconds to import ${LOCAL_SSH_KEYFILE} in GitHub.com GUI ..."
+
+   else
+      info "Using existing CA key file $CA_KEY_FULLPATH ..."
+   fi
+   note "$( ls -al ${CA_KEY_FULLPATH} )"
+
+
+   # GitHub_ACCOUNT from ./secrets.sh ...
+      h2 "Signing user ${GitHub_ACCOUNT} public key file ${LOCAL_SSH_KEYFILE} ..."
+      ssh-keygen -s "${CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
+         -O "extension:login@github.com=${GitHub_ACCOUNT}" "${LOCAL_SSH_KEYFILE}.pub"
+      # RESPONSE: Signed user key test-ssh-cert.pub: id "wilson-mar" serial 0 valid forever
+      SSH_CERT_PUB_KEYFILE="${LOCAL_SSH_KEYFILE}-cert.pub"
+      if [ ! -f "${SSH_CERT_PUB_KEYFILE}" ]; then  # not exists
+         error "File ${SSH_CERT_PUB_KEYFILE} not found ..."
+      else
+         note "File ${SSH_CERT_PUB_KEYFILE} found ..."
+         note "$( ls -al ${SSH_CERT_PUB_KEYFILE} )"
+      fi
+
+   if [ "${USE_VAULT}" = false ]; then   # -H
+      h2 "Use GitHub extension to sign user public key with 1d Validity for ${GitHub_ACCOUNT} ..."
+      ssh-keygen -s "${CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
+         -O "extension:login@github.com=${GitHub_ACCOUNT}" -V '+1d' "${LOCAL_SSH_KEYFILE}.pub"
+         # 1m = 1minute, 1d = 1day
+         # -n user1 user1.pub
+         # RESPONSE: Signed user key test-ssh-cert.pub: id "wilsonmar" serial 0 valid from 2020-05-23T12:59:00 to 2020-05-24T13:00:46
+
+   else  # USE_VAULT
+      # See https://www.vaultproject.io/docs/secrets/ssh/signed-ssh-certificates.html
+
+      note "$( VAULT_ADDR=$VAULT_ADDR )"
+      note "$( VAULT_TLS_SERVER=$VAULT_TLS_SERVER )"
+      note "$( VAULT_SERVERS=$VAULT_SERVERS )"
+      note "$( CONSUL_HTTP_ADDR=$CONSUL_HTTP_ADDR )"
+
+      SSH_CLIENT_SIGNER_PATH="ssh-client-signer"
+
+      # Assuming Vault was enabled earlier in this script.
+      h2 "Create SSH CA ..."
+      vault secrets enable -path="${SSH_CLIENT_SIGNER_PATH}"  ssh
+      vault write "${SSH_CLIENT_SIGNER_PATH}/config/ca"  generate_signing_key=true
+
+      SSH_USER_ROLE="oleksii_samorukov"
+      h2 "Create user role ${SSH_USER_ROLE} with GH mapping ..."
+      vault write "${SSH_CLIENT_SIGNER_PATH}/roles/${SSH_USER_ROLE}" @myrole.json
+
+      h2 "Sign user public certificate and inspect it ..."
+      vault write -field=signed_key  "${SSH_CLIENT_SIGNER_PATH}/roles/${SSH_USER_ROLE}"  "public_key=@./${LOCAL_SSH_KEYFILE}.pub" \
+         | tee "${SSH_CERT_PUB_KEYFILE}"
+
+      h2 "Inspect ${SSH_CERT_PUB_KEYFILE} ..."
+      ssh-keygen -L -f "${SSH_CERT_PUB_KEYFILE}"
+
+      h2 "Verify use of Vault SSH cert ..."
+      ssh git@github.com  # (ssh would automatically use `test-ssh-cert.pub` file)
+
+   fi  # if [ "${USE_VAULT}" = true ]
+
+
+   if [ "${RUN_VERBOSE}" = true ]; then   # -v
+      h2 "Verify ..."
+      ssh git@github.com  # (ssh would automatically use `test-ssh-cert.pub` file)
+      # RESPONSE: PTY allocation request failed on channel 0
+             # Hi wilsonmar! You've successfully authenticated, but GitHub does not provide shell access.
+             # Connection to github.com closed.
+   fi
+
+   exit
+
+fi  # MOVE_SECURELY
+
+
 if [ "${NODE_INSTALL}" = true ]; then  # -n
+
+# If VAULT is used:
 
    h2 "Install -node"
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
@@ -1466,161 +1809,7 @@ if [ "${RUN_ANACONDA}" = true ]; then  # -A
 fi  # RUN_ANACONDA
 
 
-if [ "${USE_VAULT}" = true ]; then   # -H
-      h2 "-HashicorpVault being used ..."
 
-      # See https://learn.hashicorp.com/vault/getting-started/install for install video
-          # https://learn.hashicorp.com/vault/secrets-management/sm-versioned-kv
-          # https://www.vaultproject.io/api/secret/kv/kv-v2.html
-      # NOTE: vault-cli is a Subversion-like utility to work with Jackrabbit FileVault (not Hashicorp Vault)
-      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
-         if ! command -v vault >/dev/null; then  # command not found, so:
-            note "Brew installing vault ..."
-            brew install vault
-            # vault -autocomplete-install
-            # exec $SHELL
-         else  # installed already:
-            if [ "${UPDATE_PKGS}" = true ]; then
-               note "Brew upgrading vault ..."
-               brew upgrade vault
-               # vault -autocomplete-install
-               # exec $SHELL
-            fi
-         fi
-         # See https://github.com/sethvargo/secrets-in-serverless using kv or aws (iam) secrets engine.
-
-      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-         silent-apt-get-install "vault"
-      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
-         sudo yum install vault      # please test
-         exit 9
-      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
-         sudo zypper install vault   # please test
-         exit 9
-      fi
-      RESPONSE="$( vault --version | cut -d' ' -f2 )"  # 2nd column of "Vault v1.3.4"
-      export VAULT_VERSION="${RESPONSE:1}"   # remove first character.
-      note "VAULT_VERSION=$VAULT_VERSION"   
-      
-      # Instead of vault -autocomplete-install   # for interactive manual use.
-      # The complete command inserts in $HOME/.bashrc and .zsh
-      complete -C /usr/local/bin/vault vault
-         # No response is expected. Requires running exec $SHELL to work.
-
-   if [ "${RUN_TESTS}" = true ]; then   # -t
-      # CAUTION: Vault dev server is insecure and stores all data in memory only!
-
-      h2 "Starting vault local dev server at $VAULT_ADDR ..."  # https://learn.hashicorp.com/vault/getting-started/dev-server
-      ps_kill 'vault'  # bash function defined in this file.
-      # Don't RESPONSE="$( vault server -dev  & )"  # & = background job
-      # because this displays Unseal Key and Root Token:
-                    vault server -dev
-      # THIS SCRIPT PAUSES HERE. OPEN ANOTHER TERMINAL SESSION.
-      # Press control+C to stop service.
-
-      # echo -e "RESPONSE=$RESPONSE \n"
-
-      # FIXME: capture output:
-      export UNSEAL_KEY="$( echo "${RESPONSE}" | grep -o 'Unseal Key: [^, }]*' | sed 's/^.*: //' )"
-      export VAULT_DEV_ROOT_TOKEN_ID="$( echo "${RESPONSE}" | grep -o 'Root Token: [^, }]*' | sed 's/^.*: //' )"
-      note -e ">>> UNSEAL_KEY=$UNSEAL_KEY \n"
-      note -e ">>> VAULT_DEV_ROOT_TOKEN_ID=$VAULT_DEV_ROOT_TOKEN_ID \n"
-      #sample      VAULT_DEV_ROOT_TOKEN_ID="s.Lgsh7FXX9cUKQttfFo1mdHjE"
-
-   fi  # RUN_TESTS
-
-
-   if [ "${RUN_ACTUAL}" = true ]; then   # -a
-      # use production ADDR from secrets
-      if [ -z "${VAULT_ADDR}" ]; then  # it's blank:
-         error "VAULT_ADDR is not defined (within secrets file) ..."
-      else
-         if ! ping -c 1 "${VAULT_ADDR}" &> /dev/null ; then 
-            error "VAULT_ADDR=$VAULT_ADDR ICMP ping failed. Aborting ..."
-            info  "Is VPN (GlobalProtect) running and you're loggin in?"
-            # exit
-         fi
-      fi
-      export VAULT_NAME="prodservermode"  # ???
-   else  # test:
-      export VAULT_ADDR=http://127.0.0.1:8200
-      export VAULT_NAME="devservermode"
-   fi  # RUN_ACTUAL
-
-   note -e "\n"
-   RESPONSE="$( vault status 2>&2)"  # capture STDERR output to &1 (STDOUT)
-         # See https://stackoverflow.com/questions/2990414/echo-that-outputs-to-stderr
-         # STDERR: Error checking seal status: Get https://vault..../v1/sys/seal-status: dial tcp: lookup vault....: no such host
-   ERR_RESPONSE="$( echo $RESPONSE | awk '{print $1;}' )"
-   if [ "Error" = "$ERR_RESPONSE" ]; then
-         fatal "${ERR_RESPONSE}"
-         exit
-   else
-         note -e ">>> $RESPONSE"
-   fi
-
-   if [ -n "${VAULT_USERNAME}" ]; then  # is not empty
-      note "Vault login as ${VAULT_USERNAME} ..."
-      vault login -method=okta username="${VAULT_USERNAME}"  # from secrets.sh
-         # Put https://127.0.0.1:8200/v1/auth/okta/login: dial tcp 127.0.0.1:8200: connect: connection refused
-   fi
-
-   note -e "\n Put secret/hello ..."
-   note -e "\n"
-   # Make CLI calls to the kv secrets engine for key/value pair:
-   vault kv put secret/hello vault="${VAULT_NAME}"
-      
-   note -e "\n Get secret/hello text ..."
-   note -e "\n"
-   vault kv get secret/hello  # to system variable for .py program.
-         # See https://www.vaultproject.io/docs/commands/index.html
-
-   #note -e "\n Get secret/hello as json ..."
-   #note -e "\n"
-   #vault kv get -format=json secret/hello | jq -r .data.data.excited
-   #note -e "\n Cat secret/hello from json ..."
-   #cat .data.data.excited
-
-   note -e "\n Enable userpass method ..."
-   note -e "\n"
-   vault auth enable userpass  # is only done once.
-      # Success! Enabled userpass auth method at: userpass/
-   
-
-      #### "Installing govaultenv ..."
-      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
-         # https://github.com/jamhed/govaultenv
-         if ! command -v govaultenv >/dev/null; then  # command not found, so:
-            h2 "Brew installing govaultenv ..."
-            brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
-            brew install govaultenv
-         else  # installed already:
-            if [ "${UPDATE_PKGS}" = true ]; then
-               h2 "Brew upgrading govaultenv ..."
-               brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
-               brew upgrade jamhed/govaultenv/govaultenv
-            fi
-         fi
-         note "govaultenv $( govaultenv | grep version | cut -d' ' -f1 )"
-            # version:0.1.2 commit:d7754e38bb855f6a0c0c259ee2cced29c86a4da5 build by:goreleaser date:2019-11-13T19:47:16Z
-
-      #elif for Alpine? 
-      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-         silent-apt-get-install "govaultenv"  # please test
-      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
-         sudo yum install govaultenv      # please test
-      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
-         sudo zypper install govaultenv   # please test
-      else
-         fatal "Package code not recognized."
-         exit
-      fi
-
-      export VAULT_GOVC=team/env
-      h2 "govaultenv run $VAULT_GOVC ..."
-      govaultenv -verbose=debug /bin/bash
-
-fi  # USE_VAULT
 
 
 if [ "${RUN_THINGS}" = true ]; then  # -s
