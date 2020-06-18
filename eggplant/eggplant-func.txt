@@ -1,0 +1,13 @@
+// eggplant-func.txt
+// Open run window on url:
+// url="http://nopcommerce.testplant.com/"
+// Instead of google-chrome, opera, firefox, 
+TypeText AltKey, F2
+
+Wait 1
+
+TypeText "google-chrome"&&"http://nopcommerce.testplant.com/",return
+
+waitfor 20,"refresh"
+
+typetext Altkey,f10

@@ -1,12 +1,12 @@
 # To execute this docker-compose yml file use `docker-compose -f <file_name> up`
 # Add the `-d` flag at the end for detached execution
-version: "3"
+version: '3'
 services:
   hub:
     image: selenium/hub
     ports:
-      - "4555:4444"
-    environment: 
+      - '4555:4444'
+    environment:
       GRID_MAX_SESSION: 16
       GRID_BROWSER_TIMEOUT: 300
       GRID_TIMEOUT: 300

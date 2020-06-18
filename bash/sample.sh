@@ -13,7 +13,7 @@
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
 THIS_PROGRAM="$0"
-SCRIPT_VERSION="v0.68"
+SCRIPT_VERSION="v0.71"
 # clear  # screen (but not history)
 
 # Capture starting timestamp and display no matter how it ends:
@@ -24,70 +24,75 @@ echo "=========================== $LOG_DATETIME $THIS_PROGRAM $SCRIPT_VERSION"
 
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
-   echo "USAGE EXAMPLE during testing:"
-   echo "./sample.sh -v -g \"abcdef...89\" -p \"cp100-1094\"  # Google API call"
-   echo "./sample.sh -v -n -a  # NodeJs app with MongoDB"
-   echo "./sample.sh -v -i -o  # Ruby app"   
-   echo "./sample.sh -v -I -U -c -s -y -r -a -w     # Python Flask web app in Docker"
-   echo "./sample.sh -v -I -U    -s -H    -t        # Initiate Vault test server"
-   echo "./sample.sh -v          -s -H              #      Run Vault test program"
-   echo "./sample.sh -q          -s -H    -a        # Initiate Vault prod server"
-   echo "./sample.sh -v -I -U -c    -H -G -N \"python-samples\" -f \"a9y-sample.py\" -P \"-v\" -t -w -C  # Python sample app using Vault"
-   echo "./sample.sh -v -V -c -T -F \"section_2\" -f \"2-1.ipynb\" -K  # Jupyter anaconda Tensorflow in Venv"
-   echo "./sample.sh -v -V -c -L -s    # Use CircLeci based on secrets"
-   echo "USAGE EXAMPLE after testing:"
-   echo "./sample.sh -v -D -M -C"
    echo "OPTIONS:"
    echo "   -E           to set -e to NOT stop on error"
-   echo "   -x           to set -x to trace command lines"
-#   echo "   -x           to set sudoers -e to stop on error"
    echo "   -v           to run -verbose (list space use and each image to console)"
    echo "   -q           -quiet headings for each step"
+   echo "   -x           to set -x to trace command lines"
+#   echo "   -x           to set sudoers -e to stop on error"
    echo " "
-   echo "   -I           -Install brew, docker, docker-compose"
-   echo "   -U           -Upgrade packages"
+   echo "   -I           -Install jq, brew, docker, docker-compose, etc."
+   echo "   -U           -Upgrade installed packages"
+   echo " "
+   echo "   -s           -secrets retrieve"
+   echo "   -S \"~/.alt.secrets.sh\"  -Secrets full file path"
+   echo "   -H           install/use -Hashicorp Vault secret manager"
+   echo "   -m           Setup Vault SSH CA cert"
    echo " "
    echo "   -L           use CircleCI"
-   echo "   -w            -w in AWS cloud"
+   echo "   -aws         -AWS cloud"
+   echo "   -eks         -eks (Elastic Kubernetes Service) in AWS cloud"
    echo "   -g \"abcdef...89\" -gcloud API credentials for calls"
    echo "   -p \"cp100\"   -project in cloud"
-   echo "   -t           setup -test server to run tests"
-   echo "   -a           -actually run in prod server"
-   echo " "
-   echo "   -A           run with Python -Anaconda "
-   echo "   -T           run -Tensorflow"
    echo " "
    echo "   -d           -delete GitHub and pyenv from previous run"
    echo "   -c           -clone from GitHub"
    echo "   -N           -Name of GitHub Repo folder"
-   echo "   -F \"abc\"     -Folder inside repo"
-   echo "   -f \"a9y.py\"  -file (program) to run"
-   echo "   -P \"-v -x\"   -Parameters controlling program called"
-   echo " "
-   echo "   -H           install/use -Hashicorp Vault secret manager"
-   echo "   -s           -secrets retrieve (in default file within your user HOME folder)"
-#   echo "   -S \"~/.secrets.sh\"  -secrets full file path"
    echo "   -n \"John Doe\"            GitHub user -name"
    echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
-
+   echo " "
+   echo "   -k8s         -k8s (Kubernetes) minikube"
+   echo "   -k           -k install and use Docker"
    echo "   -b           -build Docker image"
-#   echo "   -?           -Store image built in DockerHub"
-   echo "   -r           start Docker to -run"
-   echo " "
-   echo "   -y            install Python Flask"
+   echo "   -w           -write image to DockerHub"
+   echo "   -r           -restart Docker before run"
    echo "   -V           to run within VirtualEnv (pipenv is default)"
-   echo "   -G           run -GitHub python-samples"
    echo " "
+   echo "   -T           run -Tensorflow"
+   echo "   -A           run with Python -Anaconda "
+   echo "   -py          run with Pyenv"
+   echo "   -G           run python in -GitHub "
+   echo "   -y            install Python Flask"
    echo "   -i           -install Ruby and Refinery"
    echo "   -j            install -JavaScript (NodeJs) app with MongoDB"
    echo " "
-   echo "   -o           -open/view web page in default browser"
-   echo "   -D           -Delete files after run (to save disk space)"
-   echo "   -M           remove Docker iMages pulled from DockerHub"
-   echo "   -C           remove -Cloned files after run (to save disk space)"
-   echo "   -K           stop processes at end of run (to save CPU)"
+   echo "   -F \"abc\"     -Folder inside repo"
+   echo "   -f \"a9y.py\"  -file (program) to run"
+   echo "   -P \"-v -x\"   -Parameters controlling program called"
+   echo "   -a           -actually run server (not dry run)"
+   echo "   -t           setup -test server to run tests"
+   echo "   -o           -open/view app or web page (in default browser)"
    echo " "
- }
+   echo "   -K           stop processes at end of run (to save CPU)"
+   echo "   -D           -Delete files after run (to save disk space)"
+   echo "   -C           remove -Cloned files after run (to save disk space)"
+   echo "   -M           remove Docker iMages pulled from DockerHub"
+   echo "USAGE EXAMPLE during testing:"
+   echo "./sample.sh -v -O   -r -k -K -D  # eggplant use docker-compose of selenium-hub images"
+   echo "./sample.sh -v -S \"\$HOME/.mck-secrets.sh\" -eks -D "
+   echo "./sample.sh -v -S \"\$HOME/.mck-secrets.sh\" -H -m -t    # Use SSH-CA certs with -H Hashicorp Vault -test actual server"
+   echo "./sample.sh -v -g \"abcdef...89\" -p \"cp100-1094\"  # Google API call"
+   echo "./sample.sh -v -n -a  # NodeJs app with MongoDB"
+   echo "./sample.sh -v -i -o  # Ruby app"   
+   echo "./sample.sh -v -I -U -c -s -y -r -a -AWS   # Python Flask web app in Docker"
+   echo "./sample.sh -v -I -U    -s -H    -t        # Initiate Vault test server"
+   echo "./sample.sh -v          -s -H              #      Run Vault test program"
+   echo "./sample.sh -q          -s -H    -a        # Initiate Vault prod server"
+   echo "./sample.sh -v -I -U -c    -H -G -N \"python-samples\" -f \"a9y-sample.py\" -P \"-v\" -t -AWS -C  # Python sample app using Vault"
+   echo "./sample.sh -v -V -c -T -F \"section_2\" -f \"2-1.ipynb\" -K  # Jupyter anaconda Tensorflow in Venv"
+   echo "./sample.sh -v -V -c -L -s    # Use CircLeci based on secrets"
+   echo "./sample.sh -v -D -M -C"
+}
 if [ $# -eq 0 ]; then  # display if no parameters are provided:
    args_prompt
    exit 1
@@ -106,12 +111,30 @@ exit_abnormal() {            # Function: Exit with error.
    RUN_TESTS=false              # -t
    RUN_VIRTUALENV=false         # -V
    RUN_ANACONDA=false           # -A
-   RUN_THINGS=false             # -G
+   RUN_PYTHON=false             # -G
    RUN_PARMS=""                 # -P
    USE_CIRCLECI=false           # -L
    USE_DOCKER=false             # -k
-   USE_AWS_CLOUD=false          # -w
+   INSTALL_AWS_CLIENT=false     #
    USE_YUBIKEY=false            # -Y
+
+   USE_AWS_CLOUD=false          # -aws
+   RUN_EKS=false                # -eks
+   # From AWS Management Console https://console.aws.amazon.com/iam/
+      AWS_OUTPUT_FORMAT="json"  # asked by aws configure CLI.
+   # From secrets file:
+      AWS_ACCESS_KEY_ID=""
+      AWS_SECRET_ACCESS_KEY=""
+      AWS_USER_ARN=""
+      AWS_MFA_ARN=""
+      AWS_DEFAULT_REGION="us-east-2"
+      EKS_CLUSTER_NAME="sample-k8s"
+      EKS_KEY_FILE_PREFIX="eksctl-1"
+      EKS_NODES="2"
+      EKS_NODE_TYPE="m5.large"
+   EKS_CLUSTER_FILE=""   # cluster.yaml instead
+   EKS_CRED_IS_LOCAL=true
+   USE_K8S=false                # -k8s
    USE_AZURE_CLOUD=false        # -z
    USE_GOOGLE_CLOUD=false       # -g
        GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
@@ -127,23 +150,30 @@ exit_abnormal() {            # Function: Exit with error.
    MY_FOLDER=""
    MY_FILE=""
      #MY_FILE="2-3.ipynb"
+   RUN_EGGPLANT=false           # -eggplant
    RUN_QUIET=false              # -q
    UPDATE_PKGS=false            # -U
+
    RESTART_DOCKER=false         # -r
    BUILD_DOCKER_IMAGE=false     # -b
+   WRITE_TO_DOCKERHUB=false     # -w
+   USE_PYENV=false              # -py
    DOWNLOAD_INSTALL=false       # -I
-   RUN_DELETE_AFTER=false       # -D
+   DELETE_CONTAINER_AFTER=false # -D
    RUN_TENSORFLOW=false         # -T
-   RUN_OPEN_BROWSER=false       # -o
+   OPEN_APP=false               # -o
+   APP1_PORT="8000"
+
    CLONE_GITHUB=false           # -c
-   REMOVE_GITHUB_AFTER=false    # -R
+
    REMOVE_DOCKER_IMAGES=false   # -M
+   REMOVE_GITHUB_AFTER=false    # -R
    KILL_PROCESSES=false         # -K
 
 PROJECT_FOLDER_PATH="$HOME/projects"  # -P
-GitHub_REPO_NAME=""
-GitHub_USER_NAME="Wilson Mar"             # -n
-GitHub_USER_EMAIL="wilson_mar@gmail.com"  # -e
+export GitHub_REPO_NAME=""
+export GitHub_USER_NAME="WilsonMar"             # -n
+export GitHub_USER_EMAIL="wilson_mar@gmail.com"  # -e
 
 while test $# -gt 0; do
   case "$1" in
@@ -153,6 +183,10 @@ while test $# -gt 0; do
       ;;
     -A)
       export RUN_ANACONDA=true
+      shift
+      ;;
+    -aws)
+      export USE_AWS_CLOUD=true
       shift
       ;;
     -b)
@@ -172,7 +206,13 @@ while test $# -gt 0; do
       shift
       ;;
     -D)
-      export RUN_DELETE_AFTER=true
+      export DELETE_CONTAINER_AFTER=true
+      shift
+      ;;
+    -eks)
+      # export INSTALL_AWS_CLIENT=true
+      export USE_AWS_CLOUD=true
+      export RUN_EKS=true
       shift
       ;;
     -e*)
@@ -203,7 +243,7 @@ while test $# -gt 0; do
       shift
       ;;
     -G)
-      export RUN_THINGS=true
+      export RUN_PYTHON=true
       GitHub_REPO_URL="https://github.com/wilsonmar/python-samples.git"
       GitHub_REPO_NAME="python-samples"
       shift
@@ -235,6 +275,10 @@ while test $# -gt 0; do
       ;;
     -k)
       export USE_DOCKER=true
+      shift
+      ;;
+    -k8s)
+      export USE_K8S=true
       shift
       ;;
     -K)
@@ -270,7 +314,17 @@ while test $# -gt 0; do
       shift
       ;;
     -o)
-      export RUN_OPEN_BROWSER=true
+      export OPEN_APP=true
+      shift
+      ;;
+    -O)
+      export RUN_EGGPLANT=true
+      export GitHub_REPO_URL="https://github.com/SeleniumHQ/docker-selenium.git"
+      export GitHub_REPO_NAME="eggplant-demo"
+      shift
+      ;;
+    -py)
+      export USE_PYENV=true
       shift
       ;;
     -p*)
@@ -329,12 +383,12 @@ while test $# -gt 0; do
       #MY_FOLDER="section_2" # or ="section_3"
       shift
       ;;
-    -w)
-      export USE_AWS_CLOUD=true
-      shift
-      ;;
     -x)
       export SET_TRACE=true
+      shift
+      ;;
+    -w)
+      export WRITE_TO_DOCKERHUB=true
       shift
       ;;
     -y)
@@ -403,14 +457,14 @@ fatal() {   # Skull: &#9760;  # Star: &starf; &#9733; U+02606  # Toxic: &#9762;
    OS_TYPE="$( uname )"
    OS_DETAILS=""  # default blank.
 if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
-      OS_TYPE="macOS"
-      PACKAGE_MANAGER="brew"
+      export OS_TYPE="macOS"
+      export PACKAGE_MANAGER="brew"
 elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
    if command -v lsb_release ; then
       lsb_release -a
-      OS_TYPE="Ubuntu"
+      export OS_TYPE="Ubuntu"
       # TODO: OS_TYPE="WSL" ???
-      PACKAGE_MANAGER="apt-get"
+      export PACKAGE_MANAGER="apt-get"
 
       # TODO: sudo dnf install pipenv  # for Fedora 28
 
@@ -424,15 +478,15 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
       }
    elif [ -f "/etc/os-release" ]; then
       OS_DETAILS=$( cat "/etc/os-release" )  # ID_LIKE="rhel fedora"
-      OS_TYPE="Fedora"
-      PACKAGE_MANAGER="yum"
+      export OS_TYPE="Fedora"
+      export PACKAGE_MANAGER="yum"
    elif [ -f "/etc/redhat-release" ]; then
-      OS_DETAILS=$( cat "/etc/redhat-release" )
-      OS_TYPE="RedHat"
-      PACKAGE_MANAGER="yum"
+      export OS_DETAILS=$( cat "/etc/redhat-release" )
+      export OS_TYPE="RedHat"
+      export PACKAGE_MANAGER="yum"
    elif [ -f "/etc/centos-release" ]; then
-      OS_TYPE="CentOS"
-      PACKAGE_MANAGER="yum"
+      export OS_TYPE="CentOS"
+      export PACKAGE_MANAGER="yum"
    else
       error "Linux distribution not anticipated. Please update script. Aborting."
       exit 0
@@ -560,14 +614,63 @@ if [ "${SET_XTRACE}" = true ]; then
 fi
 # set -o nounset
 
+### Get secrets from $HOME/.secrets.sh file:
+Input_GitHub_User_Info(){
+      # https://www.shellcheck.net/wiki/SC2162: read without -r will mangle backslashes.
+      read -r -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
+      GitHub_USER_NAME=${GitHub_USER_NAME:-"John Doe"}
+      GitHub_ACCOUNT=${GitHub_ACCOUNT:-"john-doe"}
 
-# TODO: Capture password manual input once for multiple shares 
-# (without saving password like expect command) https://www.linuxcloudvps.com/blog/how-to-automate-shell-scripts-with-expect-command/
-   # From https://askubuntu.com/a/711591
-#   read -p "Password: " -s szPassword
-#   printf "%s\n" "$szPassword" | sudo --stdin mount \
-#      -t cifs //192.168.1.1/home /media/$USER/home \
-#      -o username=$USER,password="$szPassword"
+      read -r -p "Enter your GitHub user email [john_doe@gmail.com]: " GitHub_USER_EMAIL
+      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"johb_doe@gmail.com"}
+}
+# TODO: https://www.passwordstore.org using brew install pass
+
+
+if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
+   warning "Using default values hard-coded in this bash script ..."
+   # Input_GitHub_User_Info  # function defined above.
+   # flag not to use file, then manually input:
+
+   # See https://pipenv-fork.readthedocs.io/en/latest/advanced.html#automatic-loading-of-env
+   # PIPENV_DOTENV_LOCATION=/path/to/.env or =1 to not load.
+else
+   if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
+      fatal "File not found in -secrets file $SECRETS_FILEPATH."
+      code "${SECRETS_FILEPATH}"
+      exit 9
+
+      warning "Downloading file .secrets.sample.sh ... "
+      #curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/secrets.sample.sh
+      #warning "Copying secrets.sample.sh downloaded to \$HOME/.secrets.sh ... "
+      #cp secrets.sample.sh  .secrets.sh
+      #fatal "Please edit file \$HOME/.secrets.sh and run again ..."
+      #exit 1
+   else  # secrets file found:
+      h2 "Reading -secrets.sh in $SECRETS_FILEPATH ..."
+      note "$(ls -al $SECRETS_FILEPATH )"
+      chmod +x "$SECRETS_FILEPATH"
+      source   "$SECRETS_FILEPATH"  # run file containing variable definitions.
+      if [ "$CIRCLECI_API_TOKEN" == "xxx" ]; then 
+         fatal "Please edit CIRCLECI_API_TOKEN in file \$HOME/.secrets.sh and run again ..."
+         exit 9
+      fi
+   fi
+
+   # TODO: Capture password manual input once for multiple shares 
+   # (without saving password like expect command) https://www.linuxcloudvps.com/blog/how-to-automate-shell-scripts-with-expect-command/
+      # From https://askubuntu.com/a/711591
+   #   read -p "Password: " -s szPassword
+   #   printf "%s\n" "$szPassword" | sudo --stdin mount \
+   #      -t cifs //192.168.1.1/home /media/$USER/home \
+   #      -o username=$USER,password="$szPassword"
+
+fi  # if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
+
+         note "AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}"
+         note "GitHub_USER_NAME=\"${GitHub_USER_NAME}\" "
+         note "GitHub_USER_EMAIL=\"${GitHub_USER_EMAIL}\" "
+
 
 if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
    # Perhaps in https://console.cloud.google.com/cloudshell  (use on Chromebooks with no Terminal)
@@ -687,6 +790,7 @@ if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 fi
 
 
+
 if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
    h2 "-Install package managers ..."
@@ -791,7 +895,7 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
 fi # if [ "${DOWNLOAD_INSTALL}"
 
-echo " "
+
 
 if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
 
@@ -883,7 +987,8 @@ pipenv_install() {
 }  # pipenv_install()
 
 
-if [ "${USE_AWS_CLOUD}" = true ]; then   # -w
+if [ "${INSTALL_AWS_CLIENT}" = true ]; then
+
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then
       #fancy_echo "awscli requires Python3."
       # See https://docs.aws.amazon.com/cli/latest/userguide/cli-install-macos.html#awscli-install-osx-pip
@@ -903,12 +1008,21 @@ if [ "${USE_AWS_CLOUD}" = true ]; then   # -w
                # curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
                # unzip awscli-bundle.zip
                # sudo ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
-            pipenv upgrade awscli --upgrade --user
+            pipenv install awscli --upgrade --user
          fi
       fi
-      note "$(aws --version)"  # aws-cli/1.11.160 Python/2.7.10 Darwin/17.4.0 botocore/1.7.18
+      note "$( aws --version )"  # aws-cli/2.0.9 Python/3.8.2 Darwin/19.5.0 botocore/2.0.0dev13
+
+   fi  # "${PACKAGE_MANAGER}" == "brew" ]; then
+
+fi
 
 
+if [ "${USE_AWS_CLOUD}" = true ]; then   # -w
+   if [ "${USE_VAULT}" = true ]; then   # -w
+      # Alternative: https://hub.docker.com/_/vault
+
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
          # See https://www.davehall.com.au/tags/bash
          if ! command -v aws-vault >/dev/null; then  # command not found, so:
             h2 "Brew cask installing aws-vault ..."
@@ -916,14 +1030,264 @@ if [ "${USE_AWS_CLOUD}" = true ]; then   # -w
          else  # installed already:
             if [ "${UPDATE_PKGS}" = true ]; then
                h2 "Brew cask upgrade aws-vault ..."
+               note "aws-vault version $( aws-vault --version )"  # v5.3.2
                brew upgrade aws-vault
             fi
          fi
-         note "$( aws-vault --version )"  # v5.3.2
-   fi
+         note "aws-vault version $( aws-vault --version )"  # v5.3.2
+
+      fi  # "${PACKAGE_MANAGER}" == "brew" ]; then
+
+   fi  # if [ "${USE_VAULT}" = true 
 
 fi  # USE_AWS_CLOUD
+
+
+if [ "${USE_K8S}" = true ]; then  # -k8s
+
+   h2 "-k8s"
+
+   # See https://kubernetes.io/docs/tasks/tools/install-minikube/
+   RESPONSE="$( sysctl -a | grep -E --color 'machdep.cpu.features|VMX' )"
+   if [[ "${RESPONSE}" == *"VMX"* ]]; then  # contains it:
+      note "VT-x feature needed to run Kubernetes is available!"
+   else
+      fatal "VT-x feature needed to run Kubernetes is NOT available!"
+      exit 9
+   fi
+
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+
+         if ! command -v minikube >/dev/null; then  # command not found, so:
+            h2 "Brew cask installing minikube ..."
+            brew install minikube  
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew cask upgrade minikube ..."
+               note "minikube version $( minikube version )"  # minikube version: v1.11.0
+               brew upgrade minikube
+            fi
+         fi
+         note "minikube version $( minikube version )"  # minikube version: v1.11.0
+             # commit: 57e2f55f47effe9ce396cea42a1e0eb4f611ebbd
+
+      fi  # "${PACKAGE_MANAGER}" == "brew" 
+
+exit
+
+fi  # if [ "${USE_K8S}" = true ]; then  # -k8s
+
+
+
+if [ "${RUN_EKS}" = true ]; then  # -EKS
+
+   # h2 "kubectl client install for -EKS ..."
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+      # Use Homebrew instead of https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html
+      # See https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
+      # to communicate with the k8s cluster API server. 
+         if ! command -v kubectl >/dev/null; then  # not found:
+         h2 "kubectl install ..."
+            brew install kubectl
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading kubectl ..."
+               note "kubectl $( kubectl version --short --client )"  # Client Version: v1.16.6-beta.0
+               brew upgrade kubectl
+            fi
+         fi
+         note "kubectl $( kubectl version --short --client )"  # Client Version: v1.16.6-beta.0
+
+
+      # See https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html
+         if ! command -v aws-iam-authenticator >/dev/null; then  # not found:
+            h2 "aws-iam-authenticator install ..."
+            brew install aws-iam-authenticator
+            chmod +x ./aws-iam-authenticator
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading aws-iam-authenticator ..."
+               note "aws-iam-authenticator version $( aws-iam-authenticator version )"  # {"Version":"v0.5.0","Commit":"1cfe2a90f68381eacd7b6dcfa2bf689e76eb8b4b"}
+               brew upgrade aws-iam-authenticator
+            fi
+         fi
+         note "aws-iam-authenticator version $( aws-iam-authenticator version )"  # {"Version":"v0.5.0","Commit":"1cfe2a90f68381eacd7b6dcfa2bf689e76eb8b4b"}
+  
+
+   ### h2 "eksctl install ..."
+      # See https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html
+         if ! command -v eksctl >/dev/null; then  # not found:
+            h2 "eksctl install ..."
+            brew tap weaveworks/tap
+            brew install weaveworks/tap/eksctl
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading eksctl ..."
+               note "eksctl version $( eksctl version )"  # 0.21.0
+               brew tap weaveworks/tap
+               brew upgrade eksctl && brew link --overwrite eksctl
+            fi
+         fi
+         note "eksctl version $( eksctl version )"  # 0.21.0
+
+   fi  # "${PACKAGE_MANAGER}" == "brew" ]; then
+
+   h2 "aws iam get-user to check AWS credentials ... "
+   # see https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html
+   # Secrets from AWS Management Console https://console.aws.amazon.com/iam/
+   # More variables at https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
    
+   # For AWS authentication, I prefer to individual variables rather than use static data in a 
+   # named profile file referenced in the AWS_PROFILE environment variable 
+   # per https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html
+
+   # h2 "Working with AWS MFA ..."
+   # See https://blog.gruntwork.io/authenticating-to-aws-with-environment-variables-e793d6f6d02e
+   # Give it the ARN of your MFA device (123456789012) and 
+   # MFA token (123456) from the Google Authenticator App or key fob:
+   #RESPONSE_JSON="$( aws sts get-session-token \
+   #   --serial-number "${AWS_MFA_ARN}" \
+   #   --token-code 123456 \
+   #   --duration-seconds 43200 )"
+
+   #RESPONSE_JSON="$( aws sts assume-role \
+   #   --role-arn arn:aws:iam::123456789012:role/dev-full-access \
+   #   --role-session-name username@company.com \
+   #   --serial-number "${AWS_SERIAL_ARN}" \
+   #   --token-code 123456 \
+   #   --duration-seconds 43200  # 12 hours max.
+   #)"
+
+   # See https://aws.amazon.com/blogs/aws/aws-identity-and-access-management-policy-simulator/
+   # See http://awsdocs.s3.amazonaws.com/EC2/ec2-clt.pdf = AWS EC2 CLI Reference
+
+   RESPONSE="$( aws iam get-user )"
+      # ERROR: Unable to locate credentials. You can configure credentials by running "aws configure".
+      # This script stops if there is a problem here.
+   note "$( echo ${RESPONSE} | jq )"
+
+   h2 "Create cluster $EKS_CLUSTER_NAME using eksctl ... "
+   # See https://eksctl.io/usage/creating-and-managing-clusters/
+   # NOT USED: eksctl create cluster -f "${EKS_CLUSTER_FILE}"  # cluster.yaml
+
+exit
+   eksctl create cluster -v \
+        --name="${EKS_CLUSTER_NAME}" \
+        --region="${AWS_DEFAULT_REGION}" \
+        --ssh-public-key="${EKS_KEY_FILE_PREFIX}" \
+        --nodes="${EKS_NODES}" \  # --nodes-min=, --nodes-max=  # to config K8s Cluster autoscaler to automatically adjust the number of nodes in your node groups.
+        --node_type="${EKS_NODE_TYPE}" \
+        --fargate \
+        # --version 1.16 \  # of kubernetes (1.16)
+        --write-kubeconfig="${EKS_CRED_IS_LOCAL}" \
+        --set-kubeconfig-context=false
+   # RESPONSE: setting availability zones to go with region specified.
+   # using official AWS EKS EC2 AMI, static AMI resolver, dedicated VPC
+      # creating cluster stack "eksctl-v-cluster" to ${EKS_CLUSTER_NAME}
+      # launching CloudFormation stacks "eksctl-v-nodegroup-0" to ${EKS_NODEGROUP_ID}
+      # [ℹ]  nodegroup "ng-eb501ec0" will use "ami-073f227b0cd9507f9" [AmazonLinux2/1.16]
+      # [ℹ]  using Kubernetes version 1.16
+      # [ℹ]  creating EKS cluster "ridiculous-creature-1591935726" in "us-east-2" region with un-managed nodes
+      # [ℹ]  will create 2 separate CloudFormation stacks for cluster itself and the initial nodegroup
+      # [ℹ]  if you encounter any issues, check CloudFormation console or try 'eksctl utils describe-stacks --region=us-east-2 --cluster=ridiculous-creature-1591935726'
+      # [ℹ]  CloudWatch logging will not be enabled for cluster "ridiculous-creature-1591935726" in "us-east-2"
+      # [ℹ]  you can enable it with 'eksctl utils update-cluster-logging --region=us-east-2 --cluster=ridiculous-creature-1591935726'
+      # [ℹ]  Kubernetes API endpoint access will use default of {publicAccess=true, privateAccess=false} for cluster "ridiculous-creature-1591935726" in "us-east-2"
+      # [ℹ]  2 sequential tasks: { create cluster control plane "ridiculous-creature-1591935726", 2 sequential sub-tasks: { no tasks, create nodegroup "ng-eb501ec0" } }
+      # [ℹ]  building cluster stack "eksctl-ridiculous-creature-1591935726-cluster"
+
+   # After about 10-15 minutes:
+
+   if [ "${EKS_CRED_IS_LOCAL}" == true ]; then
+      if [ -f "$HOME/.kube/config" ]; then  # file exists:
+         # If file exists in "$HOME/.kube/config" for cluster credentials
+         h2 "kubectl get nodes ..."
+         kubectl --kubeconfig .kube/config  get nodes
+      else
+         note "No $HOME/.kube/config, so create folder ..."
+         sudo mkdir ~/.kube
+         #sudo cp /etc/kubernetes/admin.conf ~/.kube/
+         # cd ~/.kube
+         #sudo mv admin.conf config
+         #sudo service kubelet restart
+      fi
+   fi
+
+   # https://github.com/cloudacademy/Store2018
+   # git clone https://github.com/cloudacademy/Store2018/tree/master/K8s
+   # from https://hub.docker.com/u/jeremycookdev/ 
+       # deployment/
+       #   store2018.service.yaml 
+       #   store2018.inventoryservice.yaml
+       #   store2018.accountservice.yaml
+       #   store2018.yaml  # specifies host names
+       # service/  # loadbalancers
+       #   store2018.accountservice.service.yaml   = docker pull jeremycookdev/accountservice
+       #   store2018.inventoryservice.service.yaml = docker pull jeremycookdev/inventoryservice
+       #   store2018.service.yaml                  = docker pull jeremycookdev/store2018
+       #   store2018.shoppingservice.service.yaml  = docker pull jeremycookdev/shoppingservice
+   # kubectl apply -f store2018.yml
+
+   # kubectl get services --all-namespaces -o wide
+
+      # NAMESPACE       NAME             TYPE          CLUSTER-IP     EXTERNAL-IP     PORT(S)        AGE
+      # default         svc/kubernetes   ClusterIP     10.100.0.1     <none>          443/TCP        10m
+      # kube-system     kube-dns         ClusterIP     10.100.0.10    <none>          53/UDP.53/TCP  10m
+      # store2018                        LoadBalancer  10.100.77.214  281...amazon..  80:31318/TCP   26s
+
+   # kubectl get deployments
+      # NAME           DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+      # store-service  3         3         3            3           31s
+
+   # kubectl get pods   # to deployment 
+      # NAME  READY   STATUS   RESTARTS   AGE
+      # ....  1/1     Running  0          31s
+
+   # If using Linux accelerated AMI instance type and the Amazon EKS-optimized accelerated AMI
+   #  apply the NVIDIA device plugin for Kubernetes as a DaemonSet on the cluster:
+   # kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/1.0.0-beta/nvidia-device-plugin.yml
+
+   # h2 "Opening EKS Clusters web page ..."
+   # open https://${AWS_DEFAULT_REGION}.console.aws.amazon.com/eks/home?region=${AWS_DEFAULT_REGION}#/clusters
+
+   # h2 "Opening EKS Worker Nodes in EC2 ..."
+   # open https://${AWS_DEFAULT_REGION}.console.aws.amazon.com/ec2/v2/home?region=${AWS_DEFAULT_REGION}#instances;sort=tag:Name
+
+   # h2 "Listing resources ..."  # cluster, security groups, IAM policy, route, subnet, vpc, etc.
+   # note $( aws cloudformation describe-stack-resources --region="${AWS_DEFAULT_REGION}" \
+   #      --stack-name="${EKS_CLUSTER_NAME}" )
+
+   # h2 "Listing node group info ..."  # Egress, InstanceProfile, LaunchConfiguration, IAM:Policy, SecurityGroup
+   # note $( aws cloudformation describe-stack-resources --region="${AWS_DEFAULT_REGION}" \
+   #      --stack-name="${EKS_NODEGROUP_ID}" )
+
+   # Install Splunk Forwarding from https://docs.aws.amazon.com/eks/latest/userguide/metrics-server.html
+
+   # Install CloudWatch monitoring
+
+   # Performance testing using ab (apache bench)
+
+   if [ "$DELETE_CONTAINER_AFTER" = true ]; then  # -D
+ 
+      kubectl delete deployments --all
+      kubectl get pods
+
+      kubectl delete services --all   # load balancers
+      kubectl get services
+   
+      eksctl get cluster 
+      eksctl delete cluster "${EKS_CLUSTER_NAME}"
+
+      if [ -f "$HOME/.kube/config" ]; then  # file exists:
+           rm "$HOME/.kube/config"
+      fi
+
+   fi   # if [ "$DELETE_CONTAINER_AFTER" = true ]; then  # -D
+
+exit  # DEBUGGING
+
+fi  # EKS
+
 
 if [ "${USE_AZURE_CLOUD}" = true ]; then   # -z
       # See https://docs.microsoft.com/en-us/cli/azure/keyvault/secret?view=azure-cli-latest
@@ -941,8 +1305,8 @@ Delete_GitHub_clone(){
    fi
 }
 Clone_GitHub_repo(){
-      git clone "${GitHub_REPO_URL}" "$GitHub_REPO_NAME"
-      cd "$GitHub_REPO_NAME"
+      git clone "${GitHub_REPO_URL}" "${GitHub_REPO_NAME}"
+      cd "${GitHub_REPO_NAME}"
       note "At $PWD"
 }
 
@@ -972,52 +1336,15 @@ if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
 
 else   # do not -clone
    if [ -d "${GitHub_REPO_NAME}" ]; then  # path available.
-      h2 "Re-using repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
-      cd "$GitHub_REPO_NAME"
+      h2 "Re-using repo ${GitHub_REPO_URL} ${GitHub_REPO_NAME} ..."
+      cd "${GitHub_REPO_NAME}"
    else
-      h2 "Git cloning repo $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+      h2 "Git cloning repo ${GitHub_REPO_URL} ${GitHub_REPO_NAME} ..."
       # Clone_GitHub_repo      # defined above in this file.
+      note "$( ls $PWD )"
    fi
 fi
-note "$( ls $PWD )"
 
-
-### Get secrets from $HOME/.secrets.sh file:
-Input_GitHub_User_Info(){
-      # https://www.shellcheck.net/wiki/SC2162: read without -r will mangle backslashes.
-      read -r -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
-      GitHub_USER_NAME=${GitHub_USER_NAME:-"John Doe"}
-
-      read -r -p "Enter your GitHub user email [john_doe@gmail.com]: " GitHub_USER_EMAIL
-      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"johb_doe@gmail.com"}
-}
-if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
-   warning "Using default GitHub user info ..."
-   # Input_GitHub_User_Info  # function defined above.
-   # flag not to use file, then manually input:
-
-   # See https://pipenv-fork.readthedocs.io/en/latest/advanced.html#automatic-loading-of-env
-   # PIPENV_DOTENV_LOCATION=/path/to/.env or =1 to not load.
-else  
-   if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
-      warning "File not found in $SECRETS_FILEPATH. Downloading file .secrets.sample.sh ... "
-      curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/secrets.sample.sh
-      warning "Copying secrets.sample.sh downloaded to \$HOME/.secrets.sh ... "
-      cp secrets.sample.sh  .secrets.sh
-      fatal "Please edit file \$HOME/.secrets.sh and run again ..."
-      exit 1
-   else  # secrets file found:
-      h2 "Using -secrets.sh in $SECRETS_FILEPATH "
-      note "$(ls -al $SECRETS_FILEPATH )"
-      chmod +x "$SECRETS_FILEPATH"
-      source   "$SECRETS_FILEPATH"  # run file containing variable definitions.
-      if [ "$CIRCLECI_API_TOKEN" == "xxx" ]; then 
-         fatal "Please edit CIRCLECI_API_TOKEN in file \$HOME/.secrets.sh and run again ..."
-         exit 9
-      else
-         note "GitHub_USER_NAME=\"$GitHub_USER_NAME\" read from file $SECRETS_FILEPATH"
-      fi
-   fi
 
    if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
       Input_GitHub_User_Info  # function defined above.
@@ -1026,6 +1353,8 @@ else
       # since this is hard coded as "John Doe" above
    fi
 
+
+if [ "${USE_SECRETS_FILE}" = true ]; then   # -S
 
    # This is https://github.com/AGWA/git-crypt      has 4,500 stars.
    # Whereas https://github.com/sobolevn/git-secret has 1,700 stars.
@@ -1351,6 +1680,7 @@ if [ "${USE_VAULT}" = true ]; then   # -H
             # exit
          fi
       fi
+      # export VAULT_ADDR=http://127.0.0.1:8200   # from Roman
       export VAULT_NAME="prodservermode"  # ???
    else  # test:
       export VAULT_ADDR=http://127.0.0.1:8200
@@ -1358,10 +1688,12 @@ if [ "${USE_VAULT}" = true ]; then   # -H
    fi  # RUN_ACTUAL
 
    note -e "\n"
+   # Output to JSON instead & use jq to parse?
    RESPONSE="$( vault status 2>&2)"  # capture STDERR output to &1 (STDOUT)
          # See https://stackoverflow.com/questions/2990414/echo-that-outputs-to-stderr
          # STDERR: Error checking seal status: Get https://vault..../v1/sys/seal-status: dial tcp: lookup vault....: no such host
    ERR_RESPONSE="$( echo $RESPONSE | awk '{print $1;}' )"
+   # TODO: Check error code.
    if [ "Error" = "$ERR_RESPONSE" ]; then
          fatal "${ERR_RESPONSE}"
          exit
@@ -1395,7 +1727,6 @@ if [ "${USE_VAULT}" = true ]; then   # -H
    note -e "\n"
    vault auth enable userpass  # is only done once.
       # Success! Enabled userpass auth method at: userpass/
-   
 
       #### "Installing govaultenv ..."
       if [ "${PACKAGE_MANAGER}" == "brew" ]; then
@@ -1436,7 +1767,6 @@ fi  # USE_VAULT
 
 if [ "${MOVE_SECURELY}" = true ]; then   # -m
    # See https://github.com/settings/keys 
-   # See https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/about-ssh-certificate-authorities
    # See https://github.blog/2019-08-14-ssh-certificate-authentication-for-github-enterprise-cloud/
    
    LOCAL_SSH_KEYFILE="test-ssh"
@@ -1444,10 +1774,11 @@ if [ "${MOVE_SECURELY}" = true ]; then   # -m
       h2 "Generating SSH key file $LOCAL_SSH_KEYFILE ..."
       ssh-keygen -t rsa -f "${LOCAL_SSH_KEYFILE}" -N ""
    else
-      info "Using existing SSH key file ${LOCAL_SSH_KEYFILE}"
+      h2 "Using existing SSH key file ${LOCAL_SSH_KEYFILE}"
    fi
    note "$( ls -al ${LOCAL_SSH_KEYFILE} )"
  
+   # Instead of pbcopy and paste in GitHub.com GUI, use obtain and use SSH certificate from a SSH CA:
 
    CA_KEY_FULLPATH="./ca_key"  # "~/.ssh/ca_key"  # "./ca_key" for current (project) folder  
    if [ ! -f "${CA_KEY_FULLPATH}" ]; then  # not exists
@@ -1470,7 +1801,7 @@ if [ "${MOVE_SECURELY}" = true ]; then   # -m
    note "$( ls -al ${CA_KEY_FULLPATH} )"
 
 
-   # GitHub_ACCOUNT from ./secrets.sh ...
+   # Using GitHub_ACCOUNT (as SSH Key Identity) from ./secrets.sh ...
       h2 "Signing user ${GitHub_ACCOUNT} public key file ${LOCAL_SSH_KEYFILE} ..."
       ssh-keygen -s "${CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
          -O "extension:login@github.com=${GitHub_ACCOUNT}" "${LOCAL_SSH_KEYFILE}.pub"
@@ -1483,6 +1814,12 @@ if [ "${MOVE_SECURELY}" = true ]; then   # -m
          note "$( ls -al ${SSH_CERT_PUB_KEYFILE} )"
       fi
 
+   # According to https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/about-ssh-certificate-authorities
+   # To issue a certificate for someone who has different usernames for GitHub Enterprise Server and GitHub Enterprise Cloud, 
+   # you can include two login extensions.
+   # ssh-keygen -s ./ca-key -I KEY-IDENTITY \
+   #    -O extension:login@github.com=CLOUD-USERNAME extension:login@
+
    if [ "${USE_VAULT}" = false ]; then   # -H
       h2 "Use GitHub extension to sign user public key with 1d Validity for ${GitHub_ACCOUNT} ..."
       ssh-keygen -s "${CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
@@ -1494,6 +1831,7 @@ if [ "${MOVE_SECURELY}" = true ]; then   # -m
    else  # USE_VAULT
       # See https://www.vaultproject.io/docs/secrets/ssh/signed-ssh-certificates.html
 
+      # From -secrets opening ~/.secrets.sh :
       note "$( VAULT_ADDR=$VAULT_ADDR )"
       note "$( VAULT_TLS_SERVER=$VAULT_TLS_SERVER )"
       note "$( VAULT_SERVERS=$VAULT_SERVERS )"
@@ -1506,7 +1844,21 @@ if [ "${MOVE_SECURELY}" = true ]; then   # -m
       vault secrets enable -path="${SSH_CLIENT_SIGNER_PATH}"  ssh
       vault write "${SSH_CLIENT_SIGNER_PATH}/config/ca"  generate_signing_key=true
 
+      SSH_ROLE_FILENAME="myrole.json"
       SSH_USER_ROLE="oleksii_samorukov"
+      echo -e "{" >"${SSH_ROLE_FILENAME}"
+      echo -e "  \"allow_user_certificates\": true," >>"${SSH_ROLE_FILENAME}"
+      echo -e "  \"allow_users\": \"*\"," >>"${SSH_ROLE_FILENAME}"
+      echo -e "  \"default_extensions\": [" >>"${SSH_ROLE_FILENAME}"
+      echo -e "    {" >>"${SSH_ROLE_FILENAME}"
+      echo -e "      \"login@github.com\": \"$SSH_USER_ROLE\" " >>"${SSH_ROLE_FILENAME}"
+      echo -e "    }" >>"${SSH_ROLE_FILENAME}"
+      echo -e "  ]," >>"${SSH_ROLE_FILENAME}"
+      echo -e "  \"key_type\": \"ca\"," >>"${SSH_ROLE_FILENAME}"
+      echo -e "  \"default_user\": \"ubuntu\"," >>"${SSH_ROLE_FILENAME}"
+      echo -e "  \"ttl\": \"30m0s\"" >>"${SSH_ROLE_FILENAME}"
+      echo -e "}" >>"${SSH_ROLE_FILENAME}"
+
       h2 "Create user role ${SSH_USER_ROLE} with GH mapping ..."
       vault write "${SSH_CLIENT_SIGNER_PATH}/roles/${SSH_USER_ROLE}" @myrole.json
 
@@ -1524,10 +1876,14 @@ if [ "${MOVE_SECURELY}" = true ]; then   # -m
 
 
    if [ "${RUN_VERBOSE}" = true ]; then   # -v
-      h2 "Verify ..."
-      ssh git@github.com  # (ssh would automatically use `test-ssh-cert.pub` file)
-      # RESPONSE: PTY allocation request failed on channel 0
-             # Hi wilsonmar! You've successfully authenticated, but GitHub does not provide shell access.
+      h2 "Verify access to GitHub.com using SSH ..."
+
+      # To avoid RESPONSE: PTY allocation request failed on channel 0
+      # Ensure that "PermitTTY no" is in ~/.ssh/authorized_keys (on servers to contain id_rsa.pub)
+      # See https://bobcares.com/blog/pty-allocation-request-failed-on-channel-0/
+
+      ssh git@github.com  # -vvv  (ssh automatically uses `test-ssh-cert.pub` file)
+      # RESPONSE: Hi wilsonmar! You've successfully authenticated, but GitHub does not provide shell access.
              # Connection to github.com closed.
    fi
 
@@ -1540,7 +1896,7 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
 
 # If VAULT is used:
 
-   h2 "Install -node"
+   # h2 "Install -node"
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
       if ! command -v node ; then
          h2 "Installing node ..."
@@ -1732,7 +2088,10 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V  (not the default pipenv)
       pip3 install -r requirements.txt
    fi
 
-else  # RUN_VIRTUALENV means Pipenv default
+fi   # RUN_VIRTUALENV means Pipenv default
+
+
+if [ "${USE_PYENV}" = true ]; then  # -py
 
    h2 "Use Pipenv by default (not overrided by -Virtulenv)"
    # https://www.activestate.com/blog/how-to-build-a-ci-cd-pipeline-for-python/
@@ -1777,7 +2136,7 @@ else  # RUN_VIRTUALENV means Pipenv default
       PYTHONPATH='.' pipenv run python main.py    
    fi 
 
-fi  # RUN_VIRTUALENV
+fi    # USE_PYENV
 
 
 if [ "${RUN_ANACONDA}" = true ]; then  # -A
@@ -1809,37 +2168,72 @@ if [ "${RUN_ANACONDA}" = true ]; then  # -A
 fi  # RUN_ANACONDA
 
 
-
-
-
-if [ "${RUN_THINGS}" = true ]; then  # -s
+if [ "${RUN_PYTHON}" = true ]; then  # -s
 
    # https://docs.python-guide.org/dev/virtualenvs/
 
-   h2 "-G run things at $PWD ..."
-   if [ -z "${MY_FOLDER}" ]; then  # is empty
-      note "-Folder not specified for within $PWD ..."
-   else
-      note "cd into ${MY_FOLDER} ..."
-      cd  "${MY_FOLDER}"
-   fi
+   PYTHON_VERSION="$( python3 -V )"   # "Python 3.7.6"
+   # TRICK: Remove leading white space after removing first word
+   PYTHON_SEMVER=$(sed -e 's/^[[:space:]]*//' <<<"${PYTHON_VERSION//Python/}")
 
    if [ -z "${MY_FILE}" ]; then  # is empty
-      error "No program -file specified ..."
-   else
-      if [ ! -f "${MY_FILE}" ]; then  # file not found:
-         error "-file \"${MY_FILE}\" not found ..."
+      fatal "No program -file specified ..."
+      exit 9
+   fi
+
+     if [ -z "${MY_FOLDER}" ]; then  # is empty
+         note "-Folder not specified for within $PWD ..."
       else
+         cd  "${MY_FOLDER}"
+      fi
+
+      if [ ! -f "${MY_FILE}" ]; then  # file not found:
+         fatal "-file \"${MY_FILE}\" not found ..."
+         exit 9
+      fi
+
+         h2 "-Good Python ${PYTHON_SEMVER} running ${MY_FILE} ${RUN_PARMS} ..."
+
          if [ ! -f "Pipfile" ]; then  # file not found:
             note "Pipfile found, run Pipenv ${MY_FILE} ${RUN_PARMS} ..."
             PYTHONPATH='.' pipenv run python "${MY_FILE}" "${RUN_PARMS}"
-         else
-            note "Python3 Running ${MY_FILE} ${RUN_PARMS} ..."
-            python3 "${MY_FILE}" "${RUN_PARMS}"
          fi
-      fi
-   fi
-fi  # RUN_THINGS
+
+            # TRICK: Determine if a Python module was installed:
+            RESPONSE="$( python -c 'import pkgutil; print(1 if pkgutil.find_loader("flake8") else 0)' )"
+            if [ "${RESPONSE}" = 0 ]; then
+               h2 "Installing flake8 PEP8 code formatting scanner ..." 
+               # See https://flake8.pycqa.org/en/latest/ and https://www.python.org/dev/peps/pep-0008/
+               python3 -m pip install flake8
+            fi
+               h2 "Running flake8 Pip8 code formatting scanner ..."
+               flake8 "${MY_FILE}"
+
+            RESPONSE="$( python -c 'import pkgutil; print(1 if pkgutil.find_loader("flake8") else 0)' )"
+            if [ "${RESPONSE}" = 0 ]; then
+               h2 "Installing Bandit secure Python coding scanner ..."
+               # See https://pypi.org/project/bandit/
+               python3 -m pip install bandit
+            fi
+               h2 "Running Bandit secure Python coding scanner ..."  
+               # See https://developer.rackspace.com/blog/getting-started-with-bandit/
+               # TRICK: Route console output to a temp folder for display only on error:
+               bandit -r "${MY_FILE}" 1>bandit.console.log  2>bandit.err.log
+               STATUS=$?
+               if ! [ "${STATUS}" == "0" ]; then  # NOT good
+                  fatal "Bandit found issues : ${STATUS} "
+                  cat bandit.err.log
+                  cat bandit.console.log
+                  # The above files are removed depending on $REMOVE_GITHUB_AFTER
+                  exit 9
+               else
+                  note "Bandit found ${STATUS} blocking issues."
+               fi
+
+            h2 "Running Python file ${MY_FILE} ${RUN_PARMS} ..."
+            python3 "${MY_FILE}" "${RUN_PARMS}"
+         
+fi  # RUN_PYTHON
 
 
 if [ "${RUN_TENSORFLOW}" = true ]; then 
@@ -1949,6 +2343,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
    # https://websiteforstudents.com/install-refinery-cms-ruby-on-rails-on-ubuntu-16-04-18-04-18-10/
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+
       if ! command -v gnupg2 ; then
          h2 "Installing gnupg2 ..."
          brew install gnupg2
@@ -2193,6 +2588,78 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
 fi # if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
 
+
+if [ "${RUN_EGGPLANT}" = true ]; then  # -O
+
+   # As seen at https://www.youtube.com/watch?v=B64_4r0vGkA May 28, 2020
+
+   # See http://docs.eggplantsoftware.com/ePF/gettingstarted/epf-getting-started-eggplant-functional.htm
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
+      if [ ! -d "/Applications/eggplant.app" ]; then  # directory not found:
+         h2 "brew cask install eggplant ..."
+         brew cask install eggplant
+      else  # installed already:
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Re-installing cask eggplant ..."
+            brew cask uninstall eggplant
+         fi
+      fi
+   fi  #  PACKAGE_MANAGER}" == "brew" 
+
+   if [ "${OPEN_APP}" = true ]; then  # -W
+      if [ "${OS_TYPE}" == "macOS" ]; then  # it's on a Mac:
+         sleep 3
+         open "/Applications/eggplant.app"
+         # TODO: Configure floating license server 10.190.70.30
+      fi
+   fi
+   # Configure floating license on local & SUT on same network 10.190.70.30
+   # Thank you to Ritdhwaj Singh Chandel
+
+
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
+      # Alternately, https://www.realvnc.com/en/connect/download/vnc/macos/
+      if [ ! -d "/Applications/RealVNC/VNC Server.app" ]; then  # directory not found:
+         h2 "brew cask install vnc-server ..."
+             brew cask install vnc-server
+             # Requires password
+             # pop-up "vncagent" and "vncviwer" would like to control this computer using accessibility features
+      else
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "brew cask upgrade vnc-server ..."
+                brew cask upgrade vnc-server
+         fi
+      fi
+   fi   # PACKAGE_MANAGER
+
+
+   if [ "$OPEN_APP" = true ]; then  # -o
+      if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
+         open "/Applications/RealVNC/VNC Server.app"
+         # TODO: Automate configure app to input email, home subscription type, etc.
+            # In Mac: ~/.vnc/config.d/vncserver
+            # See https://help.realvnc.com/hc/en-us/articles/360002253878-Configuring-VNC-Connect-Using-Parameters
+         # Uncheck System Preferences > Energy Saver, Prevent computer from sleeping automatically when the display is off
+            # See https://help.realvnc.com/hc/en-us/articles/360003474692
+         # Understanding VNC Server Modes: https://help.realvnc.com/hc/en-us/articles/360002253238
+      fi
+   fi
+
+
+   if [ ! -f "docker-compose.yml" ]; then
+      h2 "Download docker-compose.yml ..."
+      curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/eggplant/docker-compose.yml
+      # ls -al docker-compose.yml
+      # Valid yaml according to http://www.yamllint.com
+      # referencing https://registry.hub.docker.com/search?q=selenium&type=image
+   fi
+
+   # Reference: http://docs.eggplantsoftware.com/eggplant-documentation-home.htm
+
+fi    # RUN_EGGPLANT
+
+
+
 if [ "${USE_DOCKER}" = true ]; then   # -k
 
    if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
@@ -2294,9 +2761,6 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
 
    fi  # DOWNLOAD_INSTALL
 
-
-   if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
-
       Start_Docker(){
       if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
          h2 "Opening Docker daemon on macOS ..."
@@ -2321,8 +2785,6 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
          # c881a6472995        snakeeyes_webpack_1   4.05%               133.5MiB / 1.952GiB   6.68%               4.63kB / 0B         127kB / 0B          23
          # e28b839510b2        snakeeyes_redis_1     0.25%               1.723MiB / 1.952GiB   0.09%               53.4MB / 50.9MB     49.2kB / 94.2kB     4
       }
-   fi  # if [ "${BUILD_DOCKER_IMAGE}
-
 
    # From https://gist.github.com/peterver/ca2d60abc015d334e1054302265b27d9
    # https://medium.com/@valkyrie_be/quicktip-a-universal-way-to-check-if-docker-is-running-ffa6567f8426
@@ -2347,6 +2809,12 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
 
    fi
 
+
+   if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
+      h2 "Building docker images ..."
+   fi    # BUILD_DOCKER_IMAGE
+
+
    h2 "Remove dangling docker images ..."
    docker rmi -f "$( docker images -qf dangling=true )"
    #   if [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q "$DOCKER_WEB_SVC_NAME")` ]; then
@@ -2354,10 +2822,26 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
 
    #.   note "If $DOCKER_WEB_SVC_NAME is not running, so run it..."
 
-   if [ "${RUN_ACTUAL}" = true ]; then
+   if [ "${RUN_ACTUAL}" = true ]; then  # -a for actual usage
 
-      # https://docs.docker.com/compose/reference/up/
-      docker-compose up --detach --build
+      if [ "${RUN_EGGPLANT}" = true ]; then  # -O
+
+         h2 "docker run selenium-hub at hub.docker.com ..."
+         docker run -d -p 4444:4444 --name selenium-hub selenium/hub
+
+         #docker run -d --link selenium-hub:hub -v /dev/shm:/dev/shm selenium/node-chrome
+         #docker run -d --link selenium-hub:hub -v /dev/shm:/dev/shm selenium/node-firefox
+
+         h2 "docker-compose selenium container images at hub.docker.com ..."
+         # docker-compose -f "docker-compose.yml" up -d --build
+         # FIXME:
+         # ERROR: yaml.scanner.ScannerError: mapping values are not allowed here
+         # in "./docker-compose.yml", line 9, column 25
+      
+      else
+
+         # https://docs.docker.com/compose/reference/up/
+         docker-compose up --detach --build
          # --build specifies rebuild of pip install image for changes in requirements.txt
          # NOTE: detach with ^P^Q.
          # Creating network "snakeeyes_default" with the default driver
@@ -2365,7 +2849,9 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
          # Status: Downloaded newer image for node:12.14.0-buster-slim
 
       # worker_1   | [2020-01-17 04:59:42,036: INFO/Beat] beat: Starting...
-   fi
+      fi # if [ "${RUN_EGGPLANT}" = true ]; then  # -O
+
+   fi   # RUN_ACTUAL
 
    h2 "docker container ls ..."
    docker container ls
@@ -2377,18 +2863,20 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
          # 7b8aba1d860a        postgres             "docker-entrypoint.s…"   7 days ago          Up 7 days                 0.0.0.0:5432->5432/tcp   snoodle-postgres
 
    # TODO: Add run in local Kubernetes.
+
 fi  # if [ "${USE_DOCKER}
 
 
-if [ "$RUN_OPEN_BROWSER" = true ]; then  # -W
-   if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
+if [ "${OPEN_APP}" = true ]; then  # -W
+   if [ "${OS_TYPE}" == "macOS" ]; then  # it's on a Mac:
       sleep 3
-      open http://localhost:8000/
+      open "http://localhost:${APP1_PORT}"
    fi
 
    curl -s -I -X POST http://localhost:8000/ 
    curl -s       POST http://localhost:8000/ | head -n 10  # first 10 lines
 fi
+
 
 # if [ "${RUN_TESTS}" = true 
 
@@ -2397,22 +2885,48 @@ fi
 # fi  # if [ "${RUN_TESTS}" = true 
 
 
+if [ "$DELETE_CONTAINER_AFTER" = true ]; then  # -D
 
-if [ "$RUN_DELETE_AFTER" = true ]; then  # -D
+   if [ "${RUN_EGGPLANT}" = true ]; then  # -O
+      h2 "docker-compose down containers ..."
+      docker-compose -f "docker-compose.yml" down
+   else
       # https://www.thegeekdiary.com/how-to-list-start-stop-delete-docker-containers/
-   h2 "Deleting docker-compose active containers ..."
-   CONTAINERS_RUNNING="$( docker ps -a -q )"
-   note "Active containers: $CONTAINERS_RUNNING"
+      h2 "Deleting docker-compose active containers ..."
+      CONTAINERS_RUNNING="$( docker ps -a -q )"
+      note "Active containers: $CONTAINERS_RUNNING"
 
-   note "Stopping containers:"
-   docker stop "$( docker ps -a -q )"
+      note "Stopping containers:"
+      docker stop "$( docker ps -a -q )"
 
-   note "Removing containers:"
-   docker rm -v "$( docker ps -a -q )"
+      note "Removing containers:"
+      docker rm -v "$( docker ps -a -q )"
+   fi # if [ "${RUN_EGGPLANT}" = true ]; then  # -O
+fi
+
+
+if [ "$KILL_PROCESSES" = true ]; then  # -K
+   if [ "${NODE_INSTALL}" = true ]; then  # -n
+      if [ -n "${MONGO_PSID}" ]; then  # not found
+         h2 "Kill_process ${MONGO_PSID} ..."
+         Kill_process "${MONGO_PSID}"  # invoking function above.
+      fi
+   fi 
+fi
+
+
+if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -C
+   h2 "Delete cloned GitHub at end ..."
+   Delete_GitHub_clone    # defined above in this file.
+   
+   h2 "Remove files in ~/temp folder ..."
+   rm bandit.console.log
+   rm bandit.err.log
 fi
 
 
 if [ "$REMOVE_DOCKER_IMAGES" = true ]; then  # -M
+
    docker system df
    
    DOCKER_IMAGES="$( docker images -a -q )"
@@ -2428,23 +2942,10 @@ if [ "$REMOVE_DOCKER_IMAGES" = true ]; then  # -M
          # all images without at least one container associated to
       # y | docker system prune
    fi
-fi
-note "$( docker images -a )"
 
+   h2 "docker images -a ..."
+   note "$( docker images -a )"
 
-if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -C
-   h2 "Delete cloned GitHub at end"
-   Delete_GitHub_clone    # defined above in this file.
-fi
-
-
-if [ "$KILL_PROCESSES" = true ]; then  # -K
-   h2 "Kill processes"
-   if [ "${NODE_INSTALL}" = true ]; then  # -n
-      if [ -n "${MONGO_PSID}" ]; then  # not found
-         Kill_process "${MONGO_PSID}"  # invoking function above.
-      fi
-   fi 
 fi
 
 # EOF
