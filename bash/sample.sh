@@ -25,11 +25,11 @@ echo "=========================== $LOG_DATETIME $THIS_PROGRAM $SCRIPT_VERSION"
 # Ensure run variables are based on arguments or defaults ..."
 args_prompt() {
    echo "OPTIONS:"
-   echo "   -E           to set -e to NOT stop on error"
-   echo "   -v           to run -verbose (list space use and each image to console)"
+   echo "   -E            continue (NOT stop) on error"
+   echo "   -v            run -verbose (list space use and each image to console)"
    echo "   -q           -quiet headings for each step"
-   echo "   -x           to set -x to trace command lines"
-#   echo "   -x           to set sudoers -e to stop on error"
+   echo "   -x            set -x to trace command lines"
+#   echo "   -x           set sudoers -e to stop on error"
    echo " "
    echo "   -I           -Install jq, brew, docker, docker-compose, etc."
    echo "   -U           -Upgrade installed packages"
@@ -51,34 +51,36 @@ args_prompt() {
    echo "   -n \"John Doe\"            GitHub user -name"
    echo "   -e \"john_doe@gmail.com\"  GitHub user -email"
    echo " "
-   echo "   -k8s         -k8s (Kubernetes) minikube"
    echo "   -k           -k install and use Docker"
+   echo "   -k8s         -k8s (Kubernetes) minikube"
    echo "   -b           -build Docker image"
    echo "   -w           -write image to DockerHub"
    echo "   -r           -restart Docker before run"
-   echo "   -V           to run within VirtualEnv (pipenv is default)"
    echo " "
+   echo "   -py          run with Pyenv"
+   echo "   -V           to run within VirtualEnv (pipenv is default)"
    echo "   -T           run -Tensorflow"
    echo "   -A           run with Python -Anaconda "
-   echo "   -py          run with Pyenv"
-   echo "   -G           run python in -GitHub "
    echo "   -y            install Python Flask"
+   echo " "
    echo "   -i           -install Ruby and Refinery"
    echo "   -j            install -JavaScript (NodeJs) app with MongoDB"
+   echo "   -t           setup -test server to run tests"
    echo " "
+   echo "   -G           run program in -GitHub "
    echo "   -F \"abc\"     -Folder inside repo"
    echo "   -f \"a9y.py\"  -file (program) to run"
    echo "   -P \"-v -x\"   -Parameters controlling program called"
    echo "   -a           -actually run server (not dry run)"
-   echo "   -t           setup -test server to run tests"
    echo "   -o           -open/view app or web page (in default browser)"
    echo " "
-   echo "   -K           stop processes at end of run (to save CPU)"
+   echo "   -K           stop OS processes at end of run (to save CPU)"
    echo "   -D           -Delete files after run (to save disk space)"
    echo "   -C           remove -Cloned files after run (to save disk space)"
    echo "   -M           remove Docker iMages pulled from DockerHub"
    echo "USAGE EXAMPLE during testing:"
-   echo "./sample.sh -v -O   -r -k -K -D  # eggplant use docker-compose of selenium-hub images"
+   echo "./sample.sh -v -W -r -k -a -o -K -D  # WebGoat Docker with Contrast agent"
+   echo "./sample.sh -v -s -eggplant -k -a -K -D  # eggplant use docker-compose of selenium-hub images"
    echo "./sample.sh -v -S \"\$HOME/.mck-secrets.sh\" -eks -D "
    echo "./sample.sh -v -S \"\$HOME/.mck-secrets.sh\" -H -m -t    # Use SSH-CA certs with -H Hashicorp Vault -test actual server"
    echo "./sample.sh -v -g \"abcdef...89\" -p \"cp100-1094\"  # Google API call"
@@ -92,6 +94,7 @@ args_prompt() {
    echo "./sample.sh -v -V -c -T -F \"section_2\" -f \"2-1.ipynb\" -K  # Jupyter anaconda Tensorflow in Venv"
    echo "./sample.sh -v -V -c -L -s    # Use CircLeci based on secrets"
    echo "./sample.sh -v -D -M -C"
+   echo "./sample.sh -G -v -f \"challenge.py\" -P \"-v\"  # to run a program in python-samples"
 }
 if [ $# -eq 0 ]; then  # display if no parameters are provided:
    args_prompt
@@ -105,7 +108,7 @@ exit_abnormal() {            # Function: Exit with error.
 
 # Defaults (default true so flag turns it true):
    RUN_ACTUAL=false             # -a  (dry run is default)
-   SET_EXIT=true                # -E
+   CONTINUE_ON_ERR=false        # -E
    SET_TRACE=false              # -x
    RUN_VERBOSE=false            # -v
    RUN_TESTS=false              # -t
@@ -151,6 +154,7 @@ exit_abnormal() {            # Function: Exit with error.
    MY_FILE=""
      #MY_FILE="2-3.ipynb"
    RUN_EGGPLANT=false           # -eggplant
+   RUN_WEBGOAT                  # -W
    RUN_QUIET=false              # -q
    UPDATE_PKGS=false            # -U
 
@@ -215,6 +219,13 @@ while test $# -gt 0; do
       export RUN_EKS=true
       shift
       ;;
+    -eggplant)
+      export RUN_EGGPLANT=true
+      export GitHub_REPO_URL="https://github.com/wilsonmar/Eggplant.git"
+      export GitHub_REPO_NAME="eggplant-demo"
+      export APP1_PORT="80"
+      shift
+      ;;
     -e*)
       shift
              GitHub_USER_EMAIL=$( echo "$1" | sed -e 's/^[^=]*=//g' )
@@ -222,7 +233,7 @@ while test $# -gt 0; do
       shift
       ;;
     -E)
-      export SET_EXIT=false
+      export CONTINUE_ON_ERR=true
       shift
       ;;
     -f*)
@@ -317,12 +328,6 @@ while test $# -gt 0; do
       export OPEN_APP=true
       shift
       ;;
-    -O)
-      export RUN_EGGPLANT=true
-      export GitHub_REPO_URL="https://github.com/SeleniumHQ/docker-selenium.git"
-      export GitHub_REPO_NAME="eggplant-demo"
-      shift
-      ;;
     -py)
       export USE_PYENV=true
       shift
@@ -389,6 +394,10 @@ while test $# -gt 0; do
       ;;
     -w)
       export WRITE_TO_DOCKERHUB=true
+      shift
+      ;;
+    -W)
+      export RUN_WEBGOAT=true
       shift
       ;;
     -y)
@@ -601,12 +610,12 @@ fi
 # note "$( ls )"
 
 EXIT_CODE=0
-if [ "${SET_EXIT}" = true ]; then  # don't
-   h2 "Set -e (no -E parameter  )..."
-   set -e  # exits script when a command fails
-   # set -eu pipefail  # pipefail counts as a parameter
+if [ "${CONTINUE_ON_ERR}" = true ]; then  # -E
+   warning "Set to continue despite error ..."
 else
-   warning "Don't set -e (-E parameter)..."
+   note "Set -e (error stops execution) ..."
+   set -e  # exits script when a command fails
+   # ALTERNATE: set -eu pipefail  # pipefail counts as a parameter
 fi
 if [ "${SET_XTRACE}" = true ]; then
    h2 "Set -x ..."
@@ -669,6 +678,7 @@ fi  # if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
 
          note "AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}"
          note "GitHub_USER_NAME=\"${GitHub_USER_NAME}\" "
+         note "GitHub_USER_ACCOUNTL=\"${GitHub_USER_ACCOUNTL}\" "
          note "GitHub_USER_EMAIL=\"${GitHub_USER_EMAIL}\" "
 
 
@@ -1310,41 +1320,44 @@ Clone_GitHub_repo(){
       note "At $PWD"
 }
 
-if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
+if [ -z "$GitHub_REPO_NAME" ]; then   # variable is blank
+   note "Not cloing from GitHub ..."
+else
+   if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
 
-   if [ -z "${GitHub_REPO_NAME}" ]; then   # name not specified:
-      fatal "GitHub_REPO_NAME not specified ..."
-      exit
-   fi 
+      if [ -z "${GitHub_REPO_NAME}" ]; then   # name not specified:
+         fatal "GitHub_REPO_NAME not specified ..."
+         exit
+      fi 
 
-   if [ -z "${PROJECT_FOLDER_PATH}" ]; then   # No name specified:
-      fatal "PROJECT_FOLDER_PATH not specified ..."
-      exit
-   fi 
+      if [ -z "${PROJECT_FOLDER_PATH}" ]; then   # No name specified:
+         fatal "PROJECT_FOLDER_PATH not specified ..."
+         exit
+      fi 
 
-   PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${GitHub_REPO_NAME}"
-   h2 "-clone requested for $GitHub_REPO_URL $GitHub_REPO_NAME ..."
-   if [ -d "${PROJECT_FOLDER_FULL_PATH:?}" ]; then  # path available.
-      rm -rf "$GitHub_REPO_NAME" 
-      Delete_GitHub_clone    # defined above in this file.
-   fi
+      PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${GitHub_REPO_NAME}"
+      h2 "-clone requested for $GitHub_REPO_URL $GitHub_REPO_NAME ..."
+      if [ -d "${PROJECT_FOLDER_FULL_PATH:?}" ]; then  # path available.
+         rm -rf "$GitHub_REPO_NAME" 
+         Delete_GitHub_clone    # defined above in this file.
+      fi
 
-   Clone_GitHub_repo      # defined above in this file.
+      Clone_GitHub_repo      # defined above in this file.
       # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
       # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
       # git pull upstream master
 
-else   # do not -clone
-   if [ -d "${GitHub_REPO_NAME}" ]; then  # path available.
-      h2 "Re-using repo ${GitHub_REPO_URL} ${GitHub_REPO_NAME} ..."
-      cd "${GitHub_REPO_NAME}"
-   else
-      h2 "Git cloning repo ${GitHub_REPO_URL} ${GitHub_REPO_NAME} ..."
-      # Clone_GitHub_repo      # defined above in this file.
-      note "$( ls $PWD )"
-   fi
-fi
+   else   # -clone not specified:
 
+      if [ -d "${GitHub_REPO_NAME}" ]; then  # path available.
+         h2 "Re-using repo ${GitHub_REPO_URL} ${GitHub_REPO_NAME} ..."
+         cd "${GitHub_REPO_NAME}"
+      else
+         h2 "Git cloning repo ${GitHub_REPO_URL} ${GitHub_REPO_NAME} ..."
+         # Clone_GitHub_repo      # defined above in this file.
+         note "$( ls $PWD )"
+      fi
+   fi
 
    if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
       Input_GitHub_User_Info  # function defined above.
@@ -1352,6 +1365,8 @@ fi
       note "Using -u \"$GitHub_USER_NAME\" -e \"$GitHub_USER_EMAIL\" ..."
       # since this is hard coded as "John Doe" above
    fi
+
+fi  # GitHub_REPO_NAME not cloning 
 
 
 if [ "${USE_SECRETS_FILE}" = true ]; then   # -S
@@ -2168,6 +2183,20 @@ if [ "${RUN_ANACONDA}" = true ]; then  # -A
 fi  # RUN_ANACONDA
 
 
+if [ "${RUN_GOLANG}" = true ]; then  # -s
+
+   h2 "TODO: Golang"
+
+   # See https://www.golangprograms.com/advance-programs/code-formatting-and-naming-conventions-in-golang.html
+   # go get -u github.com/golang/gofmt/gofmt
+   # gofmt -w test1.go
+   
+   # go get -u github.com/golang/lint/golint
+   # golint
+
+fi   # RUN_GOLANG
+
+
 if [ "${RUN_PYTHON}" = true ]; then  # -s
 
    # https://docs.python-guide.org/dev/virtualenvs/
@@ -2192,28 +2221,84 @@ if [ "${RUN_PYTHON}" = true ]; then  # -s
          exit 9
       fi
 
-         h2 "-Good Python ${PYTHON_SEMVER} running ${MY_FILE} ${RUN_PARMS} ..."
+      h2 "-Good Python ${PYTHON_SEMVER} running ${MY_FILE} ${RUN_PARMS} ..."
 
-         if [ ! -f "Pipfile" ]; then  # file not found:
-            note "Pipfile found, run Pipenv ${MY_FILE} ${RUN_PARMS} ..."
-            PYTHONPATH='.' pipenv run python "${MY_FILE}" "${RUN_PARMS}"
-         fi
+# while debugging:
+#         if [ ! -f "Pipfile" ]; then  # file not found:
+#            note "Pipfile found, run Pipenv ${MY_FILE} ${RUN_PARMS} ..."
+#            PYTHONPATH='.' pipenv run python "${MY_FILE}" "${RUN_PARMS}"
+#         else
 
             # TRICK: Determine if a Python module was installed:
+            RESPONSE="$( python -c 'import pkgutil; print(1 if pkgutil.find_loader("pylint") else 0)' )"
+            if [ "${RESPONSE}" = 0 ]; then
+               h2 "Installing pylint code scanner ..." 
+               # See https://pylint.pycqa.org/en/latest/ and https://www.python.org/dev/peps/pep-0008/
+               python3 -m pip install pylint
+               which pylint   # https://stackoverflow.com/questions/43272664/linter-pylint-is-not-installed
+            else
+               if [ "${UPDATE_PKGS}" = true ]; then
+                  h2 "Upgrading pylint ..."
+                  python3 -m pip install pylint --upgrade
+               fi
+            fi
+               h2 "Running pylint scanner on ${MY_FILE} ..."
+               # TRICK: Route console output to a temp folder for display only on error:
+               pylint "${MY_FILE}" 1>pylint.console.log  2>pylint.err.log
+               STATUS=$?
+               if ! [ "${STATUS}" == "0" ]; then  # NOT good
+                  if [ "${CONTINUE_ON_ERR}" = true ]; then  # -E
+                     warning "Pylint found ${STATUS} blocking issues, being ignored."
+                  else
+                     fatal "pylint found issues : ${STATUS} "
+                     cat pylint.err.log
+                     cat pylint.console.log
+                     # The above files are removed depending on $REMOVE_GITHUB_AFTER
+                     exit 9
+                  fi
+               else
+                  warning "Pylint found no issues. Congratulations."
+               fi
+
             RESPONSE="$( python -c 'import pkgutil; print(1 if pkgutil.find_loader("flake8") else 0)' )"
             if [ "${RESPONSE}" = 0 ]; then
                h2 "Installing flake8 PEP8 code formatting scanner ..." 
                # See https://flake8.pycqa.org/en/latest/ and https://www.python.org/dev/peps/pep-0008/
                python3 -m pip install flake8
+            else
+               if [ "${UPDATE_PKGS}" = true ]; then
+                  h2 "Upgrading flake8 ..."
+                  python3 -m pip install flake8 --upgrade
+               fi
             fi
-               h2 "Running flake8 Pip8 code formatting scanner ..."
+               h2 "Running flake8 Pip8 code formatting scanner on ${MY_FILE} ..."
                flake8 "${MY_FILE}"
+               flake8 "${MY_FILE}" 1>flake8.console.log  2>flake8.err.log
+               STATUS=$?
+               if ! [ "${STATUS}" == "0" ]; then  # NOT good
+                  if [ "${CONTINUE_ON_ERR}" = true ]; then  # -E
+                     warning "Pylint found ${STATUS} blocking issues, being ignored."
+                  else
+                     fatal "pylint found issues : ${STATUS} "
+                     cat flake8.err.log
+                     cat flake8.console.log
+                     # The above files are removed depending on $REMOVE_GITHUB_AFTER
+                     exit 9
+                  fi
+               else
+                  warning "Pylint found no issues. Congratulations."
+               fi
 
-            RESPONSE="$( python -c 'import pkgutil; print(1 if pkgutil.find_loader("flake8") else 0)' )"
+            RESPONSE="$( python -c 'import pkgutil; print(1 if pkgutil.find_loader("bandit") else 0)' )"
             if [ "${RESPONSE}" = 0 ]; then
                h2 "Installing Bandit secure Python coding scanner ..."
                # See https://pypi.org/project/bandit/
                python3 -m pip install bandit
+            else
+               if [ "${UPDATE_PKGS}" = true ]; then
+                  h2 "Upgrading flake8 ..."
+                  python3 -m pip install bandit --upgrade
+               fi
             fi
                h2 "Running Bandit secure Python coding scanner ..."  
                # See https://developer.rackspace.com/blog/getting-started-with-bandit/
@@ -2230,9 +2315,30 @@ if [ "${RUN_PYTHON}" = true ]; then  # -s
                   note "Bandit found ${STATUS} blocking issues."
                fi
 
+
+            # Run a different way than with Pipfile:
             h2 "Running Python file ${MY_FILE} ${RUN_PARMS} ..."
             python3 "${MY_FILE}" "${RUN_PARMS}"
          
+#      fi   # Pipfile
+
+      # Instead of https://www.jetbrains.com/pycharm/download/other.html
+      if [ ! -d "/Applications/mongodb Compass.app" ]; then  # directory not found:
+         h2 "brew cask install PyCharm.app ..."
+         brew cask install pycharm
+      else  # installed already:
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "brew cask upgrade PyCharm.app ..."
+            brew cask upgrade pycharm
+         fi
+      fi
+      if [ "${OPEN_APP}" = true ]; then  # -o
+         if [ "${OS_TYPE}" == "macOS" ]; then
+            sleep 3
+            open "/Applications/PyCharm.app"
+         fi
+      fi
+
 fi  # RUN_PYTHON
 
 
@@ -2589,13 +2695,20 @@ fi # if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
 
 
+if [ "${RUN_WEBGOAT}" = true ]; then  # -W
+
+   h2 "Running WebGoat"
+
+fi    # RUN_WEBGOAT
+
+
+
 if [ "${RUN_EGGPLANT}" = true ]; then  # -O
 
    # As seen at https://www.youtube.com/watch?v=B64_4r0vGkA May 28, 2020
-
    # See http://docs.eggplantsoftware.com/ePF/gettingstarted/epf-getting-started-eggplant-functional.htm
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
-      if [ ! -d "/Applications/eggplant.app" ]; then  # directory not found:
+      if [ ! -d "/Applications/eggPlant.app" ]; then  # directory not found:
          h2 "brew cask install eggplant ..."
          brew cask install eggplant
       else  # installed already:
@@ -2609,13 +2722,12 @@ if [ "${RUN_EGGPLANT}" = true ]; then  # -O
    if [ "${OPEN_APP}" = true ]; then  # -W
       if [ "${OS_TYPE}" == "macOS" ]; then  # it's on a Mac:
          sleep 3
-         open "/Applications/eggplant.app"
+         open "/Applications/eggPlant.app"
          # TODO: Configure floating license server 10.190.70.30
       fi
    fi
    # Configure floating license on local & SUT on same network 10.190.70.30
    # Thank you to Ritdhwaj Singh Chandel
-
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
       # Alternately, https://www.realvnc.com/en/connect/download/vnc/macos/
@@ -2647,7 +2759,9 @@ if [ "${RUN_EGGPLANT}" = true ]; then  # -O
 
 
    if [ ! -f "docker-compose.yml" ]; then
-      h2 "Download docker-compose.yml ..."
+         # Dockerfiles are from upstream "https://github.com/SeleniumHQ/docker-selenium.git"
+
+      h2 "TODO: Download docker-compose.yml ..."
       curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/eggplant/docker-compose.yml
       # ls -al docker-compose.yml
       # Valid yaml according to http://www.yamllint.com
@@ -2655,9 +2769,9 @@ if [ "${RUN_EGGPLANT}" = true ]; then  # -O
    fi
 
    # Reference: http://docs.eggplantsoftware.com/eggplant-documentation-home.htm
+          # See http://docs.eggplantsoftware.com/ePF/using/epf-running-from-command-line.htm     
 
 fi    # RUN_EGGPLANT
-
 
 
 if [ "${USE_DOCKER}" = true ]; then   # -k
@@ -2754,60 +2868,67 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
 
       fi # brew
 
-      note "$( docker --version )"
-         # Docker version 19.03.5, build 633a0ea
-      note "$( docker-compose --version )"
-         # docker-compose version 1.24.1, build 4667896b
-
    fi  # DOWNLOAD_INSTALL
 
-      Start_Docker(){
+
+   # Docker need not be running to obtain version:
+   note "$( docker --version )"          # Docker version 19.03.5, build 633a0ea
+   note "$( docker-compose --version )"  # docker-compose version 1.24.1, build 4667896b
+
+   Start_Docker(){   # function
+
       if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
-         h2 "Opening Docker daemon on macOS ..."
-         open --background -a Docker   # open "/Applications/Docker.app"
+         note "Docker Desktop is starting on macOS ..."
+         open "/Applications/Docker.app"  # 
+         #open --background -a Docker   # 
          # /Applications/Docker.app/Contents/MacOS/Docker
       else
-         h2 "Starting Docker daemon on Linux ..."
+         note "Starting Docker daemon on Linux ..."
          sudo systemctl start docker
          sudo service docker start
       fi
-         sleep 5  # it takes at least that
-         # Wait until Docker daemon is running and has completed initialisation
-         while (! docker stats --no-stream ); do
-            # Docker takes a few seconds to initialize
-            note "Waiting for Docker to launch..."
-            sleep 3  # seconds
-         done
-         # Docker is running when it can list all containers:
-         # CONTAINER ID        NAME                  CPU %               MEM USAGE / LIMIT     MEM %               NET I/O             BLOCK I/O           PIDS
-         # d6033f8e731a        snakeeyes_web_1       0.32%               40.18MiB / 1.952GiB   2.01%               7.24kB / 43.3kB     1.12MB / 0B         3
-         # b8c2f5956e75        snakeeyes_worker_1    0.08%               138.8MiB / 1.952GiB   6.95%               50.9MB / 53.4MB     4.1kB / 0B          8
-         # c881a6472995        snakeeyes_webpack_1   4.05%               133.5MiB / 1.952GiB   6.68%               4.63kB / 0B         127kB / 0B          23
-         # e28b839510b2        snakeeyes_redis_1     0.25%               1.723MiB / 1.952GiB   0.09%               53.4MB / 50.9MB     49.2kB / 94.2kB     4
-      }
 
-   # From https://gist.github.com/peterver/ca2d60abc015d334e1054302265b27d9
+      timer_start=$SECONDS
+      # Docker Docker is starting ...
+      while ( ! docker ps -q  2>/dev/null ); do
+         sleep 5  # seconds
+         duration=$(( SECONDS - timer_start ))
+         # Docker takes a few seconds to initialize
+         note "${duration} seconds waiting for Docker to begin running ..."
+      done
+ 
+   }  # Start_Docker
+
    # https://medium.com/@valkyrie_be/quicktip-a-universal-way-to-check-if-docker-is-running-ffa6567f8426
-   rep=$(curl -s --unix-socket /var/run/docker.sock http://ping > /dev/null)
-   note "$rep"
-   status=$?
-   if [ "$status" == "7" ]; then   # Not Docker connected:
-   #if (! pgrep -f docker ); then   # No docker process IDs found:
+   # ALTERNATIVE: curl -s --unix-socket /var/run/docker.sock http://ping
+      # From https://gist.github.com/peterver/ca2d60abc015d334e1054302265b27d9
+   IS_DOCKER_STARTED=true
+   {
+     docker ps -q  2>/dev/null  # -q = quiet
+      # RESPONSE: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
+   } || {
+      IS_DOCKER_STARTED=false
+   }
+   if [ "${IS_DOCKER_STARTED}" = false ]; then
+      # Docker is not running. Starting Docker app ..."
       Start_Docker   # function defined in this file above.
    else   # Docker processes found running:
-      if [ "${RESTART_DOCKER}" = true ]; then
+      if [ "${RESTART_DOCKER}" = true ]; then  # -r
          if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
-            h2 "Stopping Docker on macOS ..."
+            h2 "-restarting Docker on macOS ..."
             osascript -e 'quit app "Docker"'
          else
-            h2 "Stopping Docker on Linux ..."
+            h2 "-restarting Docker on Linux ..."
             sudo systemctl stop docker
             sudo service docker stop
          fi
+         Start_Docker   # function defined in this file above.
+      else
+         note "Docker already running ..."
       fi
-      Start_Docker   # function defined in this file above.
-
    fi
+
+   # Error response from daemon: dial unix docker.raw.sock: connect: connection refused
 
 
    if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
@@ -2824,85 +2945,81 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
 
    if [ "${RUN_ACTUAL}" = true ]; then  # -a for actual usage
 
-      if [ "${RUN_EGGPLANT}" = true ]; then  # -O
-
-         h2 "docker run selenium-hub at hub.docker.com ..."
-         docker run -d -p 4444:4444 --name selenium-hub selenium/hub
-
-         #docker run -d --link selenium-hub:hub -v /dev/shm:/dev/shm selenium/node-chrome
-         #docker run -d --link selenium-hub:hub -v /dev/shm:/dev/shm selenium/node-firefox
-
-         h2 "docker-compose selenium container images at hub.docker.com ..."
-         # docker-compose -f "docker-compose.yml" up -d --build
-         # FIXME:
-         # ERROR: yaml.scanner.ScannerError: mapping values are not allowed here
-         # in "./docker-compose.yml", line 9, column 25
-      
-      else
+      # if docker-compose file available:
+      if [ -f "docker-compose.yml" ]; then
 
          # https://docs.docker.com/compose/reference/up/
          docker-compose up --detach --build
          # --build specifies rebuild of pip install image for changes in requirements.txt
+         STATUS=$?
+         if [ "${STATUS}" == "0" ]; then
+            warning "Docker run ended with no issues."
+         else
+            if [ "${CONTINUE_ON_ERR}" = true ]; then  # -E
+               warning "Docker run exit ${STATUS} error, being ignored."
+            else
+               fatal "Docker run found issues : ${STATUS} "
+               # 217 = no license available.
+               exit 9
+            fi
+         fi
          # NOTE: detach with ^P^Q.
          # Creating network "snakeeyes_default" with the default driver
          # Creating volume "snakeeyes_redis" with default driver
          # Status: Downloaded newer image for node:12.14.0-buster-slim
 
-      # worker_1   | [2020-01-17 04:59:42,036: INFO/Beat] beat: Starting...
-      fi # if [ "${RUN_EGGPLANT}" = true ]; then  # -O
-
+         # runs scripts without launching "/Applications/eggPlant.app" functional GUI:
+         # /Applications/eggPlant.app/Contents/MacOS/runscript  docker-test.script
+      fi
    fi   # RUN_ACTUAL
 
    h2 "docker container ls ..."
    docker container ls
-         # CONTAINER ID        IMAGE                COMMAND                  CREATED             STATUS                    PORTS                    NAMES
-         # 3ee3e7ef6d75        snakeeyes_web        "/app/docker-entrypo…"   35 minutes ago      Up 35 minutes (healthy)   0.0.0.0:8000->8000/tcp   snakeeyes_web_1
-         # fb64e7c95865        snakeeyes_worker     "/app/docker-entrypo…"   35 minutes ago      Up 35 minutes             8000/tcp                 snakeeyes_worker_1
-         # bc68e7cb0f41        snakeeyes_webpack    "docker-entrypoint.s…"   About an hour ago   Up 35 minutes                                      snakeeyes_webpack_1
-         # 52df7a11b666        redis:5.0.7-buster   "docker-entrypoint.s…"   About an hour ago   Up 35 minutes             6379/tcp                 snakeeyes_redis_1
-         # 7b8aba1d860a        postgres             "docker-entrypoint.s…"   7 days ago          Up 7 days                 0.0.0.0:5432->5432/tcp   snoodle-postgres
+   # CONTAINER ID        IMAGE                COMMAND                  CREATED             STATUS                    PORTS                    NAMES
+   # 3ee3e7ef6d75        snakeeyes_web        "/app/docker-entrypo…"   35 minutes ago      Up 35 minutes (healthy)   0.0.0.0:8000->8000/tcp   snakeeyes_web_1
+   # fb64e7c95865        snakeeyes_worker     "/app/docker-entrypo…"   35 minutes ago      Up 35 minutes             8000/tcp                 snakeeyes_worker_1
+   # bc68e7cb0f41        snakeeyes_webpack    "docker-entrypoint.s…"   About an hour ago   Up 35 minutes                                      snakeeyes_webpack_1
+   # 52df7a11b666        redis:5.0.7-buster   "docker-entrypoint.s…"   About an hour ago   Up 35 minutes             6379/tcp                 snakeeyes_redis_1
+   # 7b8aba1d860a        postgres             "docker-entrypoint.s…"   7 days ago          Up 7 days                 0.0.0.0:5432->5432/tcp   snoodle-postgres
 
    # TODO: Add run in local Kubernetes.
 
 fi  # if [ "${USE_DOCKER}
 
 
-if [ "${OPEN_APP}" = true ]; then  # -W
-   if [ "${OS_TYPE}" == "macOS" ]; then  # it's on a Mac:
-      sleep 3
-      open "http://localhost:${APP1_PORT}"
-   fi
-
-   curl -s -I -X POST http://localhost:8000/ 
-   curl -s       POST http://localhost:8000/ | head -n 10  # first 10 lines
-fi
-
-
-# if [ "${RUN_TESTS}" = true 
-
-   # TODO: Run tests
-
-# fi  # if [ "${RUN_TESTS}" = true 
-
-
-if [ "$DELETE_CONTAINER_AFTER" = true ]; then  # -D
+if [ "${RUN_ACTUAL}" = true ]; then   # -a
 
    if [ "${RUN_EGGPLANT}" = true ]; then  # -O
-      h2 "docker-compose down containers ..."
-      docker-compose -f "docker-compose.yml" down
-   else
-      # https://www.thegeekdiary.com/how-to-list-start-stop-delete-docker-containers/
-      h2 "Deleting docker-compose active containers ..."
-      CONTAINERS_RUNNING="$( docker ps -a -q )"
-      note "Active containers: $CONTAINERS_RUNNING"
+      # Connect target browser to Eggplant license server: 
+      if [ -z "${EGGPLANT_USERNAME}" ]; then
+         echo "EGGPLANT_USERNAME=$EGGPLANT_USERNAME"
+      fi
 
-      note "Stopping containers:"
-      docker stop "$( docker ps -a -q )"
+      if [ "${OS_TYPE}" == "macOS" ]; then  # it's on a Mac:
+         "/Applications/Eggplant.app/Contents/MacOS/runscript" \
+            "docker-test.suite/Scripts/openurl.script" \
+            -LicenserHost 10.190.70.30 -host "${BROWSER_HOSTNAME}" \
+            -username "${EGGPLANT_USERNAME}" -password "${EGGPLANT_PASSWORD}" \
+            -type RDP -DefaultHeight 1920 -DefaultWidth 1080 -CommandLineOutput yes
+      elif [ "${OS_TYPE}" == "Windows" ]; then  # it's on a Mac:
+         Files\Eggplant\runscript.bat \
+            "C:\Users\Ritdhwaj Singh Chand\Desktop\cct_automation\eggplant_new_vi.suite\Scripts\test_runner.script" \
+            -LicenserHost 10.190.70.30 -host dev-oap01 \
+            -username "${EGGPLANT_USERNAME}" -password "${EGGPLANT_PASSWORD}" \
+            -type RDP -DefaultHeight 1920 -DefaultWidth 1080 -CommandLineOutput yes
+      fi
+   fi 
 
-      note "Removing containers:"
-      docker rm -v "$( docker ps -a -q )"
-   fi # if [ "${RUN_EGGPLANT}" = true ]; then  # -O
-fi
+   if [ -z "${APP1_PORT}" ]; then 
+      if [ "${OS_TYPE}" == "macOS" ]; then  # it's on a Mac:
+         sleep 3
+         open "http://localhost:${APP1_PORT}"
+      fi
+#   else
+#      curl -s -I -X POST http://localhost:8000/ 
+#      curl -s       POST http://localhost:8000/ | head -n 10  # first 10 lines
+   fi
+fi  # RUN_ACTUAL
 
 
 if [ "$KILL_PROCESSES" = true ]; then  # -K
@@ -2922,30 +3039,56 @@ if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -C
    h2 "Remove files in ~/temp folder ..."
    rm bandit.console.log
    rm bandit.err.log
+   rm pylint.console.log
+   rm pylint.err.log
 fi
 
 
-if [ "$REMOVE_DOCKER_IMAGES" = true ]; then  # -M
+if [ "${USE_DOCKER}" = true ]; then   # -k
 
-   docker system df
-   
-   DOCKER_IMAGES="$( docker images -a -q )"
-   if [ -n "$DOCKER_IMAGES" ]; then  # variable is NOT empty
-      h2 "Removing all Docker images ..."
-      docker rmi "$( docker images -a -q )"
+   if [ "$DELETE_CONTAINER_AFTER" = true ]; then  # -D
 
-      h2 "docker image prune -all ..."  # https://docs.docker.com/config/pruning/
-      y | docker image prune -a
-         # all stopped containers
-         # all volumes not used by at least one container
-         # all networks not used by at least one container
-         # all images without at least one container associated to
-      # y | docker system prune
+      # TODO: if docker-compose.yml available:
+      if [ "${RUN_EGGPLANT}" = true ]; then  # -O
+         h2 "docker-compose down containers ..."
+         docker-compose -f "docker-compose.yml" down
+      else
+         # https://www.thegeekdiary.com/how-to-list-start-stop-delete-docker-containers/
+         h2 "Deleting docker-compose active containers ..."
+         CONTAINERS_RUNNING="$( docker ps -a -q )"
+         note "Active containers: $CONTAINERS_RUNNING"
+
+         note "Stopping containers:"
+         docker stop "$( docker ps -a -q )"
+
+         note "Removing containers:"
+         docker rm -v "$( docker ps -a -q )"
+      fi # if [ "${RUN_EGGPLANT}" = true ]; then  # -O
    fi
 
-   h2 "docker images -a ..."
-   note "$( docker images -a )"
+   if [ "$REMOVE_DOCKER_IMAGES" = true ]; then  # -M
 
-fi
+      docker system df
+     
+      DOCKER_IMAGES="$( docker images -a -q )"
+      if [ -n "$DOCKER_IMAGES" ]; then  # variable is NOT empty
+         h2 "Removing all Docker images ..."
+         docker rmi "$( docker images -a -q )"
+
+         h2 "docker image prune -all ..."  # https://docs.docker.com/config/pruning/
+         y | docker image prune -a
+            # all stopped containers
+            # all volumes not used by at least one container
+            # all networks not used by at least one container
+            # all images without at least one container associated to
+            # y | docker system prune
+      fi
+   fi
+
+   if [ "${RUN_VERBOSE}" = true ]; then
+      h2 "docker images -a ..."
+      note "$( docker images -a )"
+   fi
+fi    # USE_DOCKER
 
 # EOF
