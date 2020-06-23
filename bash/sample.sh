@@ -54,6 +54,7 @@ args_prompt() {
    echo "   -k           -k install and use Docker"
    echo "   -k8s         -k8s (Kubernetes) minikube"
    echo "   -b           -build Docker image"
+   echo "   -dc           use docker-compose.yml file"
    echo "   -w           -write image to DockerHub"
    echo "   -r           -restart Docker before run"
    echo " "
@@ -154,7 +155,7 @@ exit_abnormal() {            # Function: Exit with error.
    MY_FILE=""
      #MY_FILE="2-3.ipynb"
    RUN_EGGPLANT=false           # -eggplant
-   RUN_WEBGOAT                  # -W
+   RUN_WEBGOAT=false            # -W
    RUN_QUIET=false              # -q
    UPDATE_PKGS=false            # -U
 
@@ -162,6 +163,7 @@ exit_abnormal() {            # Function: Exit with error.
    BUILD_DOCKER_IMAGE=false     # -b
    WRITE_TO_DOCKERHUB=false     # -w
    USE_PYENV=false              # -py
+   USE_DOCKER_COMPOSE=false     # -dc
    DOWNLOAD_INSTALL=false       # -I
    DELETE_CONTAINER_AFTER=false # -D
    RUN_TENSORFLOW=false         # -T
@@ -203,6 +205,10 @@ while test $# -gt 0; do
       ;;
     -C)
       export REMOVE_GITHUB_AFTER=true
+      shift
+      ;;
+    -dc)
+      export USE_DOCKER_COMPOSE=true
       shift
       ;;
     -d)
@@ -398,10 +404,14 @@ while test $# -gt 0; do
       ;;
     -W)
       export RUN_WEBGOAT=true
+      export GitHub_REPO_URL="https://github.com/wilsonmar/WebGoat.git"
+      export GitHub_REPO_NAME="webgoat"
+      export APPNAME="webgoat"
+      export APP1_PORT="80"
       shift
       ;;
     -y)
-      GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
+      export GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
       export GitHub_REPO_NAME="rockstar"
       export APPNAME="rockstar"
       shift
@@ -2757,17 +2767,6 @@ if [ "${RUN_EGGPLANT}" = true ]; then  # -O
       fi
    fi
 
-
-   if [ ! -f "docker-compose.yml" ]; then
-         # Dockerfiles are from upstream "https://github.com/SeleniumHQ/docker-selenium.git"
-
-      h2 "TODO: Download docker-compose.yml ..."
-      curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/eggplant/docker-compose.yml
-      # ls -al docker-compose.yml
-      # Valid yaml according to http://www.yamllint.com
-      # referencing https://registry.hub.docker.com/search?q=selenium&type=image
-   fi
-
    # Reference: http://docs.eggplantsoftware.com/eggplant-documentation-home.htm
           # See http://docs.eggplantsoftware.com/ePF/using/epf-running-from-command-line.htm     
 
@@ -2875,6 +2874,17 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
    note "$( docker --version )"          # Docker version 19.03.5, build 633a0ea
    note "$( docker-compose --version )"  # docker-compose version 1.24.1, build 4667896b
 
+   Stop_Docker(){   # function
+         if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
+            note "-restarting Docker on macOS ..."
+            osascript -e 'quit app "Docker"'
+         else
+            note "-restarting Docker on Linux ..."
+            sudo systemctl stop docker
+            sudo service docker stop
+         fi
+         sleep 3
+   }
    Start_Docker(){   # function
 
       if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
@@ -2914,14 +2924,7 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
       Start_Docker   # function defined in this file above.
    else   # Docker processes found running:
       if [ "${RESTART_DOCKER}" = true ]; then  # -r
-         if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
-            h2 "-restarting Docker on macOS ..."
-            osascript -e 'quit app "Docker"'
-         else
-            h2 "-restarting Docker on Linux ..."
-            sudo systemctl stop docker
-            sudo service docker stop
-         fi
+         Stop_Docker   # function defined in this file above.
          Start_Docker   # function defined in this file above.
       else
          note "Docker already running ..."
@@ -2936,14 +2939,18 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
    fi    # BUILD_DOCKER_IMAGE
 
 
-   h2 "Remove dangling docker images ..."
-   docker rmi -f "$( docker images -qf dangling=true )"
-   #   if [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q "$DOCKER_WEB_SVC_NAME")` ]; then
-      # --no-trunc flag because docker ps shows short version of IDs by default.
-
-   #.   note "If $DOCKER_WEB_SVC_NAME is not running, so run it..."
-
    if [ "${RUN_ACTUAL}" = true ]; then  # -a for actual usage
+
+   RESPONSE="$( docker images -qf dangling=true )"
+   if [ -z "${RESPONSE}" ]; then
+      h2 "Remove dangling docker images ..."
+      docker rmi -f "$( docker images -qf dangling=true )"
+      # RESPONSE: Error: No such image: 
+   fi
+      #   if [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q "$DOCKER_WEB_SVC_NAME")` ]; then
+      # --no-trunc flag because docker ps shows short version of IDs by default.
+      #.   note "If $DOCKER_WEB_SVC_NAME is not running, so run it..."
+
 
       # if docker-compose file available:
       if [ -f "docker-compose.yml" ]; then
@@ -2970,6 +2977,8 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
 
          # runs scripts without launching "/Applications/eggPlant.app" functional GUI:
          # /Applications/eggPlant.app/Contents/MacOS/runscript  docker-test.script
+
+      # else use Dockerfile
       fi
    fi   # RUN_ACTUAL
 
@@ -3022,16 +3031,6 @@ if [ "${RUN_ACTUAL}" = true ]; then   # -a
 fi  # RUN_ACTUAL
 
 
-if [ "$KILL_PROCESSES" = true ]; then  # -K
-   if [ "${NODE_INSTALL}" = true ]; then  # -n
-      if [ -n "${MONGO_PSID}" ]; then  # not found
-         h2 "Kill_process ${MONGO_PSID} ..."
-         Kill_process "${MONGO_PSID}"  # invoking function above.
-      fi
-   fi 
-fi
-
-
 if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -C
    h2 "Delete cloned GitHub at end ..."
    Delete_GitHub_clone    # defined above in this file.
@@ -3044,7 +3043,23 @@ if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -C
 fi
 
 
+if [ "$KILL_PROCESSES" = true ]; then  # -K
+
+   if [ "${NODE_INSTALL}" = true ]; then  # -n
+      if [ -n "${MONGO_PSID}" ]; then  # not found
+         h2 "Kill_process ${MONGO_PSID} ..."
+         Kill_process "${MONGO_PSID}"  # invoking function above.
+      fi
+   fi 
+fi
+
+
 if [ "${USE_DOCKER}" = true ]; then   # -k
+
+   if [ "$KILL_PROCESSES" = true ]; then  # -K
+      Stop_Docker   # function defined in this file above.
+   fi
+
 
    if [ "$DELETE_CONTAINER_AFTER" = true ]; then  # -D
 
@@ -3065,6 +3080,7 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
          docker rm -v "$( docker ps -a -q )"
       fi # if [ "${RUN_EGGPLANT}" = true ]; then  # -O
    fi
+
 
    if [ "$REMOVE_DOCKER_IMAGES" = true ]; then  # -M
 
