@@ -230,6 +230,7 @@ while test $# -gt 0; do
       export GitHub_REPO_URL="https://github.com/wilsonmar/Eggplant.git"
       export GitHub_REPO_NAME="eggplant-demo"
       export APP1_PORT="80"
+      export MY_FILE="openurl.script"
       shift
       ;;
     -e*)
@@ -267,6 +268,9 @@ while test $# -gt 0; do
       ;;
     -H)
       export USE_VAULT=true
+      #export VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
+      #export VAULT_ADDR="https://${VAULT_HOST}" 
+      # export VAULT_USERNAME="wilson mar"
       shift
       ;;
     -i)
@@ -1664,21 +1668,26 @@ if [ "${USE_VAULT}" = true ]; then   # -H
       fi
       RESPONSE="$( vault --version | cut -d' ' -f2 )"  # 2nd column of "Vault v1.3.4"
       export VAULT_VERSION="${RESPONSE:1}"   # remove first character.
-      note "VAULT_VERSION=$VAULT_VERSION"   
+      note "VAULT_VERSION=$VAULT_VERSION"   # 1.4.2_1
       
       # Instead of vault -autocomplete-install   # for interactive manual use.
       # The complete command inserts in $HOME/.bashrc and .zsh
       complete -C /usr/local/bin/vault vault
          # No response is expected. Requires running exec $SHELL to work.
 
+   # Error checking seal status: Get "http://127.0.0.1:8200/v1/sys/seal-status": dial tcp 127.0.0.1:8200: connect: connection refused
+
    if [ "${RUN_TESTS}" = true ]; then   # -t
       # CAUTION: Vault dev server is insecure and stores all data in memory only!
+      export VAULT_HOST="127.0.0.1"
+      export VAULT_ADDR="http://127.0.0.1:8200"
+      export VAULT_USERNAME="devservermode"
 
       h2 "Starting vault local dev server at $VAULT_ADDR ..."  # https://learn.hashicorp.com/vault/getting-started/dev-server
       ps_kill 'vault'  # bash function defined in this file.
       # Don't RESPONSE="$( vault server -dev  & )"  # & = background job
       # because this displays Unseal Key and Root Token:
-                    vault server -dev
+      vault server -dev
       # THIS SCRIPT PAUSES HERE. OPEN ANOTHER TERMINAL SESSION.
       # Press control+C to stop service.
 
@@ -1691,32 +1700,37 @@ if [ "${USE_VAULT}" = true ]; then   # -H
       note -e ">>> VAULT_DEV_ROOT_TOKEN_ID=$VAULT_DEV_ROOT_TOKEN_ID \n"
       #sample      VAULT_DEV_ROOT_TOKEN_ID="s.Lgsh7FXX9cUKQttfFo1mdHjE"
 
+   else  # prod
+
+      h2 "Start vault server ..."  # https://www.vaultproject.io/docs/commands/server.html
+      vault server -config ???
+
    fi  # RUN_TESTS
 
 
    if [ "${RUN_ACTUAL}" = true ]; then   # -a
       # use production ADDR from secrets
-      if [ -z "${VAULT_ADDR}" ]; then  # it's blank:
-         error "VAULT_ADDR is not defined (within secrets file) ..."
+      # note "VAULT_USERNAME=${VAULT_USERNAME}"
+      #export VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
+      if [ -z "${VAULT_HOST}" ]; then  # it's blank:
+         error "VAULT_HOST is not defined (within secrets file) ..."
       else
-         if ! ping -c 1 "${VAULT_ADDR}" &> /dev/null ; then 
-            error "VAULT_ADDR=$VAULT_ADDR ICMP ping failed. Aborting ..."
+         if ping -c 1 "${VAULT_HOST}" &> /dev/null ; then 
+            # PING vault.prod.init.ak8s.mckinsey.com (10.191.78.38): 56 data bytes
+            note "ping of ${VAULT_HOST} went fine."
+         else
+            error "VAULT_HOST=$VAULT_HOST ICMP ping failed. Aborting ..."
             info  "Is VPN (GlobalProtect) running and you're loggin in?"
-            # exit
+            exit
          fi
       fi
-      # export VAULT_ADDR=http://127.0.0.1:8200   # from Roman
-      export VAULT_NAME="prodservermode"  # ???
-   else  # test:
-      export VAULT_ADDR=http://127.0.0.1:8200
-      export VAULT_NAME="devservermode"
    fi  # RUN_ACTUAL
 
-   note -e "\n"
+   #note -e "\n"
    # Output to JSON instead & use jq to parse?
-   RESPONSE="$( vault status 2>&2)"  # capture STDERR output to &1 (STDOUT)
          # See https://stackoverflow.com/questions/2990414/echo-that-outputs-to-stderr
-         # STDERR: Error checking seal status: Get https://vault..../v1/sys/seal-status: dial tcp: lookup vault....: no such host
+   RESPONSE="$( vault status 2>&2)"  # capture STDERR output to &1 (STDOUT)
+      # Error checking seal status: Get "https://127.0.0.1:8200/v1/sys/seal-status": dial tcp 127.0.0.1:8200: connect: connection refused
    ERR_RESPONSE="$( echo $RESPONSE | awk '{print $1;}' )"
    # TODO: Check error code.
    if [ "Error" = "$ERR_RESPONSE" ]; then
@@ -1727,15 +1741,16 @@ if [ "${USE_VAULT}" = true ]; then   # -H
    fi
 
    if [ -n "${VAULT_USERNAME}" ]; then  # is not empty
-      note "Vault login as ${VAULT_USERNAME} ..."
-      vault login -method=okta username="${VAULT_USERNAME}"  # from secrets.sh
+      note "Vault okta login as \"${VAULT_USERNAME}\" \"${VAULT_PASSWORD}\" ..."
+      # echo -e "${VAULT_PASSWORD}" | 
+      vault login -method=okta username="${VAULT_USERNAME}"
          # Put https://127.0.0.1:8200/v1/auth/okta/login: dial tcp 127.0.0.1:8200: connect: connection refused
    fi
 
    note -e "\n Put secret/hello ..."
    note -e "\n"
    # Make CLI calls to the kv secrets engine for key/value pair:
-   vault kv put secret/hello vault="${VAULT_NAME}"
+   vault kv put secret/hello vault="${VAULT_USERNAME}"
       
    note -e "\n Get secret/hello text ..."
    note -e "\n"
@@ -1857,7 +1872,7 @@ if [ "${MOVE_SECURELY}" = true ]; then   # -m
       # See https://www.vaultproject.io/docs/secrets/ssh/signed-ssh-certificates.html
 
       # From -secrets opening ~/.secrets.sh :
-      note "$( VAULT_ADDR=$VAULT_ADDR )"
+      note "$( VAULT_HOST=$VAULT_HOST )"
       note "$( VAULT_TLS_SERVER=$VAULT_TLS_SERVER )"
       note "$( VAULT_SERVERS=$VAULT_SERVERS )"
       note "$( CONSUL_HTTP_ADDR=$CONSUL_HTTP_ADDR )"
@@ -2199,10 +2214,43 @@ if [ "${RUN_GOLANG}" = true ]; then  # -s
 
    # See https://www.golangprograms.com/advance-programs/code-formatting-and-naming-conventions-in-golang.html
    # go get -u github.com/golang/gofmt/gofmt
+      # FIXME:
+      # remote: Repository not found.
+      # fatal: repository 'https://github.com/golang/gofmt/' not found
+      # package github.com/golang/gofmt/gofmt: exit status 128
    # gofmt -w test1.go
    
    # go get -u github.com/golang/lint/golint
+      # ERROR: package github.com/golang/lint/golint: code in directory /Users/wilson_mar/gopkgs/src/github.com/golang/lint/golint expects import "golang.org/x/lint/golint"
    # golint
+
+   # https://github.com/securego/gosec
+# binary will be $GOPATH/bin/gosec
+curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $GOPATH/bin vX.Y.Z
+   # securego/gosec info checking GitHub for tag 'vX.Y.Z'
+   # securego/gosec crit unable to find 'vX.Y.Z' - use 'latest' or see https://github.com/securego/gosec/releases for details
+
+   # ALTERNATELY: install it into ./bin/
+   # curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s vX.Y.Z
+
+   # In alpine linux (as it does not come with curl by default)
+   # wget -O - -q https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s vX.Y.Z
+
+   # If you want to use the checksums provided on the "Releases" page
+   # then you will have to download a tar.gz file for your operating system instead of a binary file
+   wget https://github.com/securego/gosec/releases/download/vX.Y.Z/gosec_vX.Y.Z_OS.tar.gz
+      # --2020-06-24 07:28:19--  https://github.com/securego/gosec/releases/download/vX.Y.Z/gosec_vX.Y.Z_OS.tar.gz
+      # Resolving github.com (github.com)... 140.82.114.3
+      # Connecting to github.com (github.com)|140.82.114.3|:443... connected.
+      # HTTP request sent, awaiting response... 404 Not Found
+      # 2020-06-24 07:28:20 ERROR 404: Not Found.
+
+# The file will be in the current folder where you run the command 
+# and you can check the checksum like this
+echo "<check sum from the check sum file>  gosec_vX.Y.Z_OS.tar.gz" | sha256sum -c -
+
+gosec --help
+
 
 fi   # RUN_GOLANG
 
@@ -2718,7 +2766,7 @@ if [ "${RUN_EGGPLANT}" = true ]; then  # -O
    # As seen at https://www.youtube.com/watch?v=B64_4r0vGkA May 28, 2020
    # See http://docs.eggplantsoftware.com/ePF/gettingstarted/epf-getting-started-eggplant-functional.htm
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
-      if [ ! -d "/Applications/eggPlant.app" ]; then  # directory not found:
+      if [ ! -d "/Applications/Eggplant.app" ]; then  # directory not found:
          h2 "brew cask install eggplant ..."
          brew cask install eggplant
       else  # installed already:
@@ -2732,7 +2780,7 @@ if [ "${RUN_EGGPLANT}" = true ]; then  # -O
    if [ "${OPEN_APP}" = true ]; then  # -W
       if [ "${OS_TYPE}" == "macOS" ]; then  # it's on a Mac:
          sleep 3
-         open "/Applications/eggPlant.app"
+         open "/Applications/Eggplant.app"
          # TODO: Configure floating license server 10.190.70.30
       fi
    fi
@@ -2975,8 +3023,8 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
          # Creating volume "snakeeyes_redis" with default driver
          # Status: Downloaded newer image for node:12.14.0-buster-slim
 
-         # runs scripts without launching "/Applications/eggPlant.app" functional GUI:
-         # /Applications/eggPlant.app/Contents/MacOS/runscript  docker-test.script
+         # runs scripts without launching "/Applications/Eggplant.app" functional GUI:
+         # /Applications/Eggplant.app/Contents/MacOS/runscript  docker-test.script
 
       # else use Dockerfile
       fi
@@ -3006,7 +3054,7 @@ if [ "${RUN_ACTUAL}" = true ]; then   # -a
 
       if [ "${OS_TYPE}" == "macOS" ]; then  # it's on a Mac:
          "/Applications/Eggplant.app/Contents/MacOS/runscript" \
-            "docker-test.suite/Scripts/openurl.script" \
+            "docker-test.suite/Scripts/${MY_FILE}" \
             -LicenserHost 10.190.70.30 -host "${BROWSER_HOSTNAME}" \
             -username "${EGGPLANT_USERNAME}" -password "${EGGPLANT_PASSWORD}" \
             -type RDP -DefaultHeight 1920 -DefaultWidth 1080 -CommandLineOutput yes
