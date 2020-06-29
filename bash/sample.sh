@@ -12,13 +12,12 @@
 # This downloads and installs all the utilities, then invokes programs to prove they work
 # This was run on macOS Mojave and Ubuntu 16.04.
 
+### 1. Capture a time stamp to later calculate how long the script runs, no matter how it ends:
 THIS_PROGRAM="$0"
 SCRIPT_VERSION="v0.72"
-# clear  # screen (but not history)
-
-### 1. Capture a time stamp to later calculate how long the script runs, no matter how it ends:
 EPOCH_START="$( date -u +%s )"  # such as 1572634619
 LOG_DATETIME=$( date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
+# clear  # screen (but not history)
 echo "=========================== $LOG_DATETIME $THIS_PROGRAM $SCRIPT_VERSION"
 
 
@@ -114,6 +113,7 @@ exit_abnormal() {            # Function: Exit with error.
    CONTINUE_ON_ERR=false        # -E
    SET_TRACE=false              # -x
    RUN_VERBOSE=false            # -v
+   RUN_DEBUG=false              # -vv
    USE_TEST_ENV=false              # -t
    RUN_VIRTUALENV=false         # -V
    RUN_ANACONDA=false           # -A
@@ -189,6 +189,7 @@ PROJECT_FOLDER_PATH="$HOME/projects"  # -P
 PROJECT_FOLDER_NAME=""
 export GitHub_USER_NAME="WilsonMar"             # -n
 export GitHub_USER_EMAIL="wilson_mar@gmail.com"  # -e
+
 
 ### 4. Set variables associated with each parameter flag
 while test $# -gt 0; do
@@ -408,6 +409,10 @@ while test $# -gt 0; do
       export UPDATE_PKGS=true
       shift
       ;;
+    -vv)
+      export RUN_DEBUG=true
+      shift
+      ;;
     -v)
       export RUN_VERBOSE=true
       shift
@@ -459,7 +464,7 @@ while test $# -gt 0; do
 done
 
 
-### 5. Define custom functions to echo text to screen
+### 5. Custom functions to echo text to screen
 # \e ANSI color variables are defined in https://wilsonmar.github.io/bash-scripts#TextColors
 h2() { if [ "${RUN_QUIET}" = false ]; then    # heading
    printf "\n\e[1m\e[33m\u2665 %s\e[0m\n" "$(echo "$@" | sed '/./,$!d')"
@@ -486,6 +491,16 @@ fatal() {   # Skull: &#9760;  # Star: &starf; &#9733; U+02606  # Toxic: &#9762;
    printf "\n\e[31m\e[1m☢  %s\e[0m\n" "$(echo "$@" | sed '/./,$!d')"
 }
 
+if [ "${RUN_DEBUG}" = true ]; then  # -vv
+   h2 "Header here"
+   info "info"
+   note "note"
+   success "success!"
+   error "error"
+   warning "warning (warnNotice)"
+   fatal "fatal (warnError)"
+fi
+
 ### 6. Obtain information about the operating system in use to define which package manager to use
    OS_TYPE="$( uname )"
    export OS_DETAILS=""  # default blank.
@@ -502,8 +517,8 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
 
       # TODO: sudo dnf install pipenv  # for Fedora 28
 
-      silent-apt-get-install(){  # see https://wilsonmar.github.io/bash-scripts/#silent-apt-get-install
-         if [ "${RUN_VERBOSE}" = true ]; then
+      silent-apt-get-VERBOSinstall(){  # see https://wilsonmar.github.io/bash-scripts/#silent-apt-get-install
+         if [ "${RUN_E}" = true ]; then
             info "apt-get install $1 ... "
             sudo apt-get install "$1"
          else
@@ -532,7 +547,7 @@ fi
 # note "OS_DETAILS=$OS_DETAILS"
 
 
-### 7. Upgrade to the latest version of bash
+### 7. Upgrade to the latest version of bash 
 BASH_VERSION=$( bash --version | grep bash | cut -d' ' -f4 | head -c 1 )
    if [ "${BASH_VERSION}" -ge "4" ]; then  # use array feature in BASH v4+ :
       DISK_PCT_FREE=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[11]}" )
@@ -557,6 +572,7 @@ BASH_VERSION=$( bash --version | grep bash | cut -d' ' -f4 | head -c 1 )
          FREE_DISKBLOCKS_START="0"
       fi
    fi
+
 
 ### 8. Set traps to display information if script is interrupted.
 trap this_ending EXIT
@@ -849,8 +865,10 @@ fi  # if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
       cd "${PROJECT_FOLDER_PATH}" || return # as suggested by SC2164
       note "cd into path $PWD ..."
    fi
-   # note "$( ls "${PROJECT_FOLDER_PATH}" )"
 
+   if [ "${RUN_DEBUG}" = true ]; then  # -vv
+      note "$( ls "${PROJECT_FOLDER_PATH}" )"
+   fi
 
 ### 16. Obtain repository from GitHub
 Delete_GitHub_clone(){
@@ -1769,7 +1787,7 @@ if [ "${USE_VAULT}" = true ]; then   # -H
                note "ping of ${VAULT_HOST} went fine."
             else
                error "${VAULT_HOST} ICMP ping failed. Aborting ..."
-               info  "Is VPN (GlobalProtect) running and you're loggin in?"
+               info  "Is VPN (GlobalProtect) enabled for your account?"
                exit
             fi
          fi
