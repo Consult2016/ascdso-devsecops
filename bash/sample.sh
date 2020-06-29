@@ -459,44 +459,31 @@ while test $# -gt 0; do
 done
 
 
-### 5. Set static variables and custom functions to echo text to screen,
-### such as ANSI color variables (based on aws_code_deploy.sh): 
-bold="\e[1m"
-dim="\e[2m"
-# shellcheck disable=SC2034 # ... appears unused. Verify use (or export if used externally).
-underline="\e[4m"
-# shellcheck disable=SC2034 # ... appears unused. Verify use (or export if used externally).
-blink="\e[5m"
-reset="\e[0m"
-red="\e[31m"
-green="\e[32m"
-# shellcheck disable=SC2034 # ... appears unused. Verify use (or export if used externally).
-blue="\e[34m"
-cyan="\e[36m"
-
+### 5. Define custom functions to echo text to screen
+# \e ANSI color variables are defined in https://wilsonmar.github.io/bash-scripts#TextColors
 h2() { if [ "${RUN_QUIET}" = false ]; then    # heading
-   printf "\n${bold}\e[33m\u2665 %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n\e[1m\e[33m\u2665 %s\e[0m\n" "$(echo "$@" | sed '/./,$!d')"
    fi
 }
 info() {   # output on every run
-   printf "${dim}\n➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\e[2m\n➜ %s\e[0m\n" "$(echo "$@" | sed '/./,$!d')"
 }
 note() { if [ "${RUN_VERBOSE}" = true ]; then
-   printf "\n${bold}${cyan} ${reset} ${cyan}%s${reset}" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n\e[1m\e[36m \e[0m \e[36m%s\e[0m" "$(echo "$@" | sed '/./,$!d')"
    printf "\n"
    fi
 }
 success() {
-   printf "\n${green}✔ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n\e[32m\e[1m✔ %s\e[0m\n" "$(echo "$@" | sed '/./,$!d')"
 }
 error() {    # &#9747;
-   printf "\n${red}${bold}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n\e[31m\e[1m✖ %s\e[0m\n" "$(echo "$@" | sed '/./,$!d')"
 }
 warning() {  # &#9758; or &#9755;
-   printf "\n${cyan}☞ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n\e[5m\e[36m\e[1m☞ %s\e[0m\n" "$(echo "$@" | sed '/./,$!d')"
 }
 fatal() {   # Skull: &#9760;  # Star: &starf; &#9733; U+02606  # Toxic: &#9762;
-   printf "\n${red}☢  %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
+   printf "\n\e[31m\e[1m☢  %s\e[0m\n" "$(echo "$@" | sed '/./,$!d')"
 }
 
 ### 6. Obtain information about the operating system in use to define which package manager to use
