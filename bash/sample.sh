@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2001 # See if you can use ${variable//search/replace} instead.
 # shellcheck disable=SC1090 # Can't follow non-constant source. Use a directive to specify location.
+# shellcheck disable=SC2129  # Consider using { cmd1; cmd2; } >> file instead of individual redirects.
 
-# sample.sh in https://github.com/wilsonmar/DevSecOps/blob/master/bash/sample.sh
-# coded based on bash scripting techniques described at https://wilsonmar.github.io/bash-scripting.
-
-# This downloads and installs all the utilities, then invokes programs to prove they work
-# This was run on macOS Mojave and Ubuntu 16.04.
+# This Bash script is explained in https://wilsonmar.github.io/bash-scripts.
 
 # After you obtain a Terminal (console) in your enviornment,
 # cd to folder, copy this line and paste in the terminal:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/bash/sample.sh)" -v -i
 
+# This downloads and installs all the utilities, then invokes programs to prove they work
+# This was run on macOS Mojave and Ubuntu 16.04.
+
 THIS_PROGRAM="$0"
-SCRIPT_VERSION="v0.71"
+SCRIPT_VERSION="v0.72"
 # clear  # screen (but not history)
 
-# Capture starting timestamp and display no matter how it ends:
+### 1. Capture a time stamp to later calculate how long the script runs, no matter how it ends:
 EPOCH_START="$( date -u +%s )"  # such as 1572634619
 LOG_DATETIME=$( date +%Y-%m-%dT%H:%M:%S%z)-$((1 + RANDOM % 1000))
 echo "=========================== $LOG_DATETIME $THIS_PROGRAM $SCRIPT_VERSION"
 
 
-# Ensure run variables are based on arguments or defaults ..."
+### 2. Display a menu if no parameter is specified in the command line
 args_prompt() {
    echo "OPTIONS:"
    echo "   -E            continue (NOT stop) on error"
@@ -56,24 +56,25 @@ args_prompt() {
    echo "   -b           -build Docker image"
    echo "   -dc           use docker-compose.yml file"
    echo "   -w           -write image to DockerHub"
-   echo "   -r           -restart Docker before run"
+   echo "   -r           -restart (Docker) before run"
    echo " "
    echo "   -py          run with Pyenv"
    echo "   -V           to run within VirtualEnv (pipenv is default)"
-   echo "   -T           run -Tensorflow"
+   echo "   -tf          -tensorflow"
    echo "   -A           run with Python -Anaconda "
    echo "   -y            install Python Flask"
    echo " "
    echo "   -i           -install Ruby and Refinery"
    echo "   -j            install -JavaScript (NodeJs) app with MongoDB"
-   echo "   -t           setup -test server to run tests"
    echo " "
-   echo "   -G           run program in -GitHub "
+   echo "   -G           -GitHub is the basis for program to run"
    echo "   -F \"abc\"     -Folder inside repo"
    echo "   -f \"a9y.py\"  -file (program) to run"
    echo "   -P \"-v -x\"   -Parameters controlling program called"
+   echo "   -u           -update GitHub"
    echo "   -a           -actually run server (not dry run)"
-   echo "   -o           -open/view app or web page (in default browser)"
+   echo "   -t           setup -test server to run tests"
+   echo "   -o           -open/view app or web page in default browser"
    echo " "
    echo "   -K           stop OS processes at end of run (to save CPU)"
    echo "   -D           -Delete files after run (to save disk space)"
@@ -96,6 +97,7 @@ args_prompt() {
    echo "./sample.sh -v -V -c -L -s    # Use CircLeci based on secrets"
    echo "./sample.sh -v -D -M -C"
    echo "./sample.sh -G -v -f \"challenge.py\" -P \"-v\"  # to run a program in python-samples"
+   echo "./sample.sh -v -s -S \"~/.mck-secrets.sh\" -H -m -o  # -t for local vault for Vault SSH keygen"
 }
 if [ $# -eq 0 ]; then  # display if no parameters are provided:
    args_prompt
@@ -107,56 +109,63 @@ exit_abnormal() {            # Function: Exit with error.
   exit 1
 }
 
-# Defaults (default true so flag turns it true):
+### 3. Define variables for use as "feature flags"
    RUN_ACTUAL=false             # -a  (dry run is default)
    CONTINUE_ON_ERR=false        # -E
    SET_TRACE=false              # -x
    RUN_VERBOSE=false            # -v
-   RUN_TESTS=false              # -t
+   USE_TEST_ENV=false              # -t
    RUN_VIRTUALENV=false         # -V
    RUN_ANACONDA=false           # -A
    RUN_PYTHON=false             # -G
    RUN_PARMS=""                 # -P
    USE_CIRCLECI=false           # -L
    USE_DOCKER=false             # -k
-   INSTALL_AWS_CLIENT=false     #
-   USE_YUBIKEY=false            # -Y
 
    USE_AWS_CLOUD=false          # -aws
    RUN_EKS=false                # -eks
    # From AWS Management Console https://console.aws.amazon.com/iam/
-      AWS_OUTPUT_FORMAT="json"  # asked by aws configure CLI.
+   #   AWS_OUTPUT_FORMAT="json"  # asked by aws configure CLI.
    # From secrets file:
-      AWS_ACCESS_KEY_ID=""
-      AWS_SECRET_ACCESS_KEY=""
-      AWS_USER_ARN=""
-      AWS_MFA_ARN=""
+   #   AWS_ACCESS_KEY_ID=""
+   #   AWS_SECRET_ACCESS_KEY=""
+   #   AWS_USER_ARN=""
+   #   AWS_MFA_ARN=""
       AWS_DEFAULT_REGION="us-east-2"
       EKS_CLUSTER_NAME="sample-k8s"
       EKS_KEY_FILE_PREFIX="eksctl-1"
       EKS_NODES="2"
       EKS_NODE_TYPE="m5.large"
-   EKS_CLUSTER_FILE=""   # cluster.yaml instead
+   # EKS_CLUSTER_FILE=""   # cluster.yaml instead
    EKS_CRED_IS_LOCAL=true
    USE_K8S=false                # -k8s
    USE_AZURE_CLOUD=false        # -z
    USE_GOOGLE_CLOUD=false       # -g
        GOOGLE_API_KEY=""  # manually copied from APIs & services > Credentials
    PROJECT_NAME=""              # -p                 
-   USE_VAULT=false              # -H
-   RUBY_INSTALL=false           # -i
+
+   USE_YUBIKEY=false            # -Y
    MOVE_SECURELY=false          # -m
+      LOCAL_SSH_KEYFILE=""
+      GITHUB_ORG=""
+   USE_VAULT=false              # -H
+       VAULT_ADDR=""
+       VAULT_RSA_FILENAME=""
+   VAULT_PUT=false
+
+   RUBY_INSTALL=false           # -i
    NODE_INSTALL=false           # -n
       MONGO_DB_NAME=""
    USE_SECRETS_FILE=false       # -s
    SECRETS_FILEPATH="$HOME/.secrets.sh"  # -S
    SECRETS_FILE="variables.env.sample"
-   MY_FOLDER=""
-   MY_FILE=""
+   export MY_FOLDER=""
+   export MY_FILE=""
      #MY_FILE="2-3.ipynb"
    RUN_EGGPLANT=false           # -eggplant
    RUN_WEBGOAT=false            # -W
    RUN_QUIET=false              # -q
+   export UPDATE_GITHUB=false   # -u
    UPDATE_PKGS=false            # -U
 
    RESTART_DOCKER=false         # -r
@@ -166,7 +175,7 @@ exit_abnormal() {            # Function: Exit with error.
    USE_DOCKER_COMPOSE=false     # -dc
    DOWNLOAD_INSTALL=false       # -I
    DELETE_CONTAINER_AFTER=false # -D
-   RUN_TENSORFLOW=false         # -T
+   RUN_TENSORFLOW=false         # -tf
    OPEN_APP=false               # -o
    APP1_PORT="8000"
 
@@ -177,10 +186,11 @@ exit_abnormal() {            # Function: Exit with error.
    KILL_PROCESSES=false         # -K
 
 PROJECT_FOLDER_PATH="$HOME/projects"  # -P
-export GitHub_REPO_NAME=""
+PROJECT_FOLDER_NAME=""
 export GitHub_USER_NAME="WilsonMar"             # -n
 export GitHub_USER_EMAIL="wilson_mar@gmail.com"  # -e
 
+### 4. Set variables associated with each parameter flag
 while test $# -gt 0; do
   case "$1" in
     -a)
@@ -212,7 +222,7 @@ while test $# -gt 0; do
       shift
       ;;
     -d)
-      export REMOVE_GITHUB_BEFORE=true
+      export DELETE_BEFORE=true
       shift
       ;;
     -D)
@@ -220,7 +230,6 @@ while test $# -gt 0; do
       shift
       ;;
     -eks)
-      # export INSTALL_AWS_CLIENT=true
       export USE_AWS_CLOUD=true
       export RUN_EKS=true
       shift
@@ -228,7 +237,7 @@ while test $# -gt 0; do
     -eggplant)
       export RUN_EGGPLANT=true
       export GitHub_REPO_URL="https://github.com/wilsonmar/Eggplant.git"
-      export GitHub_REPO_NAME="eggplant-demo"
+      export PROJECT_FOLDER_NAME="eggplant-demo"
       export APP1_PORT="80"
       export MY_FILE="openurl.script"
       shift
@@ -245,12 +254,12 @@ while test $# -gt 0; do
       ;;
     -f*)
       shift
-      export MY_FILE=$( echo "$1" | sed -e 's/^[^=]*=//g' )
+      MY_FILE=$( echo "$1" | sed -e 's/^[^=]*=//g' )
       shift
       ;;
     -F*)
       shift
-      export MY_FOLDER=$( echo "$1" | sed -e 's/^[^=]*=//g' )
+      MY_FOLDER=$( echo "$1" | sed -e 's/^[^=]*=//g' )
       shift
       ;;
     -g*)
@@ -263,20 +272,22 @@ while test $# -gt 0; do
     -G)
       export RUN_PYTHON=true
       GitHub_REPO_URL="https://github.com/wilsonmar/python-samples.git"
-      GitHub_REPO_NAME="python-samples"
+      PROJECT_FOLDER_NAME="python-samples"
       shift
       ;;
     -H)
       export USE_VAULT=true
-      #export VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
-      #export VAULT_ADDR="https://${VAULT_HOST}" 
-      # export VAULT_USERNAME="wilson mar"
+      export PROJECT_FOLDER_NAME="vault-ssh-ca"
+      export VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
+      export VAULT_ADDR="https://${VAULT_HOST}" 
+      export VAULT_USERNAME="wilson_mar@mckinsey.com"
+      export VAULT_RSA_FILENAME="mck2"
       shift
       ;;
     -i)
       export RUBY_INSTALL=true
       GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
-      GitHub_REPO_NAME="bsawf"
+      PROJECT_FOLDER_NAME="bsawf"
       #DOCKER_DB_NANE="snakeeyes-postgres"
       #DOCKER_WEB_SVC_NAME="snakeeyes_worker_1"  # from docker-compose ps  
       APPNAME="snakeeyes"
@@ -289,7 +300,7 @@ while test $# -gt 0; do
     -j)
       export NODE_INSTALL=true
       GitHub_REPO_URL="https://github.com/wesbos/Learn-Node.git"
-      GitHub_REPO_NAME="delicious"
+      PROJECT_FOLDER_NAME="delicious"
       APPNAME="delicious"
       MONGO_DB_NAME="delicious"
       shift
@@ -310,11 +321,13 @@ while test $# -gt 0; do
       export USE_CIRCLECI=true
       #GitHub_REPO_URL="https://github.com/wilsonmar/circleci_demo.git"
       GitHub_REPO_URL="https://github.com/fedekau/terraform-with-circleci-example"
-      GitHub_REPO_NAME="circleci_demo"
+      PROJECT_FOLDER_NAME="circleci_demo"
       shift
       ;;
     -m)
       export MOVE_SECURELY=true
+      export LOCAL_SSH_KEYFILE="test-ssh"
+      export GITHUB_ORG="organizations/Mck-Internal-Test"
       shift
       ;;
     -M)
@@ -330,8 +343,8 @@ while test $# -gt 0; do
       ;;
     -N*)
       shift
-             GitHub_REPO_NAME=$( echo "$1" | sed -e 's/^[^=]*=//g' )
-      export GitHub_REPO_NAME
+             PROJECT_FOLDER_NAME=$( echo "$1" | sed -e 's/^[^=]*=//g' )
+      export PROJECT_FOLDER_NAME
       shift
       ;;
     -o)
@@ -373,13 +386,22 @@ while test $# -gt 0; do
       export SECRETS_FILEPATH
       shift
       ;;
+    -tf)
+      export RUN_TENSORFLOW=true
+      export RUN_ANACONDA=true
+      shift
+      ;;
     -t)
-      export RUN_TESTS=true
+      export USE_TEST_ENV=true
       shift
       ;;
     -T)
       export RUN_TENSORFLOW=true
       export RUN_ANACONDA=true
+      shift
+      ;;
+    -u)
+      export UPDATE_GITHUB=true
       shift
       ;;
     -U)
@@ -393,7 +415,7 @@ while test $# -gt 0; do
     -V)
       export RUN_VIRTUALENV=true
       GitHub_REPO_URL="https://github.com/PacktPublishing/Hands-On-Machine-Learning-with-Scikit-Learn-and-TensorFlow-2.0.git"
-      export GitHub_REPO_NAME="scikit"
+      export PROJECT_FOLDER_NAME="scikit"
       export APPNAME="scikit"
       #MY_FOLDER="section_2" # or ="section_3"
       shift
@@ -409,14 +431,14 @@ while test $# -gt 0; do
     -W)
       export RUN_WEBGOAT=true
       export GitHub_REPO_URL="https://github.com/wilsonmar/WebGoat.git"
-      export GitHub_REPO_NAME="webgoat"
+      export PROJECT_FOLDER_NAME="webgoat"
       export APPNAME="webgoat"
       export APP1_PORT="80"
       shift
       ;;
     -y)
       export GitHub_REPO_URL="https://github.com/nickjj/build-a-saas-app-with-flask.git"
-      export GitHub_REPO_NAME="rockstar"
+      export PROJECT_FOLDER_NAME="rockstar"
       export APPNAME="rockstar"
       shift
       ;;
@@ -437,7 +459,8 @@ while test $# -gt 0; do
 done
 
 
-### Set ANSI color variables (based on aws_code_deploy.sh): 
+### 5. Set static variables and custom functions to echo text to screen,
+### such as ANSI color variables (based on aws_code_deploy.sh): 
 bold="\e[1m"
 dim="\e[2m"
 # shellcheck disable=SC2034 # ... appears unused. Verify use (or export if used externally).
@@ -476,18 +499,19 @@ fatal() {   # Skull: &#9760;  # Star: &starf; &#9733; U+02606  # Toxic: &#9762;
    printf "\n${red}☢  %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 
-# Check what operating system is in use:
+### 6. Obtain information about the operating system in use to define which package manager to use
    OS_TYPE="$( uname )"
-   OS_DETAILS=""  # default blank.
+   export OS_DETAILS=""  # default blank.
+   export PACKAGE_MANAGER=""
 if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
-      export OS_TYPE="macOS"
-      export PACKAGE_MANAGER="brew"
+      OS_TYPE="macOS"
+      PACKAGE_MANAGER="brew"
 elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
    if command -v lsb_release ; then
       lsb_release -a
-      export OS_TYPE="Ubuntu"
+      OS_TYPE="Ubuntu"
       # TODO: OS_TYPE="WSL" ???
-      export PACKAGE_MANAGER="apt-get"
+      PACKAGE_MANAGER="apt-get"
 
       # TODO: sudo dnf install pipenv  # for Fedora 28
 
@@ -501,15 +525,15 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
       }
    elif [ -f "/etc/os-release" ]; then
       OS_DETAILS=$( cat "/etc/os-release" )  # ID_LIKE="rhel fedora"
-      export OS_TYPE="Fedora"
-      export PACKAGE_MANAGER="yum"
+      OS_TYPE="Fedora"
+      PACKAGE_MANAGER="yum"
    elif [ -f "/etc/redhat-release" ]; then
-      export OS_DETAILS=$( cat "/etc/redhat-release" )
-      export OS_TYPE="RedHat"
-      export PACKAGE_MANAGER="yum"
+      OS_DETAILS=$( cat "/etc/redhat-release" )
+      OS_TYPE="RedHat"
+      PACKAGE_MANAGER="yum"
    elif [ -f "/etc/centos-release" ]; then
-      export OS_TYPE="CentOS"
-      export PACKAGE_MANAGER="yum"
+      OS_TYPE="CentOS"
+      PACKAGE_MANAGER="yum"
    else
       error "Linux distribution not anticipated. Please update script. Aborting."
       exit 0
@@ -521,17 +545,7 @@ fi
 # note "OS_DETAILS=$OS_DETAILS"
 
 
-# bash function to kill process by name:
-ps_kill(){  # $1=process name
-      PSID=$(ps aux | grep $1 | awk '{print $2}')
-      if [ -z "$PSID" ]; then
-         h2 "Kill $1 PSID= $PSID ..."
-         kill 2 "$PSID"
-         sleep 2
-      fi
-}
-
-
+### 7. Upgrade to the latest version of bash
 BASH_VERSION=$( bash --version | grep bash | cut -d' ' -f4 | head -c 1 )
    if [ "${BASH_VERSION}" -ge "4" ]; then  # use array feature in BASH v4+ :
       DISK_PCT_FREE=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[11]}" )
@@ -557,6 +571,7 @@ BASH_VERSION=$( bash --version | grep bash | cut -d' ' -f4 | head -c 1 )
       fi
    fi
 
+### 8. Set traps to display information if script is interrupted.
 trap this_ending EXIT
 trap this_ending INT QUIT TERM
 this_ending() {
@@ -580,9 +595,8 @@ sig_cleanup() {
     this_ending
 }
 
-#################### Print run heading:
 
-# Operating enviornment information:
+### 9. Print run Operating environment information
 HOSTNAME=$( hostname )
 PUBLIC_IP=$( curl -s ifconfig.me )
 
@@ -593,37 +607,18 @@ else
    note "BASHFILE=~/.bashrc ..."
    BASHFILE="$HOME/.bashrc"  # on Linux
 fi
-
       note "Running $0 in $PWD"  # $0 = script being run in Present Wording Directory.
       note "Start time $LOG_DATETIME"
       note "Bash $BASH_VERSION from $BASHFILE"
       note "OS_TYPE=$OS_TYPE using $PACKAGE_MANAGER from $DISK_PCT_FREE disk free"
       note "on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
       note " "
-# print all command arguments submitted:
+# TODO: print all command arguments submitted:
 #while (( "$#" )); do 
 #  echo $1 
 #  shift 
 #done 
 
-
-IFS=$'\n\t'  #  Internal Field Separator for word splitting is line or tab, not spaces.
-
-# Configure location to create new files:
-if [ -z "$PROJECT_FOLDER_PATH" ]; then  # -p ""  override blank (the default)
-   h2 "Using current folder as project folder path ..."
-   pwd
-else
-   if [ ! -d "$PROJECT_FOLDER_PATH" ]; then  # path not available.
-      note "Creating folder $PROJECT_FOLDER_PATH as -project folder path ..."
-      mkdir -p "$PROJECT_FOLDER_PATH"
-   fi
-   pushd "$PROJECT_FOLDER_PATH" || return # as suggested by SC2164
-   note "Pushed into path $PWD during script run ..."
-fi
-# note "$( ls )"
-
-EXIT_CODE=0
 if [ "${CONTINUE_ON_ERR}" = true ]; then  # -E
    warning "Set to continue despite error ..."
 else
@@ -631,190 +626,16 @@ else
    set -e  # exits script when a command fails
    # ALTERNATE: set -eu pipefail  # pipefail counts as a parameter
 fi
-if [ "${SET_XTRACE}" = true ]; then
+if [ "${SET_TRACE}" = true ]; then
    h2 "Set -x ..."
    set -x  # (-o xtrace) to show commands for specific issues.
 fi
 # set -o nounset
 
-### Get secrets from $HOME/.secrets.sh file:
-Input_GitHub_User_Info(){
-      # https://www.shellcheck.net/wiki/SC2162: read without -r will mangle backslashes.
-      read -r -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
-      GitHub_USER_NAME=${GitHub_USER_NAME:-"John Doe"}
-      GitHub_ACCOUNT=${GitHub_ACCOUNT:-"john-doe"}
-
-      read -r -p "Enter your GitHub user email [john_doe@gmail.com]: " GitHub_USER_EMAIL
-      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"johb_doe@gmail.com"}
-}
-# TODO: https://www.passwordstore.org using brew install pass
+IFS=$'\n\t'  #  Internal Field Separator for word splitting is line or tab, not spaces.
 
 
-if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
-   warning "Using default values hard-coded in this bash script ..."
-   # Input_GitHub_User_Info  # function defined above.
-   # flag not to use file, then manually input:
-
-   # See https://pipenv-fork.readthedocs.io/en/latest/advanced.html#automatic-loading-of-env
-   # PIPENV_DOTENV_LOCATION=/path/to/.env or =1 to not load.
-else
-   if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
-      fatal "File not found in -secrets file $SECRETS_FILEPATH."
-      code "${SECRETS_FILEPATH}"
-      exit 9
-
-      warning "Downloading file .secrets.sample.sh ... "
-      #curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/secrets.sample.sh
-      #warning "Copying secrets.sample.sh downloaded to \$HOME/.secrets.sh ... "
-      #cp secrets.sample.sh  .secrets.sh
-      #fatal "Please edit file \$HOME/.secrets.sh and run again ..."
-      #exit 1
-   else  # secrets file found:
-      h2 "Reading -secrets.sh in $SECRETS_FILEPATH ..."
-      note "$(ls -al $SECRETS_FILEPATH )"
-      chmod +x "$SECRETS_FILEPATH"
-      source   "$SECRETS_FILEPATH"  # run file containing variable definitions.
-      if [ "$CIRCLECI_API_TOKEN" == "xxx" ]; then 
-         fatal "Please edit CIRCLECI_API_TOKEN in file \$HOME/.secrets.sh and run again ..."
-         exit 9
-      fi
-   fi
-
-   # TODO: Capture password manual input once for multiple shares 
-   # (without saving password like expect command) https://www.linuxcloudvps.com/blog/how-to-automate-shell-scripts-with-expect-command/
-      # From https://askubuntu.com/a/711591
-   #   read -p "Password: " -s szPassword
-   #   printf "%s\n" "$szPassword" | sudo --stdin mount \
-   #      -t cifs //192.168.1.1/home /media/$USER/home \
-   #      -o username=$USER,password="$szPassword"
-
-fi  # if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
-
-         note "AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}"
-         note "GitHub_USER_NAME=\"${GitHub_USER_NAME}\" "
-         note "GitHub_USER_ACCOUNTL=\"${GitHub_USER_ACCOUNTL}\" "
-         note "GitHub_USER_EMAIL=\"${GitHub_USER_EMAIL}\" "
-
-
-if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
-   # Perhaps in https://console.cloud.google.com/cloudshell  (use on Chromebooks with no Terminal)
-   # Comes with gcloud, node, docker, kubectl, go, python, git, vim, cloudshell dl file, etc.
-
-      # See https://cloud.google.com/sdk/gcloud
-      if ! command -v gcloud >/dev/null; then  # command not found, so:
-         h2 "Installing gcloud CLI in google-cloud-sdk ..."
-         brew cask install google-cloud-sdk
-         # google-cloud-sdk is installed at /usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk.
-         # anthoscligcl
-      else  # installed already:
-         if [ "${UPDATE_PKGS}" = true ]; then
-            h2 "Re-installing gcloud CLI in google-cloud-sdk ..."
-            brew cask upgrade google-cloud-sdk
-         fi
-      fi
-      note "$( gcloud --version | grep 'Google Cloud SDK' )"
-         # Google Cloud SDK 280.0.0
-         # bq 2.0.53
-         # core 2020.02.07
-         # gsutil 4.47
-
-   # Set cursor to be consistently on left side after a blank line:
-   export PS1="\n  \w\[\033[33m\]\n$ "
-   note "$( ls )"
-
-      h2 "gcloud info & auth list ..."
-      GCP_AUTH=$( gcloud auth list )
-      if [[ $GCP_AUTH == *"No credentialed accounts"* ]]; then
-         gcloud auth login  # for pop-up browser auth.
-      else
-         echo "GCP_AUTH=$GCP_AUTH"
-            #           Credentialed Accounts
-            # ACTIVE  ACCOUNT
-            # *       google462324_student@qwiklabs.net
-      fi
-      # To set the active account, run:
-      # gcloud config set account `ACCOUNT`
-
-   if [ -n "$PROJECT_NAME" ]; then   # variable is NOT empty
-      h2 "Using -project $PROJECT_NAME ..."
-      gcloud config set project "${PROJECT_NAME}"
-   fi
-   GCP_PROJECT=$( gcloud config list project | grep project | awk -F= '{print $2}' )
-      # awk -F= '{print $2}'  extracts 2nd word in response:
-      # project = qwiklabs-gcp-9cf8961c6b431994
-      # Your active configuration is: [cloudshell-19147]
-      if [[ $GCP_PROJECT == *"[default]"* ]]; then
-         gcloud projects list
-         exit 9
-      fi
-
-   PROJECT_ID=$( gcloud config list project --format "value(core.project)" )
-      # Your active configuration is: [cloudshell-29462]
-      #  qwiklabs-gcp-252d53a19c85b354
-   info "GCP_PROJECT=$GCP_PROJECT, PROJECT_ID=$PROJECT_ID"
-       # GCP_PROJECT= qwiklabs-gcp-00-3d1faad4cd8f, PROJECT_ID=qwiklabs-gcp-00-3d1faad4cd8f
-   info "DEVSHELL_PROJECT_ID=$DEVSHELL_PROJECT_ID"
-
-   RESPONSE=$( gcloud compute project-info describe --project $GCP_PROJECT )
-      # Extract from:
-      #items:
-      #- key: google-compute-default-zone
-      # value: us-central1-a
-      #- key: google-compute-default-region
-      # value: us-central1
-      #- key: ssh-keys
-   #note "RESPONSE=$RESPONSE"
-
-   if [ "${RUN_VERBOSE}" = true ]; then
-      h2 "gcloud info and versions ..."
-      gcloud info
-      gcloud version
-         # git: [git version 2.11.0]
-         docker --version  # Docker version 19.03.5, build 633a0ea838
-         kubectl version
-         node --version
-         go version        # go version go1.13 linux/amd64
-         python --version  # Python 2.7.13
-         unzip -v | grep Debian   # UnZip 6.00 of 20 April 2009, by Debian. Original by Info-ZIP.
-
-      gcloud config list
-         # [component_manager]
-         # disable_update_check = True
-         # [compute]
-         # gce_metadata_read_timeout_sec = 5
-         # [core]
-         # account = wilsonmar@gmail.com
-         # disable_usage_reporting = False
-         # project = qwiklabs-gcp-00-3d1faad4cd8f
-         # [metrics]
-         # environment = devshell
-         # Your active configuration is: [cloudshell-17739]
-
-      # TODO: Set region?
-      # gcloud functions regions list
-         # projects/.../locations/us-central1, us-east1, europe-west1, asia-northeast1
-
-   fi
-
-   # See https://cloud.google.com/blog/products/management-tools/scripting-with-gcloud-a-beginners-guide-to-automating-gcp-tasks
-      # docker run --name web-test -p 8000:8000 crccheck/hello-world
-
-   # To manage secrets stored in the Google cloud per https://wilsonmar.github.io/vault
-   # enable APIs for your account: https://console.developers.google.com/project/123456789012/settings%22?pli=1
-   gcloud services enable \
-      cloudfunctions.googleapis.com \
-      storage-component.googleapis.com
-   # See https://cloud.google.com/functions/docs/securing/managing-access-iam
-
-
-   # Setup Google's Local Functions Emulator to test functions locally without deploying the live environment every time:
-   # npm install -g @google-cloud/functions-emulator
-      # See https://rominirani.com/google-cloud-functions-tutorial-using-gcloud-tool-ccf3127fdf1a
-
-fi
-
-
-
+### 10. Install installers (brew, apt-get), depending on operating system
 if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 
    h2 "-Install package managers ..."
@@ -920,39 +741,206 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
 fi # if [ "${DOWNLOAD_INSTALL}"
 
 
+### 11. Define utility functions, such ShellCheck and the function to kill process by name, etc.
 
-if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
+ps_kill(){  # $1=process name
+      PSID=$( ps aux | pgrep "$1" | awk '{print $2}' )
+      if [ -z "$PSID" ]; then
+         h2 "Kill $1 PSID= $PSID ..."
+         kill 2 "$PSID"
+         sleep 2
+      fi
+}
 
-      # assume setup done by https://wilsonmar.github.io/gcp
-      # See https://cloud.google.com/solutions/secrets-management
-      # https://github.com/GoogleCloudPlatform/berglas is being migrated to Google Secrets Manager.
-      # See https://github.com/sethvargo/secrets-in-serverless/tree/master/gcs to encrypt secrets on Google Cloud Storage accessed inside a serverless Cloud Function.
-      # using gcloud beta secrets create "my-secret" --replication-policy "automatic" --data-file "/tmp/my-secret.txt"
-      h2 "Retrieve secret version from GCP Cloud Secret Manager ..."
-      gcloud beta secrets versions access "latest" --secret "my-secret"
-         # A secret version contains the actual contents of a secret. "latest" is the VERSION_ID      
+if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         if ! command -v shellcheck >/dev/null; then  # command not found, so:
+            h2 "Brew installing shellcheck ..."
+            brew install shellcheck
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading shellcheck ..."
+               brew upgrade shellcheck
+               # pip install --user --upgrade shellcheck
+            fi
+         fi
+         note "$( shellcheck --version )"
+            # version: 0.7.0
+            # license: GNU General Public License, version 3
+            # website: https://www.shellcheck.net
+   fi  # PACKAGE_MANAGER
+fi  # DOWNLOAD_INSTALL
 
-   h2 "In GCP create new repository using gcloud & git commands:"
-   # gcloud source repos create REPO_DEMO
-
-   # Clone the contents of your new Cloud Source Repository to a local repo:
-   # gcloud source repos clone REPO_DEMO
-
-   # Navigate into the local repository you created:
-   # cd REPO_DEMO
-
-   # Create a file myfile.txt in your local repository:
-   # echo "Hello World!" > myfile.txt
-
-   # Commit the file using the following Git commands:
-   # git config --global user.email "you@example.com"
-   # git config --global user.name "Your Name"
-   # git add myfile.txt
-   # git commit -m "First file using Cloud Source Repositories" myfile.txt
-
-   # git push origin master
+if [ "${CONTINUE_ON_ERR}" = false ]; then  # -E
+   shellcheck "$0"
 fi
 
+
+### 12. Install basic utilities (git, jq)
+if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
+
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         if ! command -v git >/dev/null; then  # command not found, so:
+            h2 "Brew installing git ..."
+            brew install git
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading git ..."
+               brew upgrade git
+               # pip install --user --upgrade git
+            fi
+         fi
+         note "$( git --version )"
+            # git, version 2018.11.26
+   fi  # PACKAGE_MANAGER
+fi  # DOWNLOAD_INSTALL
+
+### 13. Get secrets from a clear-text file in $HOME folder
+Input_GitHub_User_Info(){
+      # https://www.shellcheck.net/wiki/SC2162: read without -r will mangle backslashes.
+      read -r -p "Enter your GitHub user name [John Doe]: " GitHub_USER_NAME
+      GitHub_USER_NAME=${GitHub_USER_NAME:-"John Doe"}
+      GitHub_ACCOUNT=${GitHub_ACCOUNT:-"john-doe"}
+
+      read -r -p "Enter your GitHub user email [john_doe@gmail.com]: " GitHub_USER_EMAIL
+      GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"johb_doe@gmail.com"}
+}
+# TODO: https://www.passwordstore.org using brew install pass
+if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
+   warning "Using default values hard-coded in this bash script ..."
+   # See https://pipenv-fork.readthedocs.io/en/latest/advanced.html#automatic-loading-of-env
+   # PIPENV_DOTENV_LOCATION=/path/to/.env or =1 to not load.
+else
+   if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
+      fatal "File not found in -secrets file $SECRETS_FILEPATH."
+      code "${SECRETS_FILEPATH}"
+      exit 9
+
+      warning "Downloading file .secrets.sample.sh ... "
+      #curl -s -O https://raw.GitHubusercontent.com/wilsonmar/DevSecOps/master/secrets.sample.sh
+      #warning "Copying secrets.sample.sh downloaded to \$HOME/.secrets.sh ... "
+      #cp secrets.sample.sh  .secrets.sh
+      #fatal "Please edit file \$HOME/.secrets.sh and run again ..."
+      #exit 1
+   else  # secrets file found:
+      h2 "Reading -secrets.sh in ${SECRETS_FILEPATH} ..."
+      note "$(ls -al "${SECRETS_FILEPATH}" )"
+      chmod +x "${SECRETS_FILEPATH}"
+      source   "${SECRETS_FILEPATH}"  # run file containing variable definitions.
+      if [ "${CIRCLECI_API_TOKEN}" == "xxx" ]; then 
+         fatal "Please edit CIRCLECI_API_TOKEN in file \$HOME/.secrets.sh and run again ..."
+         exit 9
+      fi
+   fi
+
+   # TODO: Capture password manual input once for multiple shares 
+   # (without saving password like expect command) https://www.linuxcloudvps.com/blog/how-to-automate-shell-scripts-with-expect-command/
+      # From https://askubuntu.com/a/711591
+   #   read -p "Password: " -s szPassword
+   #   printf "%s\n" "$szPassword" | sudo --stdin mount \
+   #      -t cifs //192.168.1.1/home /media/$USER/home \
+   #      -o username=$USER,password="$szPassword"
+
+fi  # if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
+
+
+### 14. Display run variables 
+#      note "AWS_DEFAULT_REGION= " "${AWS_DEFAULT_REGION}"
+#      note "GitHub_USER_NAME=" "${GitHub_USER_NAME}"
+#      note "GitHub_USER_ACCOUNT=" "${GitHub_USER_ACCOUNT}"
+#      note "GitHub_USER_EMAIL=" "${GitHub_USER_EMAIL}"
+
+### 15. Configure project folder location where files are created by the run
+   if [ -z "${PROJECT_FOLDER_PATH}" ]; then  # -p ""  override blank (the default)
+      h2 "Using current folder \"${PROJECT_FOLDER_PATH}\" as project folder path ..."
+      pwd
+   else
+      if [ ! -d "$PROJECT_FOLDER_PATH" ]; then  # path not available.
+         note "Creating folder ${PROJECT_FOLDER_PATH} as -project folder path ..."
+         mkdir -p "$PROJECT_FOLDER_PATH"
+      fi
+      cd "${PROJECT_FOLDER_PATH}" || return # as suggested by SC2164
+      note "cd into path $PWD ..."
+   fi
+   # note "$( ls "${PROJECT_FOLDER_PATH}" )"
+
+
+### 16. Obtain repository from GitHub
+Delete_GitHub_clone(){
+   # https://www.shellcheck.net/wiki/SC2115 Use "${var:?}" to ensure this never expands to / .
+   PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${PROJECT_FOLDER_NAME}"
+   if [ -d "${PROJECT_FOLDER_FULL_PATH:?}" ]; then  # path available.
+      h2 "Removing project folder $PROJECT_FOLDER_FULL_PATH ..."
+      ls -al "${PROJECT_FOLDER_FULL_PATH}"
+      rm -rf "${PROJECT_FOLDER_FULL_PATH}"
+   fi
+}
+Clone_GitHub_repo(){
+      git clone "${GitHub_REPO_URL}" "${PROJECT_FOLDER_NAME}"
+      cd "${PROJECT_FOLDER_NAME}"
+      note "At $PWD"
+}
+# To ensure that we have a project folder (from GitHub clone or not):
+if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
+
+      if [ -z "${PROJECT_FOLDER_NAME}" ]; then   # name not specified:
+         fatal "PROJECT_FOLDER_NAME not specified for git cloning ..."
+         exit
+      fi 
+
+      PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${PROJECT_FOLDER_NAME}"
+      h2 "-clone requested for $GitHub_REPO_URL $PROJECT_FOLDER_NAME ..."
+      if [ -d "${PROJECT_FOLDER_FULL_PATH:?}" ]; then  # path available.
+         rm -rf "$PROJECT_FOLDER_NAME" 
+         Delete_GitHub_clone    # defined above in this file.
+      fi
+
+      Clone_GitHub_repo      # defined above in this file.
+      # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
+      # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
+      # git pull upstream master
+
+else   # -clone not specified:
+
+   if [ -z "${PROJECT_FOLDER_NAME}" ]; then   # value not defined
+      PROJECT_FOLDER_NAME="work"
+      note "\"work\" folder is the default name."
+   fi
+
+   if [ -z "${PROJECT_FOLDER_NAME}" ]; then   # variable found:
+      fatal "PROJECT_FOLDER_NAME not specified in script ..."
+      exit
+   else  # no project folder specified:
+      if [ ! -d "${PROJECT_FOLDER_NAME}" ]; then   # directory not found
+         note "Create blank project folder \"${PROJECT_FOLDER_NAME}\" since no GitHub is specified..."
+         mkdir "${PROJECT_FOLDER_NAME}"
+            cd "${PROJECT_FOLDER_NAME}"
+      else  # folder exists:
+         if [ "${DELETE_BEFORE}" = true ]; then  # -d 
+            note "Removing project folder \"${PROJECT_FOLDER_NAME}\" ..."
+            rm -rf "${PROJECT_FOLDER_NAME}"
+            note "Making project folder \"${PROJECT_FOLDER_NAME}\" ..."
+            mkdir "${PROJECT_FOLDER_NAME}"
+         else
+            #note "cd into $PWD since -delete GitHub not specified..."
+            cd "${PROJECT_FOLDER_NAME}"
+            note "At $( pwd )"
+         fi         
+      fi
+   fi
+
+fi  # CLONE_GITHUB
+
+
+   if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
+      Input_GitHub_User_Info  # function defined above.
+   else
+      note "Using -u \"$GitHub_USER_NAME\" -e \"$GitHub_USER_EMAIL\" ..."
+      # since this is hard coded as "John Doe" above
+   fi
+
+
+### 17. Pipenv and Pyenv to install Python and its modules
 pipenv_install() {
    # Pipenv is a dependency manager for Python projects like Node.js’ npm or Ruby’s bundler.
    # See https://realpython.com/pipenv-guide/
@@ -1011,7 +999,192 @@ pipenv_install() {
 }  # pipenv_install()
 
 
-if [ "${INSTALL_AWS_CLIENT}" = true ]; then
+### 18. Connect to GitHub Cloud, if requested:
+if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
+   # Perhaps in https://console.cloud.google.com/cloudshell  (use on Chromebooks with no Terminal)
+   # Comes with gcloud, node, docker, kubectl, go, python, git, vim, cloudshell dl file, etc.
+
+      # See https://cloud.google.com/sdk/gcloud
+      if ! command -v gcloud >/dev/null; then  # command not found, so:
+         h2 "Installing gcloud CLI in google-cloud-sdk ..."
+         brew cask install google-cloud-sdk
+         # google-cloud-sdk is installed at /usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk.
+         # anthoscligcl
+      else  # installed already:
+         if [ "${UPDATE_PKGS}" = true ]; then
+            h2 "Re-installing gcloud CLI in google-cloud-sdk ..."
+            brew cask upgrade google-cloud-sdk
+         fi
+      fi
+      note "$( gcloud --version | grep 'Google Cloud SDK' )"
+         # Google Cloud SDK 280.0.0
+         # bq 2.0.53
+         # core 2020.02.07
+         # gsutil 4.47
+
+   # Set cursor to be consistently on left side after a blank line:
+   export PS1="\n  \w\[\033[33m\]\n$ "
+   note "$( ls )"
+
+      h2 "gcloud info & auth list ..."
+      GCP_AUTH=$( gcloud auth list )
+      if [[ $GCP_AUTH == *"No credentialed accounts"* ]]; then
+         gcloud auth login  # for pop-up browser auth.
+      else
+         echo "GCP_AUTH=$GCP_AUTH"
+            #           Credentialed Accounts
+            # ACTIVE  ACCOUNT
+            # *       google462324_student@qwiklabs.net
+      fi
+      # To set the active account, run:
+      # gcloud config set account `ACCOUNT`
+
+   if [ -n "$PROJECT_NAME" ]; then   # variable is NOT empty
+      h2 "Using -project $PROJECT_NAME ..."
+      gcloud config set project "${PROJECT_NAME}"
+   fi
+   GCP_PROJECT=$( gcloud config list project | grep project | awk -F= '{print $2}' )
+      # awk -F= '{print $2}'  extracts 2nd word in response:
+      # project = qwiklabs-gcp-9cf8961c6b431994
+      # Your active configuration is: [cloudshell-19147]
+      if [[ $GCP_PROJECT == *"[default]"* ]]; then
+         gcloud projects list
+         exit 9
+      fi
+
+   PROJECT_ID=$( gcloud config list project --format "value(core.project)" )
+      # Your active configuration is: [cloudshell-29462]
+      #  qwiklabs-gcp-252d53a19c85b354
+   info "GCP_PROJECT=$GCP_PROJECT, PROJECT_ID=$PROJECT_ID"
+       # GCP_PROJECT= qwiklabs-gcp-00-3d1faad4cd8f, PROJECT_ID=qwiklabs-gcp-00-3d1faad4cd8f
+   info "DEVSHELL_PROJECT_ID=$DEVSHELL_PROJECT_ID"
+
+   RESPONSE=$( gcloud compute project-info describe --project "${GCP_PROJECT}" )
+      # Extract from:
+      #items:
+      #- key: google-compute-default-zone
+      # value: us-central1-a
+      #- key: google-compute-default-region
+      # value: us-central1
+      #- key: ssh-keys
+   #note "RESPONSE=$RESPONSE"
+
+   if [ "${RUN_VERBOSE}" = true ]; then
+      h2 "gcloud info and versions ..."
+      gcloud info
+      gcloud version
+         # git: [git version 2.11.0]
+         docker --version  # Docker version 19.03.5, build 633a0ea838
+         kubectl version
+         node --version
+         go version        # go version go1.13 linux/amd64
+         python --version  # Python 2.7.13
+         unzip -v | grep Debian   # UnZip 6.00 of 20 April 2009, by Debian. Original by Info-ZIP.
+
+      gcloud config list
+         # [component_manager]
+         # disable_update_check = True
+         # [compute]
+         # gce_metadata_read_timeout_sec = 5
+         # [core]
+         # account = wilsonmar@gmail.com
+         # disable_usage_reporting = False
+         # project = qwiklabs-gcp-00-3d1faad4cd8f
+         # [metrics]
+         # environment = devshell
+         # Your active configuration is: [cloudshell-17739]
+
+      # TODO: Set region?
+      # gcloud functions regions list
+         # projects/.../locations/us-central1, us-east1, europe-west1, asia-northeast1
+   fi
+
+   # See https://cloud.google.com/blog/products/management-tools/scripting-with-gcloud-a-beginners-guide-to-automating-gcp-tasks
+      # docker run --name web-test -p 8000:8000 crccheck/hello-world
+
+   # To manage secrets stored in the Google cloud per https://wilsonmar.github.io/vault
+   # enable APIs for your account: https://console.developers.google.com/project/123456789012/settings%22?pli=1
+   gcloud services enable \
+      cloudfunctions.googleapis.com \
+      storage-component.googleapis.com
+   # See https://cloud.google.com/functions/docs/securing/managing-access-iam
+
+
+   # Setup Google's Local Functions Emulator to test functions locally without deploying the live environment every time:
+   # npm install -g @google-cloud/functions-emulator
+      # See https://rominirani.com/google-cloud-functions-tutorial-using-gcloud-tool-ccf3127fdf1a
+
+
+      # assume setup done by https://wilsonmar.github.io/gcp
+      # See https://cloud.google.com/solutions/secrets-management
+      # https://github.com/GoogleCloudPlatform/berglas is being migrated to Google Secrets Manager.
+      # See https://github.com/sethvargo/secrets-in-serverless/tree/master/gcs to encrypt secrets on Google Cloud Storage accessed inside a serverless Cloud Function.
+      # using gcloud beta secrets create "my-secret" --replication-policy "automatic" --data-file "/tmp/my-secret.txt"
+   h2 "Retrieve secret version from GCP Cloud Secret Manager ..."
+   gcloud beta secrets versions access "latest" --secret "my-secret"
+         # A secret version contains the actual contents of a secret. "latest" is the VERSION_ID      
+
+   h2 "In GCP create new repository using gcloud & git commands:"
+   # gcloud source repos create REPO_DEMO
+
+   # Clone the contents of your new Cloud Source Repository to a local repo:
+   # gcloud source repos clone REPO_DEMO
+
+   # Navigate into the local repository you created:
+   # cd REPO_DEMO
+
+   # Create a file myfile.txt in your local repository:
+   # echo "Hello World!" > myfile.txt
+
+   # Commit the file using the following Git commands:
+   # git config --global user.email "you@example.com"
+   # git config --global user.name "Your Name"
+   # git add myfile.txt
+   # git commit -m "First file using Cloud Source Repositories" myfile.txt
+
+   # git push origin master
+
+
+   # https://google.qwiklabs.com/games/759/labs/2373
+   h2 "Using GCP for Speech-to-Text API"  # https://cloud.google.com/speech/reference/rest/v1/RecognitionConfig
+   # usage limits: https://cloud.google.com/speech-to-text/quotas
+   curl -O -s "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/gcp/gcp-speech-to-text/request.json"
+   cat request.json
+   # Listen to it at: https://storage.cloud.google.com/speech-demo/brooklyn.wav
+   
+   curl -s -X POST -H "Content-Type: application/json" --data-binary @request.json \
+      "https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_API_KEY}" > result.json
+   cat result.json
+
+exit  # in dev
+
+   # https://google.qwiklabs.com/games/759/labs/2374
+   h2 "GCP AutoML Vision API"
+   # From the Navigation menu and select APIs & Services > Library https://cloud.google.com/automl/ui/vision
+   # In the search bar type in "Cloud AutoML". Click on the Cloud AutoML API result and then click Enable.
+
+   QWIKLABS_USERNAME="???"
+
+   # Give AutoML permissions:
+   gcloud projects add-iam-policy-binding "${DEVSHELL_PROJECT_ID}" \
+    --member="user:$QWIKLABS_USERNAME" \
+    --role="roles/automl.admin"
+
+   gcloud projects add-iam-policy-binding "${DEVSHELL_PROJECT_ID}" \
+    --member="serviceAccount:custom-vision@appspot.gserviceaccount.com" \
+    --role="roles/ml.admin"
+
+   gcloud projects add-iam-policy-binding "$DEVSHELL_PROJECT_ID}" \
+    --member="serviceAccount:custom-vision@appspot.gserviceaccount.com" \
+    --role="roles/storage.admin"
+
+   # TODO: more steps needed from lab
+
+fi  # USE_GOOGLE_CLOUD
+
+
+### 19. Connect to AWS
+if [ "${USE_AWS_CLOUD}" = true ]; then   # -w
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then
       #fancy_echo "awscli requires Python3."
@@ -1039,10 +1212,7 @@ if [ "${INSTALL_AWS_CLIENT}" = true ]; then
 
    fi  # "${PACKAGE_MANAGER}" == "brew" ]; then
 
-fi
 
-
-if [ "${USE_AWS_CLOUD}" = true ]; then   # -w
    if [ "${USE_VAULT}" = true ]; then   # -w
       # Alternative: https://hub.docker.com/_/vault
 
@@ -1067,6 +1237,15 @@ if [ "${USE_AWS_CLOUD}" = true ]; then   # -w
 fi  # USE_AWS_CLOUD
 
 
+### 20. Install Azure
+if [ "${USE_AZURE_CLOUD}" = true ]; then   # -z
+    # See https://docs.microsoft.com/en-us/cli/azure/keyvault/secret?view=azure-cli-latest
+    brew cask install azure-vault
+    # https://docs.microsoft.com/en-us/azure/key-vault/about-keys-secrets-and-certificates
+fi
+
+
+### 21. Install K8S minikube
 if [ "${USE_K8S}" = true ]; then  # -k8s
 
    h2 "-k8s"
@@ -1102,7 +1281,7 @@ exit
 fi  # if [ "${USE_K8S}" = true ]; then  # -k8s
 
 
-
+### 22. Install EKS using eksctl
 if [ "${RUN_EKS}" = true ]; then  # -EKS
 
    # h2 "kubectl client install for -EKS ..."
@@ -1188,7 +1367,7 @@ if [ "${RUN_EKS}" = true ]; then  # -EKS
    RESPONSE="$( aws iam get-user )"
       # ERROR: Unable to locate credentials. You can configure credentials by running "aws configure".
       # This script stops if there is a problem here.
-   note "$( echo ${RESPONSE} | jq )"
+   note "$( echo "${RESPONSE}" | jq )"
 
    h2 "Create cluster $EKS_CLUSTER_NAME using eksctl ... "
    # See https://eksctl.io/usage/creating-and-managing-clusters/
@@ -1199,13 +1378,14 @@ exit
         --name="${EKS_CLUSTER_NAME}" \
         --region="${AWS_DEFAULT_REGION}" \
         --ssh-public-key="${EKS_KEY_FILE_PREFIX}" \
-        --nodes="${EKS_NODES}" \  # --nodes-min=, --nodes-max=  # to config K8s Cluster autoscaler to automatically adjust the number of nodes in your node groups.
+        --nodes="${EKS_NODES}" \
         --node_type="${EKS_NODE_TYPE}" \
         --fargate \
-        # --version 1.16 \  # of kubernetes (1.16)
         --write-kubeconfig="${EKS_CRED_IS_LOCAL}" \
         --set-kubeconfig-context=false
-   # RESPONSE: setting availability zones to go with region specified.
+      # --version 1.16 \  # of kubernetes (1.16)
+      # --nodes-min=, --nodes-max=  # to config K8s Cluster autoscaler to automatically adjust the number of nodes in your node groups.
+     # RESPONSE: setting availability zones to go with region specified.
    # using official AWS EKS EC2 AMI, static AMI resolver, dedicated VPC
       # creating cluster stack "eksctl-v-cluster" to ${EKS_CLUSTER_NAME}
       # launching CloudFormation stacks "eksctl-v-nodegroup-0" to ${EKS_NODEGROUP_ID}
@@ -1313,76 +1493,7 @@ exit  # DEBUGGING
 fi  # EKS
 
 
-if [ "${USE_AZURE_CLOUD}" = true ]; then   # -z
-      # See https://docs.microsoft.com/en-us/cli/azure/keyvault/secret?view=azure-cli-latest
-      brew cask install azure-vault
-fi
-
-
-Delete_GitHub_clone(){
-   # https://www.shellcheck.net/wiki/SC2115 Use "${var:?}" to ensure this never expands to / .
-   PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${GitHub_REPO_NAME}"
-   if [ -d "${PROJECT_FOLDER_FULL_PATH:?}" ]; then  # path available.
-      h2 "Removing project folder $PROJECT_FOLDER_FULL_PATH ..."
-      ls -al "${PROJECT_FOLDER_FULL_PATH}"
-      rm -rf "${PROJECT_FOLDER_FULL_PATH}"
-   fi
-}
-Clone_GitHub_repo(){
-      git clone "${GitHub_REPO_URL}" "${GitHub_REPO_NAME}"
-      cd "${GitHub_REPO_NAME}"
-      note "At $PWD"
-}
-
-if [ -z "$GitHub_REPO_NAME" ]; then   # variable is blank
-   note "Not cloing from GitHub ..."
-else
-   if [ "${CLONE_GITHUB}" = true ]; then   # -clone specified:
-
-      if [ -z "${GitHub_REPO_NAME}" ]; then   # name not specified:
-         fatal "GitHub_REPO_NAME not specified ..."
-         exit
-      fi 
-
-      if [ -z "${PROJECT_FOLDER_PATH}" ]; then   # No name specified:
-         fatal "PROJECT_FOLDER_PATH not specified ..."
-         exit
-      fi 
-
-      PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${GitHub_REPO_NAME}"
-      h2 "-clone requested for $GitHub_REPO_URL $GitHub_REPO_NAME ..."
-      if [ -d "${PROJECT_FOLDER_FULL_PATH:?}" ]; then  # path available.
-         rm -rf "$GitHub_REPO_NAME" 
-         Delete_GitHub_clone    # defined above in this file.
-      fi
-
-      Clone_GitHub_repo      # defined above in this file.
-      # curl -s -O https://raw.GitHubusercontent.com/wilsonmar/build-a-saas-app-with-flask/master/sample.sh
-      # git remote add upstream https://github.com/nickjj/build-a-saas-app-with-flask
-      # git pull upstream master
-
-   else   # -clone not specified:
-
-      if [ -d "${GitHub_REPO_NAME}" ]; then  # path available.
-         h2 "Re-using repo ${GitHub_REPO_URL} ${GitHub_REPO_NAME} ..."
-         cd "${GitHub_REPO_NAME}"
-      else
-         h2 "Git cloning repo ${GitHub_REPO_URL} ${GitHub_REPO_NAME} ..."
-         # Clone_GitHub_repo      # defined above in this file.
-         note "$( ls $PWD )"
-      fi
-   fi
-
-   if [ -z "$GitHub_USER_EMAIL" ]; then   # variable is blank
-      Input_GitHub_User_Info  # function defined above.
-   else
-      note "Using -u \"$GitHub_USER_NAME\" -e \"$GitHub_USER_EMAIL\" ..."
-      # since this is hard coded as "John Doe" above
-   fi
-
-fi  # GitHub_REPO_NAME not cloning 
-
-
+### 23. Read secrets from a configuration file in clear text, encrypted file, Vault API using govaultenv
 if [ "${USE_SECRETS_FILE}" = true ]; then   # -S
 
    # This is https://github.com/AGWA/git-crypt      has 4,500 stars.
@@ -1454,53 +1565,7 @@ if [ "${USE_SECRETS_FILE}" = true ]; then   # -S
 fi  # USE_SECRETS_FILE  to get into cloud
 
 
-
-if [ "${USE_AZURE_CLOUD}" = true ]; then   # -z
-   h2 "Azure cloud "  # https://docs.microsoft.com/en-us/azure/key-vault/about-keys-secrets-and-certificates
-fi
-
-
-
-if [ "${USE_GOOGLE_CLOUD}" = true ]; then   # -g
-
-   # https://google.qwiklabs.com/games/759/labs/2373
-   h2 "Using GCP for Speech-to-Text API"  # https://cloud.google.com/speech/reference/rest/v1/RecognitionConfig
-   # usage limits: https://cloud.google.com/speech-to-text/quotas
-   curl -O -s "https://raw.githubusercontent.com/wilsonmar/DevSecOps/master/gcp/gcp-speech-to-text/request.json"
-   cat request.json
-   # Listen to it at: https://storage.cloud.google.com/speech-demo/brooklyn.wav
-   
-   curl -s -X POST -H "Content-Type: application/json" --data-binary @request.json \
-      "https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_API_KEY}" > result.json
-   cat result.json
-
-exit  # in dev
-
-   # https://google.qwiklabs.com/games/759/labs/2374
-   h2 "GCP AutoML Vision API"
-   # From the Navigation menu and select APIs & Services > Library https://cloud.google.com/automl/ui/vision
-   # In the search bar type in "Cloud AutoML". Click on the Cloud AutoML API result and then click Enable.
-
-   QWIKLABS_USERNAME="???"
-
-   # Give AutoML permissions:
-   gcloud projects add-iam-policy-binding $DEVSHELL_PROJECT_ID \
-    --member="user:$QWIKLABS_USERNAME" \
-    --role="roles/automl.admin"
-
-   gcloud projects add-iam-policy-binding $DEVSHELL_PROJECT_ID \
-    --member="serviceAccount:custom-vision@appspot.gserviceaccount.com" \
-    --role="roles/ml.admin"
-
-   gcloud projects add-iam-policy-binding $DEVSHELL_PROJECT_ID \
-    --member="serviceAccount:custom-vision@appspot.gserviceaccount.com" \
-    --role="roles/storage.admin"
-
-   # TODO: more steps needed from lab
-
-fi
-
-
+### 24. Use CircleCI
 if [ "${USE_CIRCLECI}" = true ]; then   # -L
    # https://circleci.com/docs/2.0/getting-started/#setting-up-circleci
    # h2 "circleci setup ..."
@@ -1563,7 +1628,7 @@ if [ "${USE_CIRCLECI}" = true ]; then   # -L
 fi  # USE_CIRCLECI
 
 
-
+### 25. Use Yubikey
 if [ "${USE_YUBIKEY}" = true ]; then   # -Y
       if [ "${PACKAGE_MANAGER}" == "brew" ]; then
          if ! command -v ykman >/dev/null; then  # command not found, so:
@@ -1635,7 +1700,7 @@ if [ "${USE_YUBIKEY}" = true ]; then   # -Y
 fi  # USE_YUBIKEY
 
 
-
+### 26. Use Hashicorp Vault
 if [ "${USE_VAULT}" = true ]; then   # -H
       h2 "-HashicorpVault being used ..."
 
@@ -1643,7 +1708,7 @@ if [ "${USE_VAULT}" = true ]; then   # -H
           # https://learn.hashicorp.com/vault/secrets-management/sm-versioned-kv
           # https://www.vaultproject.io/api/secret/kv/kv-v2.html
       # NOTE: vault-cli is a Subversion-like utility to work with Jackrabbit FileVault (not Hashicorp Vault)
-      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
          if ! command -v vault >/dev/null; then  # command not found, so:
             note "Brew installing vault ..."
             brew install vault
@@ -1665,7 +1730,7 @@ if [ "${USE_VAULT}" = true ]; then   # -H
       elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
          sudo zypper install vault   # please test
          exit 9
-      fi
+   fi
       RESPONSE="$( vault --version | cut -d' ' -f2 )"  # 2nd column of "Vault v1.3.4"
       export VAULT_VERSION="${RESPONSE:1}"   # remove first character.
       note "VAULT_VERSION=$VAULT_VERSION"   # 1.4.2_1
@@ -1675,77 +1740,310 @@ if [ "${USE_VAULT}" = true ]; then   # -H
       complete -C /usr/local/bin/vault vault
          # No response is expected. Requires running exec $SHELL to work.
 
-   # Error checking seal status: Get "http://127.0.0.1:8200/v1/sys/seal-status": dial tcp 127.0.0.1:8200: connect: connection refused
 
-   if [ "${RUN_TESTS}" = true ]; then   # -t
-      # CAUTION: Vault dev server is insecure and stores all data in memory only!
-      export VAULT_HOST="127.0.0.1"
-      export VAULT_ADDR="http://127.0.0.1:8200"
-      export VAULT_USERNAME="devservermode"
-
-      h2 "Starting vault local dev server at $VAULT_ADDR ..."  # https://learn.hashicorp.com/vault/getting-started/dev-server
-      ps_kill 'vault'  # bash function defined in this file.
-      # Don't RESPONSE="$( vault server -dev  & )"  # & = background job
-      # because this displays Unseal Key and Root Token:
-      vault server -dev
-      # THIS SCRIPT PAUSES HERE. OPEN ANOTHER TERMINAL SESSION.
-      # Press control+C to stop service.
-
-      # echo -e "RESPONSE=$RESPONSE \n"
-
-      # FIXME: capture output:
-      export UNSEAL_KEY="$( echo "${RESPONSE}" | grep -o 'Unseal Key: [^, }]*' | sed 's/^.*: //' )"
-      export VAULT_DEV_ROOT_TOKEN_ID="$( echo "${RESPONSE}" | grep -o 'Root Token: [^, }]*' | sed 's/^.*: //' )"
-      note -e ">>> UNSEAL_KEY=$UNSEAL_KEY \n"
-      note -e ">>> VAULT_DEV_ROOT_TOKEN_ID=$VAULT_DEV_ROOT_TOKEN_ID \n"
-      #sample      VAULT_DEV_ROOT_TOKEN_ID="s.Lgsh7FXX9cUKQttfFo1mdHjE"
-
-   else  # prod
-
-      h2 "Start vault server ..."  # https://www.vaultproject.io/docs/commands/server.html
-      vault server -config ???
-
-   fi  # RUN_TESTS
-
-
-   if [ "${RUN_ACTUAL}" = true ]; then   # -a
-      # use production ADDR from secrets
-      # note "VAULT_USERNAME=${VAULT_USERNAME}"
-      #export VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
-      if [ -z "${VAULT_HOST}" ]; then  # it's blank:
-         error "VAULT_HOST is not defined (within secrets file) ..."
-      else
-         if ping -c 1 "${VAULT_HOST}" &> /dev/null ; then 
-            # PING vault.prod.init.ak8s.mckinsey.com (10.191.78.38): 56 data bytes
-            note "ping of ${VAULT_HOST} went fine."
-         else
-            error "VAULT_HOST=$VAULT_HOST ICMP ping failed. Aborting ..."
-            info  "Is VPN (GlobalProtect) running and you're loggin in?"
-            exit
+      #### "Installing govaultenv ..."
+   if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         # https://github.com/jamhed/govaultenv
+         if ! command -v govaultenv >/dev/null; then  # command not found, so:
+            h2 "Brew installing govaultenv ..."
+            brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
+            brew install govaultenv
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading govaultenv ..."
+               brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
+               brew upgrade jamhed/govaultenv/govaultenv
+            fi
          fi
-      fi
-   fi  # RUN_ACTUAL
-
-   #note -e "\n"
-   # Output to JSON instead & use jq to parse?
-         # See https://stackoverflow.com/questions/2990414/echo-that-outputs-to-stderr
-   RESPONSE="$( vault status 2>&2)"  # capture STDERR output to &1 (STDOUT)
-      # Error checking seal status: Get "https://127.0.0.1:8200/v1/sys/seal-status": dial tcp 127.0.0.1:8200: connect: connection refused
-   ERR_RESPONSE="$( echo $RESPONSE | awk '{print $1;}' )"
-   # TODO: Check error code.
-   if [ "Error" = "$ERR_RESPONSE" ]; then
-         fatal "${ERR_RESPONSE}"
+         note "govaultenv $( govaultenv | grep version | cut -d' ' -f1 )"
+            # version:0.1.2 commit:d7754e38bb855f6a0c0c259ee2cced29c86a4da5 build by:goreleaser date:2019-11-13T19:47:16Z
+      #elif for Alpine? 
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "govaultenv"  # please test
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install govaultenv      # please test
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install govaultenv   # please test
+      else
+         fatal "Package code not recognized."
          exit
-   else
-         note -e ">>> $RESPONSE"
    fi
 
+
+   if [ -n "${VAULT_HOST}" ]; then  # filled
+         # use production ADDR from secrets
+         # note "VAULT_USERNAME=${VAULT_USERNAME}"
+         #export VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
+         if [ -z "${VAULT_HOST}" ]; then  # it's blank:
+            error "VAULT_HOST is not defined (within secrets file) ..."
+         else
+            if ping -c 1 "${VAULT_HOST}" &> /dev/null ; then 
+               # PING vault.prod.init.ak8s.mckinsey.com (10.191.78.38): 56 data bytes
+               note "ping of ${VAULT_HOST} went fine."
+            else
+               error "${VAULT_HOST} ICMP ping failed. Aborting ..."
+               info  "Is VPN (GlobalProtect) running and you're loggin in?"
+               exit
+            fi
+         fi
+   fi  # VAULT_HOST
+
+
+   if [ "${USE_TEST_ENV}" = true ]; then   # -t
+
+      # If vault process is already running, use it:
+      PS_NAME="vault"
+      PSID=$( ps aux | pgrep "${PS_NAME}" | awk '{print $2}' )
+      if [ -n "${PSID}" ]; then  # does not exist:
+         h2 "Start up local Vault ..."
+         # CAUTION: Vault dev server is insecure and stores all data in memory only!
+         export VAULT_HOST="127.0.0.1"
+         export VAULT_ADDR="http://127.0.0.1:8200"
+         export VAULT_USERNAME="devservermode"
+
+         if [ "${DELETE_BEFORE}" = true ]; then  # -d 
+            note "Stopping existing vault local process ..."  # https://learn.hashicorp.com/vault/getting-started/dev-server
+            ps_kill "${PS_NAME}"  # bash function defined in this file.
+         fi
+
+         note "Starting vault local dev server at $VAULT_ADDR ..."  # https://learn.hashicorp.com/vault/getting-started/dev-server
+         note "THIS SCRIPT PAUSES HERE. OPEN ANOTHER TERMINAL SESSION. Press control+C to stop service."
+         # RESPONSE captures STDOUT to avoid revealing Unseal Key and Root Token:
+         RESPONSE="$( vault server -dev  -dev-root-token-id=\"root\" )"
+
+         # FIXME: capture output:
+         UNSEAL_KEY="$( echo "${RESPONSE}" | grep -o 'Unseal Key: [^, }]*' | sed 's/^.*: //' )"
+         VAULT_DEV_ROOT_TOKEN_ID="$( echo "${RESPONSE}" | grep -o 'Root Token: [^, }]*' | sed 's/^.*: //' )"
+         note -e "UNSEAL_KEY=$UNSEAL_KEY"
+         note -e "VAULT_DEV_ROOT_TOKEN_ID=$VAULT_DEV_ROOT_TOKEN_ID"
+          #sample VAULT_DEV_ROOT_TOKEN_ID="s.Lgsh7FXX9cUKQttfFo1mdHjE"
+         # Error checking seal status: Get "http://127.0.0.1:8200/v1/sys/seal-status": dial tcp 127.0.0.1:8200: connect: connection refuse
+
+         exit  # because
+
+      else  # USE_TEST_ENV}" = true
+         h2 "Make use of ${PS_NAME} PSID=${PSID} ..."
+         # See https://www.vaultproject.io/docs/secrets/ssh/signed-ssh-certificates.html
+         # From -secrets opening ~/.secrets.sh :
+         note "$( VAULT_HOST=$VAULT_HOST )"
+         note "$( VAULT_TLS_SERVER=$VAULT_TLS_SERVER )"
+         note "$( VAULT_SERVERS=$VAULT_SERVERS )"
+         note "$( CONSUL_HTTP_ADDR=$CONSUL_HTTP_ADDR )"
+
+         SSH_CLIENT_SIGNER_PATH="ssh-client-signer"
+         # Assuming Vault was enabled earlier in this script.
+         h2 "Create SSH CA ..."
+         vault secrets enable -path="${SSH_CLIENT_SIGNER_PATH}"  ssh
+         vault write "${SSH_CLIENT_SIGNER_PATH}/config/ca"  generate_signing_key=true
+
+      fi  # PSID for vault exists
+
+
+      if [ -n "${VAULT_ADDR}" ]; then  # filled
+            # Output to JSON instead & use jq to parse?
+            # See https://stackoverflow.com/questions/2990414/echo-that-outputs-to-stderr
+            note "vault status ${VAULT_ADDR} ..."
+            RESPONSE="$( vault status 2>&2)"  # capture STDERR output to &1 (STDOUT)
+            # Key                    Value
+            # ---                    -----
+            # Seal Type              shamir
+            # Initialized            true
+            # Sealed                 false
+            # Total Shares           5
+            # Threshold              3
+            # Version                1.2.3
+            # Cluster Name           vault-cluster-441d9c8b
+            # Cluster ID             bc3501e7-857d-c77b-6807-8156f464f7ec
+            # HA Enabled             true
+            # HA Cluster             https://10.42.4.34:8201
+            # HA Mode                standby
+            # Active Node Address    http://10.42.4.34:8200
+            ERR_RESPONSE="$( echo "${RESPONSE}" | awk '{print $1;}' )"
+            # TODO: Check error code.
+            if [ "Error" = "${ERR_RESPONSE}" ]; then
+               fatal "${ERR_RESPONSE}"
+               exit
+            else
+               note -e "${RESPONSE}"
+            fi
+      fi  # VAULT_ADDR
+
+   fi  # USE_TEST_ENV
+
+
+   # on either test or prod Vault instance:
    if [ -n "${VAULT_USERNAME}" ]; then  # is not empty
-      note "Vault okta login as \"${VAULT_USERNAME}\" \"${VAULT_PASSWORD}\" ..."
-      # echo -e "${VAULT_PASSWORD}" | 
-      vault login -method=okta username="${VAULT_USERNAME}"
-         # Put https://127.0.0.1:8200/v1/auth/okta/login: dial tcp 127.0.0.1:8200: connect: connection refused
+      h2 "Vault okta login as \"${VAULT_USERNAME}\" (manually confirm on Duo) ..."
+      /usr/bin/expect -f - <<EOD
+spawn vault login -method=okta username="${VAULT_USERNAME}" 
+expect "Password (will be hidden):"
+send "$VAULT_PASSWORD\n"
+EOD
+   fi  # VAULT_USERNAME
+         # Success! You are now authenticated. The token information displayed below
+         # is already stored in the token helper. You do NOT need to run "vault login"
+         # again. Future Vault requests will automatically use this token.
+         # Key                    Value
+         # ---                    -----
+         # token                  s.jGbeKRBJaWjui3cKCc5Y8Rj6
+         # token_accessor         jnrfN3Iu9o6JBvNYX4huZPqv
+         # token_duration         768h / 24 = 32 days
+         # token_renewable        true
+         # token_policies         ["default" "team/github-one" "vault/pki"]
+         # identity_policies      []
+         # policies               ["default" "team/github-one" "vault/pki"]
+         # token_meta_policies    vault/pki,team/github-one
+         # token_meta_username    wilson_mar@mckinsey.com
+         # https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/managing-your-organizations-ssh-certificate-authorities
+         # https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/about-ssh-certificate-authorities
+
+   # See https://vaultproject.io/docs/secrets/ssh/signed-ssh-certificates
+
+
+   # TODO: [10:47] by Roman
+#      VAULT_ENGINE="github/ssh"
+#      VAULT_POLICY="$VAULT_ENGINE/${GITHUB_USERNAME}"
+#      h2 "Vault write policy for \"$VAULT_ENGINE/${GITHUB_USERNAME}\" ..."
+#      cat <<EOT | vault policy write "${VAULT_POLICY}" - 
+#path "${VAULT_ENGINE}/sign/* {
+#   capabilities - ["create", "read', "update", "delete", "list"]
+#}
+#EOT 
+
+   pushd  "$HOME/.ssh"
+   h2 "At temporary $PWD ..."
+   note "$( ls )"
+      SSH_USER_ROLE="${GitHub_USER_EMAIL}"
+      SSH_ROLE_FILENAME="myrole.json"  # reuse for every user
+      echo -e "{" >"${SSH_ROLE_FILENAME}"
+      echo -e "  \"allow_user_certificates\": true," >>"${SSH_ROLE_FILENAME}"
+      echo -e "  \"allow_users\": \"*\"," >>"${SSH_ROLE_FILENAME}"
+      echo -e "  \"default_extensions\": [" >>"${SSH_ROLE_FILENAME}"
+      echo -e "    {" >>"${SSH_ROLE_FILENAME}"
+      echo -e "      \"login@github.com\": \"$SSH_USER_ROLE\" " >>"${SSH_ROLE_FILENAME}"
+      echo -e "    }" >>"${SSH_ROLE_FILENAME}"
+      echo -e "  ]," >>"${SSH_ROLE_FILENAME}"
+      echo -e "  \"key_type\": \"ca\"," >>"${SSH_ROLE_FILENAME}"
+      echo -e "  \"default_user\": \"ubuntu\"," >>"${SSH_ROLE_FILENAME}"
+      echo -e "  \"ttl\": \"30m0s\"" >>"${SSH_ROLE_FILENAME}"
+      echo -e "}" >>"${SSH_ROLE_FILENAME}"
+
+      h2 "Create user role ${SSH_USER_ROLE} with GH mapping ..."
+      vault write "${SSH_CLIENT_SIGNER_PATH}/roles/${SSH_USER_ROLE}" @myrole.json
+
+      h2 "Sign user public certificate and inspect it ..."
+      vault write -field=signed_key  "${SSH_CLIENT_SIGNER_PATH}/roles/${SSH_USER_ROLE}" \
+         "public_key=@./${LOCAL_SSH_KEYFILE}.pub" \
+         | tee "${SSH_CERT_PUB_KEYFILE}"
+
+      h2 "Inspect ${SSH_CERT_PUB_KEYFILE} ..."
+      ssh-keygen -L -f "${SSH_CERT_PUB_KEYFILE}"
+
+   popd  # from "$HOME/.ssh"
+   h2 "Back into $( $PWD ) ..."
+
+fi  # USE_VAULT
+
+
+
+if [ "${MOVE_SECURELY}" = true ]; then   # -m
+   # See https://github.com/settings/keys 
+   # See https://github.blog/2019-08-14-ssh-certificate-authentication-for-github-enterprise-cloud/
+
+   pushd  "$HOME/.ssh"
+   h2 "At temporary $( $PWD ) ..."
+
+   ## STEP: Generate local SSH key pair:
+   if [ -n "${LOCAL_SSH_KEYFILE}" ]; then  # is not empty
+      if [ ! -f "${LOCAL_SSH_KEYFILE}" ]; then  # not exists
+         h2 "Generating SSH key pair $LOCAL_SSH_KEYFILE ..."
+         ssh-keygen -t rsa -f "${LOCAL_SSH_KEYFILE}" -N ""
+      else
+         h2 "Using existing SSH key pair ${LOCAL_SSH_KEYFILE}"
+      fi
+      note "$( ls -al ${LOCAL_SSH_KEYFILE} )"
+   fi  # LOCAL_SSH_KEYFILE
+
+   if [ "${USE_VAULT}" = false ]; then   # -H
+
+      # Instead of pbcopy and paste in GitHub.com GUI, obtain and use SSH certificate from a SSH CA:
+      if [ -z "${CA_KEY_FULLPATH}" ]; then  # is not empty
+         CA_KEY_FULLPATH="./ca_key"  # "~/.ssh/ca_key"  # "./ca_key" for current (project) folder  
+      fi
+      ### STEP: Paste locally generated public key in GitHub UI:
+      if [ ! -f "${CA_KEY_FULLPATH}" ]; then  # not exists
+         h2 "CA key file $CA_KEY_FULLPATH not found, so generating for ADMIN ..."
+         ssh-keygen -t rsa -f "${CA_KEY_FULLPATH}" -N ""
+            # -N bypasses the passphrase
+            # see https://unix.stackexchange.com/questions/69314/automated-ssh-keygen-without-passphrase-how
+
+         h2 "ADMIN: In GitHub.com GUI SSH Certificate Authorities, manually click New CA and paste CA cert. ..."
+         # On macOS
+            pbcopy <"${CA_KEY_FULLPATH}.pub"
+            open "https://github.com/${GITHUB_ORG}/settings/security"
+         # TODO: On Windows after cinst pasteboard
+            ## clip < ~/.ssh/id_rsa.pub
+         # TODO: On Debian sudo apt-get install xclip
+            ## xclip -sel clip < ~/.ssh/id_rsa.pub
+         # Linux: See https://www.ostechnix.com/how-to-use-pbcopy-and-pbpaste-commands-on-linux/
+         read -r -t 30 -p "Pausing -t 30 seconds to import ${LOCAL_SSH_KEYFILE} in GitHub.com GUI ..."
+         # TODO: Replace with Selenium automation?
+      else
+         info "Using existing CA key file $CA_KEY_FULLPATH ..."
+      fi  # CA_KEY_FULLPATH
+      note "$( ls -al ${CA_KEY_FULLPATH} )"
+
+  else  # USE_VAULT = true
+
+      ### STEP: Call Vault to sign public key and return it as a cert:
+      h2 "Signing user ${GitHub_ACCOUNT} public key file ${LOCAL_SSH_KEYFILE} ..."
+      ssh-keygen -s "${CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
+         -O "extension:login@github.com=${GitHub_ACCOUNT}" "${LOCAL_SSH_KEYFILE}.pub"
+         # RESPONSE: Signed user key test-ssh-cert.pub: id "wilson-mar" serial 0 valid forever
+
+      SSH_CERT_PUB_KEYFILE="${LOCAL_SSH_KEYFILE}-cert.pub"
+      if [ ! -f "${SSH_CERT_PUB_KEYFILE}" ]; then  # not exists
+         error "File ${SSH_CERT_PUB_KEYFILE} not found ..."
+      else
+         note "File ${SSH_CERT_PUB_KEYFILE} found ..."
+         note "$( ls -al ${SSH_CERT_PUB_KEYFILE} )"
+      fi
+      # According to https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/about-ssh-certificate-authorities
+      # To issue a certificate for someone who has different usernames for GitHub Enterprise Server and GitHub Enterprise Cloud, 
+      # you can include two login extensions:
+      # ssh-keygen -s ./ca-key -I KEY-IDENTITY \
+      #    -O extension:login@github.com=CLOUD-USERNAME extension:login@
+   fi  # USE_VAULT
+
+   if [ "${USE_VAULT}" = false ]; then   # -H
+      h2 "Use GitHub extension to sign user public key with 1d Validity for ${GitHub_ACCOUNT} ..."
+      ssh-keygen -s "${CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
+         -O "extension:login@github.com=${GitHub_ACCOUNT}" -V '+1d' "${LOCAL_SSH_KEYFILE}.pub"
+         # 1m = 1minute, 1d = 1day
+         # -n user1 user1.pub
+         # RESPONSE: Signed user key test-ssh-cert.pub: id "wilsonmar" serial 0 valid from 2020-05-23T12:59:00 to 2020-05-24T13:00:46
    fi
+
+   popd  # from "$HOME/.ssh"
+   h2 "Back into $( $PWD ) ..."
+
+   if [ "${OPEN_APP}" = true ]; then   # -o
+      h2 "Verify access to GitHub.com using SSH ..."
+      # To avoid RESPONSE: PTY allocation request failed on channel 0
+      # Ensure that "PermitTTY no" is in ~/.ssh/authorized_keys (on servers to contain id_rsa.pub)
+      # See https://bobcares.com/blog/pty-allocation-request-failed-on-channel-0/
+
+      h2 "Verify use of Vault SSH cert ..."
+      ssh git@github.com  # -vvv  (ssh automatically uses `test-ssh-cert.pub` file)
+      # RESPONSE: Hi wilsonmar! You've successfully authenticated, but GitHub does not provide shell access.
+             # Connection to github.com closed.
+   fi
+
+fi  # MOVE_SECURELY
+
+
+## TODO: 
+if [ "${VAULT_PUT}" = true ]; then  # -n
 
    note -e "\n Put secret/hello ..."
    note -e "\n"
@@ -1768,170 +2066,10 @@ if [ "${USE_VAULT}" = true ]; then   # -H
    vault auth enable userpass  # is only done once.
       # Success! Enabled userpass auth method at: userpass/
 
-      #### "Installing govaultenv ..."
-      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
-         # https://github.com/jamhed/govaultenv
-         if ! command -v govaultenv >/dev/null; then  # command not found, so:
-            h2 "Brew installing govaultenv ..."
-            brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
-            brew install govaultenv
-         else  # installed already:
-            if [ "${UPDATE_PKGS}" = true ]; then
-               h2 "Brew upgrading govaultenv ..."
-               brew tap jamhed/govaultenv https://github.com/jamhed/govaultenv
-               brew upgrade jamhed/govaultenv/govaultenv
-            fi
-         fi
-         note "govaultenv $( govaultenv | grep version | cut -d' ' -f1 )"
-            # version:0.1.2 commit:d7754e38bb855f6a0c0c259ee2cced29c86a4da5 build by:goreleaser date:2019-11-13T19:47:16Z
-
-      #elif for Alpine? 
-      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-         silent-apt-get-install "govaultenv"  # please test
-      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
-         sudo yum install govaultenv      # please test
-      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
-         sudo zypper install govaultenv   # please test
-      else
-         fatal "Package code not recognized."
-         exit
-      fi
-
-      export VAULT_GOVC=team/env
-      h2 "govaultenv run $VAULT_GOVC ..."
-      govaultenv -verbose=debug /bin/bash
-
 fi  # USE_VAULT
 
 
-
-if [ "${MOVE_SECURELY}" = true ]; then   # -m
-   # See https://github.com/settings/keys 
-   # See https://github.blog/2019-08-14-ssh-certificate-authentication-for-github-enterprise-cloud/
-   
-   LOCAL_SSH_KEYFILE="test-ssh"
-   if [ ! -f "${LOCAL_SSH_KEYFILE}" ]; then  # not exists
-      h2 "Generating SSH key file $LOCAL_SSH_KEYFILE ..."
-      ssh-keygen -t rsa -f "${LOCAL_SSH_KEYFILE}" -N ""
-   else
-      h2 "Using existing SSH key file ${LOCAL_SSH_KEYFILE}"
-   fi
-   note "$( ls -al ${LOCAL_SSH_KEYFILE} )"
- 
-   # Instead of pbcopy and paste in GitHub.com GUI, use obtain and use SSH certificate from a SSH CA:
-
-   CA_KEY_FULLPATH="./ca_key"  # "~/.ssh/ca_key"  # "./ca_key" for current (project) folder  
-   if [ ! -f "${CA_KEY_FULLPATH}" ]; then  # not exists
-      h2 "CA key file $CA_KEY_FULLPATH not found, so generating for ADMIN ..."
-      ssh-keygen -t rsa -f "${CA_KEY_FULLPATH}" -N ""
-      # see https://unix.stackexchange.com/questions/69314/automated-ssh-keygen-without-passphrase-how
-
-      h2 "ADMIN: In GitHub.com GUI SSH Certificate Authorities, manually click New CA and paste CA cert. ..."
-      # On macOS
-         cat "${CA_KEY_FULLPATH}.pub" | pbcopy
-         open https://github.com/organizations/Mck-Internal-Test/settings/security
-      # On Windows
-         ## ???
-      # Linux: See https://www.ostechnix.com/how-to-use-pbcopy-and-pbpaste-commands-on-linux/
-      read -t 30 -p "Pausing -t 30 seconds to import ${LOCAL_SSH_KEYFILE} in GitHub.com GUI ..."
-
-   else
-      info "Using existing CA key file $CA_KEY_FULLPATH ..."
-   fi
-   note "$( ls -al ${CA_KEY_FULLPATH} )"
-
-
-   # Using GitHub_ACCOUNT (as SSH Key Identity) from ./secrets.sh ...
-      h2 "Signing user ${GitHub_ACCOUNT} public key file ${LOCAL_SSH_KEYFILE} ..."
-      ssh-keygen -s "${CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
-         -O "extension:login@github.com=${GitHub_ACCOUNT}" "${LOCAL_SSH_KEYFILE}.pub"
-      # RESPONSE: Signed user key test-ssh-cert.pub: id "wilson-mar" serial 0 valid forever
-      SSH_CERT_PUB_KEYFILE="${LOCAL_SSH_KEYFILE}-cert.pub"
-      if [ ! -f "${SSH_CERT_PUB_KEYFILE}" ]; then  # not exists
-         error "File ${SSH_CERT_PUB_KEYFILE} not found ..."
-      else
-         note "File ${SSH_CERT_PUB_KEYFILE} found ..."
-         note "$( ls -al ${SSH_CERT_PUB_KEYFILE} )"
-      fi
-
-   # According to https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/about-ssh-certificate-authorities
-   # To issue a certificate for someone who has different usernames for GitHub Enterprise Server and GitHub Enterprise Cloud, 
-   # you can include two login extensions.
-   # ssh-keygen -s ./ca-key -I KEY-IDENTITY \
-   #    -O extension:login@github.com=CLOUD-USERNAME extension:login@
-
-   if [ "${USE_VAULT}" = false ]; then   # -H
-      h2 "Use GitHub extension to sign user public key with 1d Validity for ${GitHub_ACCOUNT} ..."
-      ssh-keygen -s "${CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
-         -O "extension:login@github.com=${GitHub_ACCOUNT}" -V '+1d' "${LOCAL_SSH_KEYFILE}.pub"
-         # 1m = 1minute, 1d = 1day
-         # -n user1 user1.pub
-         # RESPONSE: Signed user key test-ssh-cert.pub: id "wilsonmar" serial 0 valid from 2020-05-23T12:59:00 to 2020-05-24T13:00:46
-
-   else  # USE_VAULT
-      # See https://www.vaultproject.io/docs/secrets/ssh/signed-ssh-certificates.html
-
-      # From -secrets opening ~/.secrets.sh :
-      note "$( VAULT_HOST=$VAULT_HOST )"
-      note "$( VAULT_TLS_SERVER=$VAULT_TLS_SERVER )"
-      note "$( VAULT_SERVERS=$VAULT_SERVERS )"
-      note "$( CONSUL_HTTP_ADDR=$CONSUL_HTTP_ADDR )"
-
-      SSH_CLIENT_SIGNER_PATH="ssh-client-signer"
-
-      # Assuming Vault was enabled earlier in this script.
-      h2 "Create SSH CA ..."
-      vault secrets enable -path="${SSH_CLIENT_SIGNER_PATH}"  ssh
-      vault write "${SSH_CLIENT_SIGNER_PATH}/config/ca"  generate_signing_key=true
-
-      SSH_ROLE_FILENAME="myrole.json"
-      SSH_USER_ROLE="oleksii_samorukov"
-      echo -e "{" >"${SSH_ROLE_FILENAME}"
-      echo -e "  \"allow_user_certificates\": true," >>"${SSH_ROLE_FILENAME}"
-      echo -e "  \"allow_users\": \"*\"," >>"${SSH_ROLE_FILENAME}"
-      echo -e "  \"default_extensions\": [" >>"${SSH_ROLE_FILENAME}"
-      echo -e "    {" >>"${SSH_ROLE_FILENAME}"
-      echo -e "      \"login@github.com\": \"$SSH_USER_ROLE\" " >>"${SSH_ROLE_FILENAME}"
-      echo -e "    }" >>"${SSH_ROLE_FILENAME}"
-      echo -e "  ]," >>"${SSH_ROLE_FILENAME}"
-      echo -e "  \"key_type\": \"ca\"," >>"${SSH_ROLE_FILENAME}"
-      echo -e "  \"default_user\": \"ubuntu\"," >>"${SSH_ROLE_FILENAME}"
-      echo -e "  \"ttl\": \"30m0s\"" >>"${SSH_ROLE_FILENAME}"
-      echo -e "}" >>"${SSH_ROLE_FILENAME}"
-
-      h2 "Create user role ${SSH_USER_ROLE} with GH mapping ..."
-      vault write "${SSH_CLIENT_SIGNER_PATH}/roles/${SSH_USER_ROLE}" @myrole.json
-
-      h2 "Sign user public certificate and inspect it ..."
-      vault write -field=signed_key  "${SSH_CLIENT_SIGNER_PATH}/roles/${SSH_USER_ROLE}"  "public_key=@./${LOCAL_SSH_KEYFILE}.pub" \
-         | tee "${SSH_CERT_PUB_KEYFILE}"
-
-      h2 "Inspect ${SSH_CERT_PUB_KEYFILE} ..."
-      ssh-keygen -L -f "${SSH_CERT_PUB_KEYFILE}"
-
-      h2 "Verify use of Vault SSH cert ..."
-      ssh git@github.com  # (ssh would automatically use `test-ssh-cert.pub` file)
-
-   fi  # if [ "${USE_VAULT}" = true ]
-
-
-   if [ "${RUN_VERBOSE}" = true ]; then   # -v
-      h2 "Verify access to GitHub.com using SSH ..."
-
-      # To avoid RESPONSE: PTY allocation request failed on channel 0
-      # Ensure that "PermitTTY no" is in ~/.ssh/authorized_keys (on servers to contain id_rsa.pub)
-      # See https://bobcares.com/blog/pty-allocation-request-failed-on-channel-0/
-
-      ssh git@github.com  # -vvv  (ssh automatically uses `test-ssh-cert.pub` file)
-      # RESPONSE: Hi wilsonmar! You've successfully authenticated, but GitHub does not provide shell access.
-             # Connection to github.com closed.
-   fi
-
-   exit
-
-fi  # MOVE_SECURELY
-
-
+### 27. Use NodeJs
 if [ "${NODE_INSTALL}" = true ]; then  # -n
 
 # If VAULT is used:
@@ -2081,6 +2219,7 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
 fi # if [ "${NODE_INSTALL}
 
 
+### 28. Run Virtualenv
 if [ "${RUN_VIRTUALENV}" = true ]; then  # -V  (not the default pipenv)
 
    h2 "Install -python"
@@ -2131,6 +2270,7 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V  (not the default pipenv)
 fi   # RUN_VIRTUALENV means Pipenv default
 
 
+### 29. Configure Pyenv with virtualenv
 if [ "${USE_PYENV}" = true ]; then  # -py
 
    h2 "Use Pipenv by default (not overrided by -Virtulenv)"
@@ -2156,10 +2296,12 @@ if [ "${USE_PYENV}" = true ]; then  # -py
    else
       PIPENV_PATH="$HOME/.local/share/virtualenvs/"
    fi
-   RESPONSE="$( find "${PIPENV_PATH}" -type d -name *"${GitHub_REPO_NAME}"* )"
+   # shellcheck disable=SC2061  # Quote the parameter to -name so the shell won't interpret it.
+   # shellcheck disable=SC2035  # Use ./*glob* or -- *glob* so names with dashes won't become options.
+   RESPONSE="$( find "${PIPENV_PATH}" -type d -name *"${PROJECT_FOLDER_NAME}"* )"
    if [ -n "${RESPONSE}" ]; then  # found somethiNg:
       note "${RESPONSE}"
-      if [ "${REMOVE_GITHUB_BEFORE}" = true ]; then  # -d 
+      if [ "${DELETE_BEFORE}" = true ]; then  # -d 
          pipenv --rm
             # Removing virtualenv (/Users/wilson_mar/.local/share/virtualenvs/bash-8hDxYnPf)…
             # or "No virtualenv has been created for this project yet!  Aborted!
@@ -2179,6 +2321,7 @@ if [ "${USE_PYENV}" = true ]; then  # -py
 fi    # USE_PYENV
 
 
+### 30. Use Anaconda
 if [ "${RUN_ANACONDA}" = true ]; then  # -A
 
          if [ "${PACKAGE_MANAGER}" == "brew" ]; then # -U
@@ -2208,6 +2351,7 @@ if [ "${RUN_ANACONDA}" = true ]; then  # -A
 fi  # RUN_ANACONDA
 
 
+### 31. Use GoLang
 if [ "${RUN_GOLANG}" = true ]; then  # -s
 
    h2 "TODO: Golang"
@@ -2226,7 +2370,8 @@ if [ "${RUN_GOLANG}" = true ]; then  # -s
 
    # https://github.com/securego/gosec
 # binary will be $GOPATH/bin/gosec
-curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $GOPATH/bin vX.Y.Z
+#curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh \
+#   | sh -s -- -b "${GOPATH}/bin" vX.Y.Z
    # securego/gosec info checking GitHub for tag 'vX.Y.Z'
    # securego/gosec crit unable to find 'vX.Y.Z' - use 'latest' or see https://github.com/securego/gosec/releases for details
 
@@ -2238,7 +2383,7 @@ curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | s
 
    # If you want to use the checksums provided on the "Releases" page
    # then you will have to download a tar.gz file for your operating system instead of a binary file
-   wget https://github.com/securego/gosec/releases/download/vX.Y.Z/gosec_vX.Y.Z_OS.tar.gz
+#   wget https://github.com/securego/gosec/releases/download/vX.Y.Z/gosec_vX.Y.Z_OS.tar.gz
       # --2020-06-24 07:28:19--  https://github.com/securego/gosec/releases/download/vX.Y.Z/gosec_vX.Y.Z_OS.tar.gz
       # Resolving github.com (github.com)... 140.82.114.3
       # Connecting to github.com (github.com)|140.82.114.3|:443... connected.
@@ -2255,6 +2400,7 @@ gosec --help
 fi   # RUN_GOLANG
 
 
+### 32. Use Python
 if [ "${RUN_PYTHON}" = true ]; then  # -s
 
    # https://docs.python-guide.org/dev/virtualenvs/
@@ -2293,7 +2439,7 @@ if [ "${RUN_PYTHON}" = true ]; then  # -s
                h2 "Installing pylint code scanner ..." 
                # See https://pylint.pycqa.org/en/latest/ and https://www.python.org/dev/peps/pep-0008/
                python3 -m pip install pylint
-               which pylint   # https://stackoverflow.com/questions/43272664/linter-pylint-is-not-installed
+               command -v pylint   # https://stackoverflow.com/questions/43272664/linter-pylint-is-not-installed
             else
                if [ "${UPDATE_PKGS}" = true ]; then
                   h2 "Upgrading pylint ..."
@@ -2400,7 +2546,8 @@ if [ "${RUN_PYTHON}" = true ]; then  # -s
 fi  # RUN_PYTHON
 
 
-if [ "${RUN_TENSORFLOW}" = true ]; then 
+### 33. Use Tensorflow
+if [ "${RUN_TENSORFLOW}" = true ]; then  # -tf
 
       if [ -f "$PWD/${MY_FOLDER}/${MY_FILE}" ]; then
          echo "$PWD/${MY_FOLDER}/${MY_FILE}"
@@ -2460,7 +2607,7 @@ if [ "${RUN_VIRTUALENV}" = true ]; then  # -V
 fi
 
 
-if [ "${RUN_TESTS}" = true ]; then  # -t
+if [ "${USE_TEST_ENV}" = true ]; then  # -t
 
    if [ "${PACKAGE_MANAGER}" == "brew" ]; then
       if ! command -v selenium ; then
@@ -2499,9 +2646,10 @@ if [ "${RUN_TESTS}" = true ]; then  # -t
    
    # reports are produced by TestNG, a plug-in to Selenium.
 
-fi # if [ "${RUN_TESTS}"
+fi # if [ "${USE_TEST_ENV}"
 
 
+### 34. Use Ruby
 if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
    # https://websiteforstudents.com/install-refinery-cms-ruby-on-rails-on-ubuntu-16-04-18-04-18-10/
@@ -2753,6 +2901,7 @@ fi # if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
 
 
+### 35. Use WebGoat
 if [ "${RUN_WEBGOAT}" = true ]; then  # -W
 
    h2 "Running WebGoat"
@@ -2760,7 +2909,7 @@ if [ "${RUN_WEBGOAT}" = true ]; then  # -W
 fi    # RUN_WEBGOAT
 
 
-
+### 36. Use Eggplant
 if [ "${RUN_EGGPLANT}" = true ]; then  # -O
 
    # As seen at https://www.youtube.com/watch?v=B64_4r0vGkA May 28, 2020
@@ -2777,7 +2926,7 @@ if [ "${RUN_EGGPLANT}" = true ]; then  # -O
       fi
    fi  #  PACKAGE_MANAGER}" == "brew" 
 
-   if [ "${OPEN_APP}" = true ]; then  # -W
+   if [ "${OPEN_APP}" = true ]; then  # -o
       if [ "${OS_TYPE}" == "macOS" ]; then  # it's on a Mac:
          sleep 3
          open "/Applications/Eggplant.app"
@@ -2821,6 +2970,7 @@ if [ "${RUN_EGGPLANT}" = true ]; then  # -O
 fi    # RUN_EGGPLANT
 
 
+### 37. Use Docker
 if [ "${USE_DOCKER}" = true ]; then   # -k
 
    if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
@@ -3044,6 +3194,7 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
 fi  # if [ "${USE_DOCKER}
 
 
+### 38. Run within Docker
 if [ "${RUN_ACTUAL}" = true ]; then   # -a
 
    if [ "${RUN_EGGPLANT}" = true ]; then  # -O
@@ -3059,7 +3210,7 @@ if [ "${RUN_ACTUAL}" = true ]; then   # -a
             -username "${EGGPLANT_USERNAME}" -password "${EGGPLANT_PASSWORD}" \
             -type RDP -DefaultHeight 1920 -DefaultWidth 1080 -CommandLineOutput yes
       elif [ "${OS_TYPE}" == "Windows" ]; then  # it's on a Mac:
-         Files\Eggplant\runscript.bat \
+         "Files\Eggplant\runscript.bat" \
             "C:\Users\Ritdhwaj Singh Chand\Desktop\cct_automation\eggplant_new_vi.suite\Scripts\test_runner.script" \
             -LicenserHost 10.190.70.30 -host dev-oap01 \
             -username "${EGGPLANT_USERNAME}" -password "${EGGPLANT_PASSWORD}" \
@@ -3079,6 +3230,13 @@ if [ "${RUN_ACTUAL}" = true ]; then   # -a
 fi  # RUN_ACTUAL
 
 
+### 39. Update GitHub
+if [ "${UPDATE_GITHUB}" = true ]; then  # -u
+   h2 "TODO: Update GitHub ..."
+fi
+
+
+### 40. Remove GitHub folder after run
 if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -C
    h2 "Delete cloned GitHub at end ..."
    Delete_GitHub_clone    # defined above in this file.
@@ -3091,6 +3249,7 @@ if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -C
 fi
 
 
+### 41. Kill processes after run
 if [ "$KILL_PROCESSES" = true ]; then  # -K
 
    if [ "${NODE_INSTALL}" = true ]; then  # -n
@@ -3109,6 +3268,7 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
    fi
 
 
+   ### 42. Delete Docker containers after run
    if [ "$DELETE_CONTAINER_AFTER" = true ]; then  # -D
 
       # TODO: if docker-compose.yml available:
@@ -3130,6 +3290,7 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
    fi
 
 
+   ### 43. Remove Docker images downloaded
    if [ "$REMOVE_DOCKER_IMAGES" = true ]; then  # -M
 
       docker system df
