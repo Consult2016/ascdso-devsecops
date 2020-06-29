@@ -75,11 +75,11 @@ args_prompt() {
    echo "   -t           setup -test server to run tests"
    echo "   -o           -open/view app or web page in default browser"
    echo " "
-   echo "   -K           stop OS processes at end of run (to save CPU)"
-   echo "   -D           -Delete files after run (to save disk space)"
    echo "   -C           remove -Cloned files after run (to save disk space)"
-   echo "   -M           remove Docker iMages pulled from DockerHub"
-   echo "USAGE EXAMPLE during testing:"
+   echo "   -K           stop OS processes at end of run (to save CPU)"
+   echo "   -D           -Delete containers and other files after run (to save disk space)"
+   echo "   -M           remove Docker iMages pulled from DockerHub (to save disk space)"
+   echo "USAGE EXAMPLES:"
    echo "./sample.sh -v -W -r -k -a -o -K -D  # WebGoat Docker with Contrast agent"
    echo "./sample.sh -v -s -eggplant -k -a -K -D  # eggplant use docker-compose of selenium-hub images"
    echo "./sample.sh -v -S \"\$HOME/.mck-secrets.sh\" -eks -D "
@@ -96,7 +96,7 @@ args_prompt() {
    echo "./sample.sh -v -V -c -L -s    # Use CircLeci based on secrets"
    echo "./sample.sh -v -D -M -C"
    echo "./sample.sh -G -v -f \"challenge.py\" -P \"-v\"  # to run a program in python-samples"
-   echo "./sample.sh -v -s -S \"~/.mck-secrets.sh\" -H -m -o  # -t for local vault for Vault SSH keygen"
+   echo "./sample.sh -v -s -S \"$HOME/.mck-secrets.sh\" -H -m -o  # -t for local vault for Vault SSH keygen"
 }
 if [ $# -eq 0 ]; then  # display if no parameters are provided:
    args_prompt
@@ -151,11 +151,11 @@ exit_abnormal() {            # Function: Exit with error.
    USE_VAULT=false              # -H
        VAULT_ADDR=""
        VAULT_RSA_FILENAME=""
-   VAULT_PUT=false
+   export VAULT_PUT=false
 
    RUBY_INSTALL=false           # -i
    NODE_INSTALL=false           # -n
-      MONGO_DB_NAME=""
+   export MONGO_DB_NAME=""
    USE_SECRETS_FILE=false       # -s
    SECRETS_FILEPATH="$HOME/.secrets.sh"  # -S
    SECRETS_FILE="variables.env.sample"
@@ -790,13 +790,25 @@ if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I
             if [ "${UPDATE_PKGS}" = true ]; then
                h2 "Brew upgrading git ..."
                brew upgrade git
-               # pip install --user --upgrade git
             fi
          fi
          note "$( git --version )"
             # git, version 2018.11.26
+
+         if ! command -v jq >/dev/null; then  # command not found, so:
+            h2 "Brew installing jq ..."
+            brew install jq
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading jq ..."
+               brew upgrade jq
+            fi
+         fi
+         note "$( jq --version )"  # jq-1.6
+
    fi  # PACKAGE_MANAGER
 fi  # DOWNLOAD_INSTALL
+
 
 ### 13. Get secrets from a clear-text file in $HOME folder
 Input_GitHub_User_Info(){
@@ -808,15 +820,14 @@ Input_GitHub_User_Info(){
       read -r -p "Enter your GitHub user email [john_doe@gmail.com]: " GitHub_USER_EMAIL
       GitHub_USER_EMAIL=${GitHub_USER_EMAIL:-"johb_doe@gmail.com"}
 }
-# TODO: https://www.passwordstore.org using brew install pass
 if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
    warning "Using default values hard-coded in this bash script ..."
    # See https://pipenv-fork.readthedocs.io/en/latest/advanced.html#automatic-loading-of-env
    # PIPENV_DOTENV_LOCATION=/path/to/.env or =1 to not load.
 else
    if [ ! -f "$SECRETS_FILEPATH" ]; then   # file NOT found, then copy from github:
-      fatal "File not found in -secrets file $SECRETS_FILEPATH."
-      code "${SECRETS_FILEPATH}"
+      fatal "-F \"${SECRETS_FILEPATH}\" file not found."
+#      code "${SECRETS_FILEPATH}"
       exit 9
 
       warning "Downloading file .secrets.sample.sh ... "
@@ -847,13 +858,13 @@ else
 fi  # if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
 
 
-### 14. Display run variables 
+### Display run variables 
 #      note "AWS_DEFAULT_REGION= " "${AWS_DEFAULT_REGION}"
 #      note "GitHub_USER_NAME=" "${GitHub_USER_NAME}"
 #      note "GitHub_USER_ACCOUNT=" "${GitHub_USER_ACCOUNT}"
 #      note "GitHub_USER_EMAIL=" "${GitHub_USER_EMAIL}"
 
-### 15. Configure project folder location where files are created by the run
+### 14. Configure project folder location where files are created by the run
    if [ -z "${PROJECT_FOLDER_PATH}" ]; then  # -p ""  override blank (the default)
       h2 "Using current folder \"${PROJECT_FOLDER_PATH}\" as project folder path ..."
       pwd
@@ -870,7 +881,8 @@ fi  # if [ "${USE_SECRETS_FILE}" = false ]; then  # -s
       note "$( ls "${PROJECT_FOLDER_PATH}" )"
    fi
 
-### 16. Obtain repository from GitHub
+
+### 15. Obtain repository from GitHub
 Delete_GitHub_clone(){
    # https://www.shellcheck.net/wiki/SC2115 Use "${var:?}" to ensure this never expands to / .
    PROJECT_FOLDER_FULL_PATH="${PROJECT_FOLDER_PATH}/${PROJECT_FOLDER_NAME}"
@@ -943,6 +955,69 @@ fi  # CLONE_GITHUB
       note "Using -u \"$GitHub_USER_NAME\" -e \"$GitHub_USER_EMAIL\" ..."
       # since this is hard coded as "John Doe" above
    fi
+
+
+### 16. Reveal secrets stored within <tt>.gitsecret</tt> folder within repo from GitHub (after installing gnupg and git-secret)
+
+   # This is https://github.com/AGWA/git-crypt      has 4,500 stars.
+   # Whereas https://github.com/sobolevn/git-secret has 1,700 stars.
+   # This script detects whether https://github.com/sobolevn/git-secret was used to store secrets inside a local git repo.
+   # This looks in the repo .gitsecret folder created by the "git secret init" command on this repo (under DevSecOps).
+   # "git secret tell" stores the public key of the current git user email.
+   # "git secret add my-file.txt" then "git secret hide" and "rm my-file.txt"
+   # This approach is not real secure because it's a matter of time before any static secret can be decrypted by brute force.
+   # When someone is out - delete their public key, re-encrypt the files, and they won’t be able to decrypt secrets anymore.
+if [ -d ".gitsecret" ]; then   # found
+        h2 ".gitsecret folder found ..."
+      # Files in there were encrypted using "git-secret" commands referencing gpg gen'd key pairs based on an email address.
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         if ! command -v gpg >/dev/null; then  # command not found, so:
+            h2 "Brew installing gnupg ..."
+            brew install gnupg  
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading gnupg ..."
+               brew upgrade gnupg
+            fi
+         fi
+         note "$( gpg --version )"  # 2.2.19
+         # See https://github.com/sethvargo/secrets-in-serverless using kv or aws (iam) secrets engine.
+
+         if ! command -v git-secret >/dev/null; then  # command not found, so:
+            h2 "Brew installing git-secret ..."
+            brew install git-secret  
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               h2 "Brew upgrading git-secret ..."
+               brew upgrade git-secret
+            fi
+         fi
+         note "$( git-secret --version )"  # 0.3.2
+
+      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+         silent-apt-get-install "gnupg"
+      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
+         sudo yum install gnupg      # please test
+      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
+         sudo zypper install gnupg   # please test
+      else
+         git clone https://github.com/sobolevn/git-secret.git
+         cd git-secret && make build
+         PREFIX="/usr/local" make install      
+      fi  # PACKAGE_MANAGER
+
+      if [ -f "${SECRETS_FILE}.secret" ]; then   # found
+         h2 "${SECRETS_FILE}.secret being decrypted using the private key in the bash user's local $HOME folder"
+         git secret reveal
+            # gpg ...
+         if [ -f "${SECRETS_FILE}" ]; then   # found
+            h2 "File ${SECRETS_FILE} decrypted ..."
+         else
+            fatal "File ${SECRETS_FILE} not decrypted ..."
+            exit 9
+         fi
+      fi 
+   fi  # .gitsecret
 
 
 ### 17. Pipenv and Pyenv to install Python and its modules
@@ -1498,76 +1573,13 @@ exit  # DEBUGGING
 fi  # EKS
 
 
-### 23. Read secrets from a configuration file in clear text, encrypted file, Vault API using govaultenv
-if [ "${USE_SECRETS_FILE}" = true ]; then   # -S
-
-   # This is https://github.com/AGWA/git-crypt      has 4,500 stars.
-   # Whereas https://github.com/sobolevn/git-secret has 1,700 stars.
-   # This script detects whether https://github.com/sobolevn/git-secret was used to store secrets inside a local git repo.
-   # This looks in the repo .gitsecret folder created by the "git secret init" command on this repo (under DevSecOps).
-   # "git secret tell" stores the public key of the current git user email.
-   # "git secret add my-file.txt" then "git secret hide" and "rm my-file.txt"
-   # This approach is not real secure because it's a matter of time before any static secret can be decrypted by brute force.
-   # When someone is out - delete their public key, re-encrypt the files, and they won’t be able to decrypt secrets anymore.
-   if [ -d ".gitsecret" ]; then   # found
-        h2 ".gitsecret folder found ..."
-      # Files in there were encrypted using "git-secret" commands referencing gpg gen'd key pairs based on an email address.
-      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
-         if ! command -v gpg >/dev/null; then  # command not found, so:
-            h2 "Brew installing gnupg ..."
-            brew install gnupg  
-         else  # installed already:
-            if [ "${UPDATE_PKGS}" = true ]; then
-               h2 "Brew upgrading gnupg ..."
-               brew upgrade gnupg
-            fi
-         fi
-         note "$( gpg --version )"  # 2.2.19
-         # See https://github.com/sethvargo/secrets-in-serverless using kv or aws (iam) secrets engine.
-
-         if ! command -v git-secret >/dev/null; then  # command not found, so:
-            h2 "Brew installing git-secret ..."
-            brew install git-secret  
-         else  # installed already:
-            if [ "${UPDATE_PKGS}" = true ]; then
-               h2 "Brew upgrading git-secret ..."
-               brew upgrade git-secret
-            fi
-         fi
-         note "$( git-secret --version )"  # 0.3.2
-
-      elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-         silent-apt-get-install "gnupg"
-      elif [ "${PACKAGE_MANAGER}" == "yum" ]; then    # For Redhat distro:
-         sudo yum install gnupg      # please test
-      elif [ "${PACKAGE_MANAGER}" == "zypper" ]; then   # for [open]SuSE:
-         sudo zypper install gnupg   # please test
-      else
-         git clone https://github.com/sobolevn/git-secret.git
-         cd git-secret && make build
-         PREFIX="/usr/local" make install      
-      fi  # PACKAGE_MANAGER
-
-      if [ -f "${SECRETS_FILE}.secret" ]; then   # found
-         h2 "${SECRETS_FILE}.secret being decrypted using the private key in the bash user's local $HOME folder"
-         git secret reveal
-            # gpg ...
-         if [ -f "${SECRETS_FILE}" ]; then   # found
-            h2 "File ${SECRETS_FILE} decrypted ..."
-         else
-            fatal "File ${SECRETS_FILE} not decrypted ..."
-            exit 9
-         fi
-      fi 
-   fi  # .gitsecret
+### 23. Open
 
    #if [ ! -f "docker-compose.override.yml" ]; then
    #   cp docker-compose.override.example.yml  docker-compose.override.yml
    #else
    #   warning "no .yml file"
    #fi
-
-fi  # USE_SECRETS_FILE  to get into cloud
 
 
 ### 24. Use CircleCI
@@ -1798,7 +1810,8 @@ if [ "${USE_VAULT}" = true ]; then   # -H
 
       # If vault process is already running, use it:
       PS_NAME="vault"
-      PSID=$( ps aux | pgrep "${PS_NAME}" | awk '{print $2}' )
+      #PSID=$( ps aux | pgrep v[a]ult | awk '{print $2}' )
+      PSID=$( ps aux | pgrep v[a]ult )
       if [ -n "${PSID}" ]; then  # does not exist:
          h2 "Start up local Vault ..."
          # CAUTION: Vault dev server is insecure and stores all data in memory only!
@@ -1827,7 +1840,7 @@ if [ "${USE_VAULT}" = true ]; then   # -H
          exit  # because
 
       else  # USE_TEST_ENV}" = true
-         h2 "Make use of ${PS_NAME} PSID=${PSID} ..."
+         h2 "Making use of \"${PS_NAME}\" as PSID=${PSID} ..."
          # See https://www.vaultproject.io/docs/secrets/ssh/signed-ssh-certificates.html
          # From -secrets opening ~/.secrets.sh :
          note "$( VAULT_HOST=$VAULT_HOST )"
@@ -1835,16 +1848,41 @@ if [ "${USE_VAULT}" = true ]; then   # -H
          note "$( VAULT_SERVERS=$VAULT_SERVERS )"
          note "$( CONSUL_HTTP_ADDR=$CONSUL_HTTP_ADDR )"
 
+         ## With Admin access:
+
          SSH_CLIENT_SIGNER_PATH="ssh-client-signer"
          # Assuming Vault was enabled earlier in this script.
          h2 "Create SSH CA ..."
          vault secrets enable -path="${SSH_CLIENT_SIGNER_PATH}"  ssh
          vault write "${SSH_CLIENT_SIGNER_PATH}/config/ca"  generate_signing_key=true
 
+
+         SSH_USER_ROLE="${GitHub_USER_EMAIL}"
+         SSH_ROLE_FILENAME="myrole.json"  # reuse for every user
+         echo -e "{" >"${SSH_ROLE_FILENAME}"
+         echo -e "  \"allow_user_certificates\": true," >>"${SSH_ROLE_FILENAME}"
+         echo -e "  \"allow_users\": \"*\"," >>"${SSH_ROLE_FILENAME}"
+         echo -e "  \"default_extensions\": [" >>"${SSH_ROLE_FILENAME}"
+         echo -e "    {" >>"${SSH_ROLE_FILENAME}"
+         echo -e "      \"login@github.com\": \"$SSH_USER_ROLE\" " >>"${SSH_ROLE_FILENAME}"
+         echo -e "    }" >>"${SSH_ROLE_FILENAME}"
+         echo -e "  ]," >>"${SSH_ROLE_FILENAME}"
+         echo -e "  \"key_type\": \"ca\"," >>"${SSH_ROLE_FILENAME}"
+         echo -e "  \"default_user\": \"ubuntu\"," >>"${SSH_ROLE_FILENAME}"
+         echo -e "  \"ttl\": \"30m0s\"" >>"${SSH_ROLE_FILENAME}"
+         echo -e "}" >>"${SSH_ROLE_FILENAME}"
+         if [ "${RUN_DEBUG}" = true ]; then  # -vv
+            code "${SSH_ROLE_FILENAME}"
+         fi
+
+         h2 "Create user role ${SSH_USER_ROLE} with GH mapping ..."
+         vault write "${SSH_CLIENT_SIGNER_PATH}/roles/${SSH_USER_ROLE}" "@${SSH_ROLE_FILENAME}"
+
       fi  # PSID for vault exists
 
+   fi  # USE_TEST_ENV
 
-      if [ -n "${VAULT_ADDR}" ]; then  # filled
+   if [ -n "${VAULT_ADDR}" ]; then  # filled
             # Output to JSON instead & use jq to parse?
             # See https://stackoverflow.com/questions/2990414/echo-that-outputs-to-stderr
             note "vault status ${VAULT_ADDR} ..."
@@ -1871,9 +1909,8 @@ if [ "${USE_VAULT}" = true ]; then   # -H
             else
                note -e "${RESPONSE}"
             fi
-      fi  # VAULT_ADDR
 
-   fi  # USE_TEST_ENV
+   fi  # VAULT_ADDR
 
 
    # on either test or prod Vault instance:
@@ -1884,7 +1921,10 @@ spawn vault login -method=okta username="${VAULT_USERNAME}"
 expect "Password (will be hidden):"
 send "$VAULT_PASSWORD\n"
 EOD
+echo -e "\n"  # add return
+
    fi  # VAULT_USERNAME
+
          # Success! You are now authenticated. The token information displayed below
          # is already stored in the token helper. You do NOT need to run "vault login"
          # again. Future Vault requests will automatically use this token.
@@ -1904,6 +1944,12 @@ EOD
 
    # See https://vaultproject.io/docs/secrets/ssh/signed-ssh-certificates
 
+   pushd  "$HOME/.ssh"
+   h2 "At temporary $PWD ..."
+
+   if [ "${RUN_DEBUG}" = true ]; then  # -vv
+      note "$( ls -al )"
+   fi
 
    # TODO: [10:47] by Roman
 #      VAULT_ENGINE="github/ssh"
@@ -1914,35 +1960,25 @@ EOD
 #   capabilities - ["create", "read', "update", "delete", "list"]
 #}
 #EOT 
+      if [ ! -f "${LOCAL_SSH_KEYFILE}.pub" ]; then
+         fatal "${LOCAL_SSH_KEYFILE}.pub not found!"
+         exit 9
+      else
+         note "Using ${LOCAL_SSH_KEYFILE}.pub in $HOME/.ssh ..."
+      fi
 
-   pushd  "$HOME/.ssh"
-   h2 "At temporary $PWD ..."
-   note "$( ls )"
-      SSH_USER_ROLE="${GitHub_USER_EMAIL}"
-      SSH_ROLE_FILENAME="myrole.json"  # reuse for every user
-      echo -e "{" >"${SSH_ROLE_FILENAME}"
-      echo -e "  \"allow_user_certificates\": true," >>"${SSH_ROLE_FILENAME}"
-      echo -e "  \"allow_users\": \"*\"," >>"${SSH_ROLE_FILENAME}"
-      echo -e "  \"default_extensions\": [" >>"${SSH_ROLE_FILENAME}"
-      echo -e "    {" >>"${SSH_ROLE_FILENAME}"
-      echo -e "      \"login@github.com\": \"$SSH_USER_ROLE\" " >>"${SSH_ROLE_FILENAME}"
-      echo -e "    }" >>"${SSH_ROLE_FILENAME}"
-      echo -e "  ]," >>"${SSH_ROLE_FILENAME}"
-      echo -e "  \"key_type\": \"ca\"," >>"${SSH_ROLE_FILENAME}"
-      echo -e "  \"default_user\": \"ubuntu\"," >>"${SSH_ROLE_FILENAME}"
-      echo -e "  \"ttl\": \"30m0s\"" >>"${SSH_ROLE_FILENAME}"
-      echo -e "}" >>"${SSH_ROLE_FILENAME}"
-
-      h2 "Create user role ${SSH_USER_ROLE} with GH mapping ..."
-      vault write "${SSH_CLIENT_SIGNER_PATH}/roles/${SSH_USER_ROLE}" @myrole.json
-
-      h2 "Sign user public certificate and inspect it ..."
-      vault write -field=signed_key  "${SSH_CLIENT_SIGNER_PATH}/roles/${SSH_USER_ROLE}" \
+      h2 "Sign user public certificate ..."
+      vault write -field=signed_key "${SSH_CLIENT_SIGNER_PATH}/roles/${SSH_USER_ROLE}" \
          "public_key=@./${LOCAL_SSH_KEYFILE}.pub" \
-         | tee "${SSH_CERT_PUB_KEYFILE}"
+         | tee "${SSH_CERT_PUB_KEYFILE}.pub"
 
       h2 "Inspect ${SSH_CERT_PUB_KEYFILE} ..."
-      ssh-keygen -L -f "${SSH_CERT_PUB_KEYFILE}"
+      if [ ! -f "${SSH_CERT_PUB_KEYFILE}.pub" ]; then
+         fatal "${SSH_CERT_PUB_KEYFILE}.pub not found!"
+         exit 9
+      else
+         ssh-keygen -L -f "${SSH_CERT_PUB_KEYFILE}.pub"
+      fi
 
    popd  # from "$HOME/.ssh"
    h2 "Back into $( $PWD ) ..."
@@ -1950,31 +1986,31 @@ EOD
 fi  # USE_VAULT
 
 
+echo "die here"; exit
 
 if [ "${MOVE_SECURELY}" = true ]; then   # -m
    # See https://github.com/settings/keys 
    # See https://github.blog/2019-08-14-ssh-certificate-authentication-for-github-enterprise-cloud/
 
+echo "here: " #${LOCAL_SSH_KEYFILE}"
    pushd  "$HOME/.ssh"
    h2 "At temporary $( $PWD ) ..."
 
    ## STEP: Generate local SSH key pair:
+echo "Local: " #${LOCAL_SSH_KEYFILE}"
    if [ -n "${LOCAL_SSH_KEYFILE}" ]; then  # is not empty
       if [ ! -f "${LOCAL_SSH_KEYFILE}" ]; then  # not exists
-         h2 "Generating SSH key pair $LOCAL_SSH_KEYFILE ..."
+         h2 "Generating SSH key pair \"${LOCAL_SSH_KEYFILE}\" ..."
          ssh-keygen -t rsa -f "${LOCAL_SSH_KEYFILE}" -N ""
       else
-         h2 "Using existing SSH key pair ${LOCAL_SSH_KEYFILE}"
+         h2 "Using existing SSH key pair \"${LOCAL_SSH_KEYFILE}\" "
       fi
-      note "$( ls -al ${LOCAL_SSH_KEYFILE} )"
+      note "$( ls -al "${LOCAL_SSH_KEYFILE}" )"
    fi  # LOCAL_SSH_KEYFILE
+
 
    if [ "${USE_VAULT}" = false ]; then   # -H
 
-      # Instead of pbcopy and paste in GitHub.com GUI, obtain and use SSH certificate from a SSH CA:
-      if [ -z "${CA_KEY_FULLPATH}" ]; then  # is not empty
-         CA_KEY_FULLPATH="./ca_key"  # "~/.ssh/ca_key"  # "./ca_key" for current (project) folder  
-      fi
       ### STEP: Paste locally generated public key in GitHub UI:
       if [ ! -f "${CA_KEY_FULLPATH}" ]; then  # not exists
          h2 "CA key file $CA_KEY_FULLPATH not found, so generating for ADMIN ..."
@@ -1996,10 +2032,15 @@ if [ "${MOVE_SECURELY}" = true ]; then   # -m
       else
          info "Using existing CA key file $CA_KEY_FULLPATH ..."
       fi  # CA_KEY_FULLPATH
-      note "$( ls -al ${CA_KEY_FULLPATH} )"
+      note "$( ls -al "${CA_KEY_FULLPATH}" )"
 
   else  # USE_VAULT = true
 
+      # Instead of pbcopy and paste in GitHub.com GUI, obtain and use SSH certificate from a SSH CA:
+      if [ -z "${CA_KEY_FULLPATH}" ]; then  # is not empty
+         CA_KEY_FULLPATH="./ca_key"  # "~/.ssh/ca_key"  # "./ca_key" for current (project) folder  
+      fi
+      
       ### STEP: Call Vault to sign public key and return it as a cert:
       h2 "Signing user ${GitHub_ACCOUNT} public key file ${LOCAL_SSH_KEYFILE} ..."
       ssh-keygen -s "${CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
