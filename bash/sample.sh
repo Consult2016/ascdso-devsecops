@@ -70,7 +70,7 @@ args_prompt() {
    echo "   -F \"abc\"     -Folder inside repo"
    echo "   -f \"a9y.py\"  -file (program) to run"
    echo "   -P \"-v -x\"   -Parameters controlling program called"
-   echo "   -u           -update GitHub"
+   echo "   -u           -update GitHub (scan for secrets)"
    echo "   -a           -actually run server (not dry run)"
    echo "   -t           setup -test server to run tests"
    echo "   -o           -open/view app or web page in default browser"
@@ -150,22 +150,25 @@ exit_abnormal() {            # Function: Exit with error.
       GITHUB_ORG=""
    USE_VAULT=false              # -H
        VAULT_ADDR=""
-       VAULT_RSA_FILENAME=""
-   export VAULT_PUT=false
+      #VAULT_RSA_FILENAME=""
+       VAULT_PASSCODE=""
+   VAULT_PUT=false
 
    RUBY_INSTALL=false           # -i
    NODE_INSTALL=false           # -n
-   export MONGO_DB_NAME=""
+   MONGO_DB_NAME=""
    USE_SECRETS_FILE=false       # -s
    SECRETS_FILEPATH="$HOME/.secrets.sh"  # -S
    SECRETS_FILE="variables.env.sample"
-   export MY_FOLDER=""
-   export MY_FILE=""
+   MY_FOLDER=""
+   MY_FILE=""
      #MY_FILE="2-3.ipynb"
    RUN_EGGPLANT=false           # -eggplant
+       EGGPLANT_HOST="10.190.70.30"
+
    RUN_WEBGOAT=false            # -W
    RUN_QUIET=false              # -q
-   export UPDATE_GITHUB=false   # -u
+   UPDATE_GITHUB=false   # -u
    UPDATE_PKGS=false            # -U
 
    RESTART_DOCKER=false         # -r
@@ -187,8 +190,8 @@ exit_abnormal() {            # Function: Exit with error.
 
 PROJECT_FOLDER_PATH="$HOME/projects"  # -P
 PROJECT_FOLDER_NAME=""
-export GitHub_USER_NAME="WilsonMar"             # -n
-export GitHub_USER_EMAIL="wilson_mar@gmail.com"  # -e
+GitHub_USER_NAME="WilsonMar"             # -n
+GitHub_USER_EMAIL="wilson_mar@gmail.com"  # -e
 
 
 ### 4. Set variables associated with each parameter flag
@@ -236,17 +239,16 @@ while test $# -gt 0; do
       shift
       ;;
     -eggplant)
-      export RUN_EGGPLANT=true
-      export GitHub_REPO_URL="https://github.com/wilsonmar/Eggplant.git"
-      export PROJECT_FOLDER_NAME="eggplant-demo"
-      export APP1_PORT="80"
-      export MY_FILE="openurl.script"
+      RUN_EGGPLANT=true
+      GitHub_REPO_URL="https://github.com/wilsonmar/Eggplant.git"
+      PROJECT_FOLDER_NAME="eggplant-demo"
+      MY_FILE="openurl.script"
+      APP1_PORT="80"
       shift
       ;;
     -e*)
       shift
-             GitHub_USER_EMAIL=$( echo "$1" | sed -e 's/^[^=]*=//g' )
-      export GitHub_USER_EMAIL
+      GitHub_USER_EMAIL=$( echo "$1" | sed -e 's/^[^=]*=//g' )
       shift
       ;;
     -E)
@@ -277,12 +279,12 @@ while test $# -gt 0; do
       shift
       ;;
     -H)
-      export USE_VAULT=true
-      export PROJECT_FOLDER_NAME="vault-ssh-ca"
-      export VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
-      export VAULT_ADDR="https://${VAULT_HOST}" 
-      export VAULT_USERNAME="wilson_mar@mckinsey.com"
-      export VAULT_RSA_FILENAME="mck2"
+      USE_VAULT=true
+      PROJECT_FOLDER_NAME="vault-ssh-ca"
+      VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
+      VAULT_ADDR="https://${VAULT_HOST}" 
+      VAULT_USERNAME="wilson_mar@mckinsey.com"
+      #VAULT_RSA_FILENAME="mck2"
       shift
       ;;
     -i)
@@ -438,7 +440,9 @@ while test $# -gt 0; do
       export GitHub_REPO_URL="https://github.com/wilsonmar/WebGoat.git"
       export PROJECT_FOLDER_NAME="webgoat"
       export APPNAME="webgoat"
-      export APP1_PORT="80"
+      export MY_FOLDER="Contrast"  # "ShiftLeft"
+      export MY_FILE="docker-compose.yml"
+      export APP1_PORT="8080"
       shift
       ;;
     -y)
@@ -508,16 +512,17 @@ fi
 if [ "$(uname)" == "Darwin" ]; then  # it's on a Mac:
       OS_TYPE="macOS"
       PACKAGE_MANAGER="brew"
-elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
+elif [ "$(uname)" == "Windows" ]; then
+      OS_TYPE="Windows"
+      PACKAGE_MANAGER="choco"  # TODO: Chocolatey or https://github.com/lukesampson/scoop
+elif [ "$(uname)" == "Linux" ]; then  # it's NOT on a Mac:
    if command -v lsb_release ; then
       lsb_release -a
       OS_TYPE="Ubuntu"
       # TODO: OS_TYPE="WSL" ???
-      PACKAGE_MANAGER="apt-get"
+      PACKAGE_MANAGER="apt-get"  # or sudo snap install hub --classic
 
-      # TODO: sudo dnf install pipenv  # for Fedora 28
-
-      silent-apt-get-VERBOSinstall(){  # see https://wilsonmar.github.io/bash-scripts/#silent-apt-get-install
+      silent-apt-get-install(){  # see https://wilsonmar.github.io/bash-scripts/#silent-apt-get-install
          if [ "${RUN_E}" = true ]; then
             info "apt-get install $1 ... "
             sudo apt-get install "$1"
@@ -528,6 +533,7 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
    elif [ -f "/etc/os-release" ]; then
       OS_DETAILS=$( cat "/etc/os-release" )  # ID_LIKE="rhel fedora"
       OS_TYPE="Fedora"
+      # TODO: sudo dnf install pipenv  # for Fedora 28
       PACKAGE_MANAGER="yum"
    elif [ -f "/etc/redhat-release" ]; then
       OS_DETAILS=$( cat "/etc/redhat-release" )
@@ -537,6 +543,9 @@ elif [ "$(uname)" == "Linux" ]; then  # it's on a Mac:
       OS_TYPE="CentOS"
       PACKAGE_MANAGER="yum"
    else
+      # FreeBSD - pkg install hub
+      # OpenSUSE - sudo zypper install hub
+      # Arch Linux - sudo pacman -S hub
       error "Linux distribution not anticipated. Please update script. Aborting."
       exit 0
    fi
@@ -602,11 +611,12 @@ sig_cleanup() {
 ### 9. Print run Operating environment information
 HOSTNAME=$( hostname )
 PUBLIC_IP=$( curl -s ifconfig.me )
+INTERNAL_IP=$( ipconfig getifaddr en0 )
 
 if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
    note "BASHFILE=~/.bash_profile ..."
    BASHFILE="$HOME/.bash_profile"  # on Macs
-else
+else  # Linux:
    note "BASHFILE=~/.bashrc ..."
    BASHFILE="$HOME/.bashrc"  # on Linux
 fi
@@ -614,8 +624,8 @@ fi
       note "Start time $LOG_DATETIME"
       note "Bash $BASH_VERSION from $BASHFILE"
       note "OS_TYPE=$OS_TYPE using $PACKAGE_MANAGER from $DISK_PCT_FREE disk free"
-      note "on hostname=$HOSTNAME at PUBLIC_IP=$PUBLIC_IP."
-      note " "
+      note "on hostname=$HOSTNAME "
+      note "at PUBLIC_IP=$PUBLIC_IP, intern $INTERNAL_IP"
 # TODO: print all command arguments submitted:
 #while (( "$#" )); do 
 #  echo $1 
@@ -634,6 +644,7 @@ if [ "${SET_TRACE}" = true ]; then
    set -x  # (-o xtrace) to show commands for specific issues.
 fi
 # set -o nounset
+
 
 IFS=$'\n\t'  #  Internal Field Separator for word splitting is line or tab, not spaces.
 
@@ -747,9 +758,9 @@ fi # if [ "${DOWNLOAD_INSTALL}"
 ### 11. Define utility functions, such ShellCheck and the function to kill process by name, etc.
 
 ps_kill(){  # $1=process name
-      PSID=$( ps aux | pgrep "$1" | awk '{print $2}' )
+      PSID=$( pgrap -l "$1" )
       if [ -z "$PSID" ]; then
-         h2 "Kill $1 PSID= $PSID ..."
+         h2 "Kill $1 PSID=$PSID ..."
          kill 2 "$PSID"
          sleep 2
       fi
@@ -957,17 +968,20 @@ fi  # CLONE_GITHUB
    fi
 
 
-### 16. Reveal secrets stored within <tt>.gitsecret</tt> folder within repo from GitHub (after installing gnupg and git-secret)
+### 16. Reveal secrets stored within <tt>.gitsecret</tt> folder within repo from GitHub 
+# (after installing gnupg and git-secret)
 
+   # This script detects whether secrets are stored various ways:
    # This is https://github.com/AGWA/git-crypt      has 4,500 stars.
    # Whereas https://github.com/sobolevn/git-secret has 1,700 stars.
+
+if [ -d ".gitsecret" ]; then   # found
    # This script detects whether https://github.com/sobolevn/git-secret was used to store secrets inside a local git repo.
    # This looks in the repo .gitsecret folder created by the "git secret init" command on this repo (under DevSecOps).
    # "git secret tell" stores the public key of the current git user email.
    # "git secret add my-file.txt" then "git secret hide" and "rm my-file.txt"
    # This approach is not real secure because it's a matter of time before any static secret can be decrypted by brute force.
    # When someone is out - delete their public key, re-encrypt the files, and they won’t be able to decrypt secrets anymore.
-if [ -d ".gitsecret" ]; then   # found
         h2 ".gitsecret folder found ..."
       # Files in there were encrypted using "git-secret" commands referencing gpg gen'd key pairs based on an email address.
       if [ "${PACKAGE_MANAGER}" == "brew" ]; then
@@ -1592,7 +1606,7 @@ if [ "${USE_CIRCLECI}" = true ]; then   # -L
    if [ -n "${CIRCLECI_API_TOKEN}" ]; then  
       if ! command -v circleci ; then
          h2 "Installing circleci ..."
-   # No brew:
+   # No brew: brew install circleci
          curl -fLSs https://circle.ci/cli | bash
       else
          if [ "${UPDATE_PKGS}" = true ]; then
@@ -1634,8 +1648,12 @@ if [ "${USE_CIRCLECI}" = true ]; then   # -L
       fatal "$HOME/.circleci/config.yml not found. Aborting ..."
       exit 9
    fi
-   h2 "Validate Circle CI ..."
+   h2 "circleci config validate in $HOME/.circleci ..."
    circleci config validate
+      # You are running 0.1.7179
+      # A new release is available (0.1.8599)
+      # You can update with `circleci update install`
+      # Error: Could not load config file at .circleci/config.yml: open .circleci/config.yml: no such file or directory
 
    h2 "??? Run Circle CI ..."  # https://circleci.com/docs/2.0/local-cli/
    # circleci run ???
@@ -1810,8 +1828,9 @@ if [ "${USE_VAULT}" = true ]; then   # -H
 
       # If vault process is already running, use it:
       PS_NAME="vault"
-      #PSID=$( ps aux | pgrep v[a]ult | awk '{print $2}' )
-      PSID=$( ps aux | pgrep v[a]ult )
+      PSID=$( pgrep -l vault )
+echo "PSID=$PSID"; exit
+
       if [ -n "${PSID}" ]; then  # does not exist:
          h2 "Start up local Vault ..."
          # CAUTION: Vault dev server is insecure and stores all data in memory only!
@@ -1826,14 +1845,16 @@ if [ "${USE_VAULT}" = true ]; then   # -H
 
          note "Starting vault local dev server at $VAULT_ADDR ..."  # https://learn.hashicorp.com/vault/getting-started/dev-server
          note "THIS SCRIPT PAUSES HERE. OPEN ANOTHER TERMINAL SESSION. Press control+C to stop service."
-         # RESPONSE captures STDOUT to avoid revealing Unseal Key and Root Token:
-         RESPONSE="$( vault server -dev  -dev-root-token-id=\"root\" )"
+         # TODO: tee 
+         vault server -dev  -dev-root-token-id=\"root\"
 
-         # FIXME: capture output:
-         UNSEAL_KEY="$( echo "${RESPONSE}" | grep -o 'Unseal Key: [^, }]*' | sed 's/^.*: //' )"
-         VAULT_DEV_ROOT_TOKEN_ID="$( echo "${RESPONSE}" | grep -o 'Root Token: [^, }]*' | sed 's/^.*: //' )"
-         note -e "UNSEAL_KEY=$UNSEAL_KEY"
-         note -e "VAULT_DEV_ROOT_TOKEN_ID=$VAULT_DEV_ROOT_TOKEN_ID"
+         # Manually copy Root Token: Root Token: s.ibP35DXQmHwDHc1NweL8dbrA 
+         # and create a 
+
+         #UNSEAL_KEY="$( echo "${RESPONSE}" | grep -o 'Unseal Key: [^, }]*' | sed 's/^.*: //' )"
+         #VAULT_DEV_ROOT_TOKEN_ID="$( echo "${RESPONSE}" | grep -o 'Root Token: [^, }]*' | sed 's/^.*: //' )"
+         #note -e "UNSEAL_KEY=$UNSEAL_KEY"
+         #note -e "VAULT_DEV_ROOT_TOKEN_ID=$VAULT_DEV_ROOT_TOKEN_ID"
           #sample VAULT_DEV_ROOT_TOKEN_ID="s.Lgsh7FXX9cUKQttfFo1mdHjE"
          # Error checking seal status: Get "http://127.0.0.1:8200/v1/sys/seal-status": dial tcp 127.0.0.1:8200: connect: connection refuse
 
@@ -1912,15 +1933,22 @@ if [ "${USE_VAULT}" = true ]; then   # -H
 
    fi  # VAULT_ADDR
 
-
    # on either test or prod Vault instance:
    if [ -n "${VAULT_USERNAME}" ]; then  # is not empty
-      h2 "Vault okta login as \"${VAULT_USERNAME}\" (manually confirm on Duo) ..."
-      /usr/bin/expect -f - <<EOD
+      if [ -z "${VAULT_PASSCODE}" ]; then
+          h2 "Vault login using Vault token ..."
+          vault login -format json -method=ldap \
+             username="${VAULT_USERNAME}" passcode="${VAULT_PASSCODE}" | \
+             jq -r '"\tUsername: " + .auth.metadata.username + "\n\tPolicies: " + .auth.metadata.policies + "\n\tLease time: " + (.auth.lease_duration|tostring)'
+      else
+         h2 "Vault okta login as \"${VAULT_USERNAME}\" (manually confirm on Duo) ..."
+         /usr/bin/expect -f - <<EOD
 spawn vault login -method=okta username="${VAULT_USERNAME}" 
 expect "Password (will be hidden):"
-send "$VAULT_PASSWORD\n"
+send "${VAULT_PASSWORD}\n"
 EOD
+       fi
+echo "DEBUGGING";exit
 echo -e "\n"  # add return
 
    fi  # VAULT_USERNAME
@@ -1985,8 +2013,6 @@ echo -e "\n"  # add return
 
 fi  # USE_VAULT
 
-
-echo "die here"; exit
 
 if [ "${MOVE_SECURELY}" = true ]; then   # -m
    # See https://github.com/settings/keys 
@@ -2226,9 +2252,10 @@ if [ "${NODE_INSTALL}" = true ]; then  # -n
 
 
    # shellcheck disable=SC2009  # Consider using pgrep instead of grepping ps output.
-   RESPONSE="$( ps aux | grep -v grep | grep mongod )"
-         # root 10318   0.0  0.0  4763196   7700 s002  T     4:02PM   0:00.03 sudo mongod
+   #RESPONSE="$( ps aux | grep -v grep | grep mongod )"
+   RESPONSE="$( pgrep -l mongod )"
                             note "${RESPONSE}"
+         # root 10318   0.0  0.0  4763196   7700 s002  T     4:02PM   0:00.03 sudo mongod
               MONGO_PSID=$( echo "${RESPONSE}" | awk '{print $2}' )
 
    Kill_process(){
@@ -2486,13 +2513,13 @@ if [ "${RUN_PYTHON}" = true ]; then  # -s
                # See https://pylint.pycqa.org/en/latest/ and https://www.python.org/dev/peps/pep-0008/
                python3 -m pip install pylint
                command -v pylint   # https://stackoverflow.com/questions/43272664/linter-pylint-is-not-installed
-            else
+            else  # RESPONSE=1
                if [ "${UPDATE_PKGS}" = true ]; then
                   h2 "Upgrading pylint ..."
                   python3 -m pip install pylint --upgrade
                fi
             fi
-               h2 "Running pylint scanner on ${MY_FILE} ..."
+               h2 "Running pylint scanner on -file ${MY_FILE} ..."
                # TRICK: Route console output to a temp folder for display only on error:
                pylint "${MY_FILE}" 1>pylint.console.log  2>pylint.err.log
                STATUS=$?
@@ -2946,16 +2973,7 @@ if [ "${RUBY_INSTALL}" = true ]; then  # -i
 fi # if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
 
-
-### 35. Use WebGoat
-if [ "${RUN_WEBGOAT}" = true ]; then  # -W
-
-   h2 "Running WebGoat"
-
-fi    # RUN_WEBGOAT
-
-
-### 36. Use Eggplant
+### 35. Use Eggplant
 if [ "${RUN_EGGPLANT}" = true ]; then  # -O
 
    # As seen at https://www.youtube.com/watch?v=B64_4r0vGkA May 28, 2020
@@ -3016,7 +3034,7 @@ if [ "${RUN_EGGPLANT}" = true ]; then  # -O
 fi    # RUN_EGGPLANT
 
 
-### 37. Use Docker
+### 36. Use Docker
 if [ "${USE_DOCKER}" = true ]; then   # -k
 
    if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
@@ -3152,13 +3170,23 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
       done
  
    }  # Start_Docker
+ 
+   Remove_Dangling_Docker(){   # function
+      RESPONSE="$( docker images -qf dangling=true )"
+      if [ -z "${RESPONSE}" ]; then
+         RESPONSE=$( docker rmi -f "${RESPONSE}" )
+      fi
+      #   if [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q "$DOCKER_WEB_SVC_NAME")` ]; then
+      # --no-trunc flag because docker ps shows short version of IDs by default.
+      #.   note "If $DOCKER_WEB_SVC_NAME is not running, so run it..."
+   }
 
    # https://medium.com/@valkyrie_be/quicktip-a-universal-way-to-check-if-docker-is-running-ffa6567f8426
    # ALTERNATIVE: curl -s --unix-socket /var/run/docker.sock http://ping
       # From https://gist.github.com/peterver/ca2d60abc015d334e1054302265b27d9
    IS_DOCKER_STARTED=true
    {
-     docker ps -q  2>/dev/null  # -q = quiet
+      docker ps -q  2>/dev/null  # -q = quiet
       # RESPONSE: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
    } || {
       IS_DOCKER_STARTED=false
@@ -3178,26 +3206,47 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
    # Error response from daemon: dial unix docker.raw.sock: connect: connection refused
 
 
-   if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
-      h2 "Building docker images ..."
-   fi    # BUILD_DOCKER_IMAGE
-
-
    if [ "${RUN_ACTUAL}" = true ]; then  # -a for actual usage
 
-   RESPONSE="$( docker images -qf dangling=true )"
-   if [ -z "${RESPONSE}" ]; then
-      h2 "Remove dangling docker images ..."
-      docker rmi -f "$( docker images -qf dangling=true )"
-      # RESPONSE: Error: No such image: 
-   fi
-      #   if [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q "$DOCKER_WEB_SVC_NAME")` ]; then
-      # --no-trunc flag because docker ps shows short version of IDs by default.
-      #.   note "If $DOCKER_WEB_SVC_NAME is not running, so run it..."
+      Remove_Dangling_Docker   # function defined above.
+
+      if [ -z "${MY_FOLDER}" ]; then  # not defined:
+         note "-Folder not specified. Working on root folder ..." 
+      else
+         if [ ! -d "${MY_FOLDER}" ]; then  # not exists:
+            fatal "-Folder \"${MY_FOLDER}\" specified not found in $PWD ..."
+            exit 9
+         else
+            note "cd into -Folder \"${MY_FOLDER}\" specified ..."
+            cd "${MY_FOLDER}"
+            note "Now at $PWD "
+         fi
+      fi
+     
+      if [ -z "${MY_FILE}" ]; then  # not filled:
+         fatal "No -file specified ..."
+         exit 9
+      else ## filled:
+         if [ ! -f "${MY_FILE}" ]; then  # not found
+            fatal "-file specified not found in $PWD ..."
+            exit 9
+
+            #note "-file not specified. Using config.yml from repo ... "
+            ## copy with -force to update:
+            #cp -f ".circleci/config.yml" "$HOME/.circleci/config.yml"
+
+         else
+            note "-file ${MY_FILE} ... "
+         fi
+      fi
 
 
-      # if docker-compose file available:
-      if [ -f "docker-compose.yml" ]; then
+      if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
+         h2 "Building docker images ..."
+         docker build  #Dockerfile
+      fi    # BUILD_DOCKER_IMAGE
+
+      if [ "${MY_FILE}" == "docker-compose.yml" ]; then
 
          # https://docs.docker.com/compose/reference/up/
          docker-compose up --detach --build
@@ -3240,26 +3289,38 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
 fi  # if [ "${USE_DOCKER}
 
 
-### 38. Run within Docker
+### 37. Run within Docker
 if [ "${RUN_ACTUAL}" = true ]; then   # -a
+
+   # docker exec -it eggplant-demo_chrome2_1 "/bin/bash"
 
    if [ "${RUN_EGGPLANT}" = true ]; then  # -O
       # Connect target browser to Eggplant license server: 
       if [ -z "${EGGPLANT_USERNAME}" ]; then
-         echo "EGGPLANT_USERNAME=$EGGPLANT_USERNAME"
+         echo "EGGPLANT_USERNAME=${EGGPLANT_USERNAME}"
       fi
+
+      # ALT: EGGPLANT_SUT_IP=docker inspect -f "{{ .NetworkSettings.Networks.bridge.IPAddress }}" "${BROWSER_HOSTNAME}"
+      EGGPLANT_SUT_IP=$( ipconfig getifaddr en0 )  # "192.168.1.10"
+      EGGPLANT_SUT_PORT="9001"  # for chrome, 9002 for firefox, 9003 for opera 
+
+      note "EGGPLANT_SUT_IP=${EGGPLANT_SUT_IP} EGGPLANT_SUT_PORT=${EGGPLANT_SUT_PORT}"
 
       if [ "${OS_TYPE}" == "macOS" ]; then  # it's on a Mac:
          "/Applications/Eggplant.app/Contents/MacOS/runscript" \
             "docker-test.suite/Scripts/${MY_FILE}" \
-            -LicenserHost 10.190.70.30 -host "${BROWSER_HOSTNAME}" \
-            -username "${EGGPLANT_USERNAME}" -password "${EGGPLANT_PASSWORD}" \
-            -type RDP -DefaultHeight 1920 -DefaultWidth 1080 -CommandLineOutput yes
+            -LicenserHost "${EGGPLANT_HOST}" -host "${EGGPLANT_SUT_IP}" -port "${EGGPLANT_SUT_PORT}" \
+            -password "secret" \
+            -username "${EGGPLANT_USERNAME}" \
+            -type VNC -DefaultHeight 1920 -DefaultWidth 1080 -CommandLineOutput yes
       elif [ "${OS_TYPE}" == "Windows" ]; then  # it's on a Mac:
+         # TODO: Change Ritdhwaj to what's in the Docker image:
+         #"C:\Program Files\eggPlant\eggPlant.bat"   "C:\Users\Alex\Documents\MyTests.suite\scripts\test3.script" \
+         #-host 10.1.11.150 -port 5901 -password "secret"
          "Files\Eggplant\runscript.bat" \
             "C:\Users\Ritdhwaj Singh Chand\Desktop\cct_automation\eggplant_new_vi.suite\Scripts\test_runner.script" \
-            -LicenserHost 10.190.70.30 -host dev-oap01 \
-            -username "${EGGPLANT_USERNAME}" -password "${EGGPLANT_PASSWORD}" \
+            -LicenserHost "${EGGPLANT_HOST}" -host "${BROWSER_HOSTNAME}" \
+            -username "${EGGPLANT_USERNAME}" -port 9001 -password "${EGGPLANT_PASSWORD}" \
             -type RDP -DefaultHeight 1920 -DefaultWidth 1080 -CommandLineOutput yes
       fi
    fi 
@@ -3276,27 +3337,69 @@ if [ "${RUN_ACTUAL}" = true ]; then   # -a
 fi  # RUN_ACTUAL
 
 
-### 39. Update GitHub
+
+### 38. Update GitHub
 if [ "${UPDATE_GITHUB}" = true ]; then  # -u
-   h2 "TODO: Update GitHub ..."
-fi
+   if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
+      if [ "${PACKAGE_MANAGER}" == "brew" ]; then
+         if ! brew ls --versions git-secrets >/dev/null; then  # command not found, so:
+            h2 "Brew installing git-secrets ..."
+            brew install git-secrets
+               #  /usr/local/Cellar/git-secrets/1.3.0: 8 files, 65.7KB
+         else  # installed already:
+            if [ "${UPDATE_PKGS}" = true ]; then
+               note "Existing: $( brew ls --versions git-secrets )"  # 1.3.0
+               h2 "Brew upgrading git-secrets ..."
+               brew upgrade git-secrets
+            fi
+         fi
+         note "$( brew ls --versions git-secrets )"
+      fi
+   fi
+
+   h2 "Install Git hooks to current repo ..."
+   if [ ! -d ".git" ]; then 
+      error ".git folder not found. This is not a Git repo ..."
+   else
+      if [ -f ".git/hooks/commit-msg" ]; then
+         note ".git/hooks/commit-msg already installed ..."
+      else
+         # See https://github.com/awslabs/git-secrets has 7,800 stars.
+         note "git secrets --install"
+         git secrets --install
+      fi
+      
+      if [ "${USE_AWS_CLOUD}" = true ]; then   # -w
+         note "git secrets --register-aws"
+         git secrets --register-aws
+      fi
+
+      note "git secrets --scan  # all files"
+      git secrets --scan
+
+      note "git secrets --scan-history"
+      git secrets --scan-history
+   fi
+fi   # UPDATE_GITHUB
 
 
-### 40. Remove GitHub folder after run
+### 39. Remove GitHub folder after run
 if [ "$REMOVE_GITHUB_AFTER" = true ]; then  # -C
    h2 "Delete cloned GitHub at end ..."
    Delete_GitHub_clone    # defined above in this file.
-   
-   h2 "Remove files in ~/temp folder ..."
-   rm bandit.console.log
-   rm bandit.err.log
-   rm pylint.console.log
-   rm pylint.err.log
+
+   if [ "${RUN_PYTHON}" = true ]; then
+      h2 "Remove files in ~/temp folder ..."
+      rm bandit.console.log
+      rm bandit.err.log
+      rm pylint.console.log
+      rm pylint.err.log
+   fi
 fi
 
 
-### 41. Kill processes after run
-if [ "$KILL_PROCESSES" = true ]; then  # -K
+### 40. Kill processes after run
+if [ "${KILL_PROCESSES}" = true ]; then  # -K
 
    if [ "${NODE_INSTALL}" = true ]; then  # -n
       if [ -n "${MONGO_PSID}" ]; then  # not found
@@ -3309,12 +3412,12 @@ fi
 
 if [ "${USE_DOCKER}" = true ]; then   # -k
 
-   if [ "$KILL_PROCESSES" = true ]; then  # -K
+   if [ "${KILL_PROCESSES}" = true ]; then  # -K
       Stop_Docker   # function defined in this file above.
    fi
 
 
-   ### 42. Delete Docker containers after run
+   ### 41. Delete Docker containers in memory after run ...
    if [ "$DELETE_CONTAINER_AFTER" = true ]; then  # -D
 
       # TODO: if docker-compose.yml available:
@@ -3336,13 +3439,14 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
    fi
 
 
-   ### 43. Remove Docker images downloaded
-   if [ "$REMOVE_DOCKER_IMAGES" = true ]; then  # -M
+   ### 42. Remove Docker images downloaded
+   if [ "${REMOVE_DOCKER_IMAGES}" = true ]; then  # -M
 
-      docker system df
+      note "docker system df ..."
+            docker system df
      
       DOCKER_IMAGES="$( docker images -a -q )"
-      if [ -n "$DOCKER_IMAGES" ]; then  # variable is NOT empty
+      if [ -n "${DOCKER_IMAGES}" ]; then  # variable is NOT empty
          h2 "Removing all Docker images ..."
          docker rmi "$( docker images -a -q )"
 
