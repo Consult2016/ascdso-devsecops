@@ -151,7 +151,8 @@ exit_abnormal() {            # Function: Exit with error.
    USE_VAULT=false              # -H
        VAULT_ADDR=""
       #VAULT_RSA_FILENAME=""
-       VAULT_PASSCODE=""
+       VAULT_USER_TOKEN=""
+       VAULT_CA_KEY_FULLPATH="$HOME/.ssh/ca_key"
    VAULT_PUT=false
 
    RUBY_INSTALL=false           # -i
@@ -282,7 +283,7 @@ while test $# -gt 0; do
       USE_VAULT=true
       PROJECT_FOLDER_NAME="vault-ssh-ca"
       VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
-      VAULT_ADDR="https://${VAULT_HOST}" 
+      export VAULT_ADDR="https://${VAULT_HOST}" 
       VAULT_USERNAME="wilson_mar@mckinsey.com"
       #VAULT_RSA_FILENAME="mck2"
       shift
@@ -329,7 +330,7 @@ while test $# -gt 0; do
       ;;
     -m)
       export MOVE_SECURELY=true
-      export LOCAL_SSH_KEYFILE="test-ssh"
+      export LOCAL_SSH_KEYFILE="id_rsa"
       export GITHUB_ORG="organizations/Mck-Internal-Test"
       shift
       ;;
@@ -1735,6 +1736,112 @@ if [ "${USE_YUBIKEY}" = true ]; then   # -Y
 fi  # USE_YUBIKEY
 
 
+
+if [ "${MOVE_SECURELY}" = true ]; then   # -m
+   # See https://github.com/settings/keys 
+   # See https://github.blog/2019-08-14-ssh-certificate-authentication-for-github-enterprise-cloud/
+
+   pushd  "$HOME/.ssh"
+   h2 "At temporary $PWD ..."
+
+   ## STEP: Generate local SSH key pair:
+   if [ -n "${LOCAL_SSH_KEYFILE}" ]; then  # is not empty
+      rm -f "${LOCAL_SSH_KEYFILE}"
+      rm -f "${LOCAL_SSH_KEYFILE}.pub"
+#      if [ ! -f "${LOCAL_SSH_KEYFILE}" ]; then  # not exists
+         h2 "ssh-keygen -t rsa -f \"${LOCAL_SSH_KEYFILE}\" -C \"${VAULT_USERNAME}\" ..."
+         ssh-keygen -t rsa -f "${LOCAL_SSH_KEYFILE}" -C "${VAULT_USERNAME}" -N ""
+#      else
+#         h2 "Using existing SSH key pair \"${LOCAL_SSH_KEYFILE}\" "
+#      fi
+      note "$( ls -al "${LOCAL_SSH_KEYFILE}" )"
+   fi  # LOCAL_SSH_KEYFILE
+
+fi  # MOVE_SECURELY
+
+
+USE_ALWAYS=true
+if [ "${USE_ALWAYS}" = false ]; then   # -H
+
+   if [ "${USE_VAULT}" = false ]; then   # -H
+
+      ### STEP: Paste locally generated public key in GitHub UI:
+      if [ ! -f "${VAULT_CA_KEY_FULLPATH}" ]; then  # not exists
+         h2 "CA key file ${VAULT_CA_KEY_FULLPATH} not found, so generating for ADMIN ..."
+         ssh-keygen -t rsa -f "${VAULT_CA_KEY_FULLPATH}" -N ""
+            # -N bypasses the passphrase
+            # see https://unix.stackexchange.com/questions/69314/automated-ssh-keygen-without-passphrase-how
+
+         h2 "ADMIN: In GitHub.com GUI SSH Certificate Authorities, manually click New CA and paste CA cert. ..."
+         # On macOS
+            pbcopy <"${VAULT_CA_KEY_FULLPATH}.pub"
+            open "https://github.com/${GITHUB_ORG}/settings/security"
+         # TODO: On Windows after cinst pasteboard
+            ## clip < ~/.ssh/id_rsa.pub
+         # TODO: On Debian sudo apt-get install xclip
+            ## xclip -sel clip < ~/.ssh/id_rsa.pub
+         # Linux: See https://www.ostechnix.com/how-to-use-pbcopy-and-pbpaste-commands-on-linux/
+         read -r -t 30 -p "Pausing -t 30 seconds to import ${LOCAL_SSH_KEYFILE} in GitHub.com GUI ..."
+         # TODO: Replace with Selenium automation?
+      else
+         info "Using existing CA key file $VAULT_CA_KEY_FULLPATH ..."
+      fi  # VAULT_CA_KEY_FULLPATH
+      note "$( ls -al "${VAULT_CA_KEY_FULLPATH}" )"
+
+  else  # USE_VAULT = true
+
+      # Instead of pbcopy and paste in GitHub.com GUI, obtain and use SSH certificate from a SSH CA:
+      if [ -z "${VAULT_CA_KEY_FULLPATH}" ]; then  # is not empty
+         VAULT_CA_KEY_FULLPATH="./ca_key"  # "~/.ssh/ca_key"  # "./ca_key" for current (project) folder  
+      fi
+      
+      ### STEP: Call Vault to sign public key and return it as a cert:
+      h2 "Signing user ${GitHub_ACCOUNT} public key file ${LOCAL_SSH_KEYFILE} ..."
+      ssh-keygen -s "${VAULT_CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
+         -O "extension:login@github.com=${GitHub_ACCOUNT}" "${LOCAL_SSH_KEYFILE}.pub"
+         # RESPONSE: Signed user key test-ssh-cert.pub: id "wilson-mar" serial 0 valid forever
+
+      SSH_CERT_PUB_KEYFILE="${LOCAL_SSH_KEYFILE}-cert.pub"
+      if [ ! -f "${SSH_CERT_PUB_KEYFILE}" ]; then  # not exists
+         error "File ${SSH_CERT_PUB_KEYFILE} not found ..."
+      else
+         note "File ${SSH_CERT_PUB_KEYFILE} found ..."
+         note "$( ls -al ${SSH_CERT_PUB_KEYFILE} )"
+      fi
+      # According to https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/about-ssh-certificate-authorities
+      # To issue a certificate for someone who has different usernames for GitHub Enterprise Server and GitHub Enterprise Cloud, 
+      # you can include two login extensions:
+      # ssh-keygen -s ./ca-key -I KEY-IDENTITY \
+      #    -O extension:login@github.com=CLOUD-USERNAME extension:login@
+   fi  # USE_VAULT
+
+   if [ "${USE_VAULT}" = false ]; then   # -H
+      h2 "Use GitHub extension to sign user public key with 1d Validity for ${GitHub_ACCOUNT} ..."
+      ssh-keygen -s "${VAULT_CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
+         -O "extension:login@github.com=${GitHub_ACCOUNT}" -V '+1d' "${LOCAL_SSH_KEYFILE}.pub"
+         # 1m = 1minute, 1d = 1day
+         # -n user1 user1.pub
+         # RESPONSE: Signed user key test-ssh-cert.pub: id "wilsonmar" serial 0 valid from 2020-05-23T12:59:00 to 2020-05-24T13:00:46
+   fi
+
+   popd  # from "$HOME/.ssh"
+   h2 "Back into $( $PWD ) ..."
+
+   if [ "${OPEN_APP}" = true ]; then   # -o
+      h2 "Verify access to GitHub.com using SSH ..."
+      # To avoid RESPONSE: PTY allocation request failed on channel 0
+      # Ensure that "PermitTTY no" is in ~/.ssh/authorized_keys (on servers to contain id_rsa.pub)
+      # See https://bobcares.com/blog/pty-allocation-request-failed-on-channel-0/
+
+      h2 "Verify use of Vault SSH cert ..."
+      ssh git@github.com  # -vvv  (ssh automatically uses `test-ssh-cert.pub` file)
+      # RESPONSE: Hi wilsonmar! You've successfully authenticated, but GitHub does not provide shell access.
+             # Connection to github.com closed.
+   fi
+
+fi  # MOVE_SECURELY
+
+
 ### 26. Use Hashicorp Vault
 if [ "${USE_VAULT}" = true ]; then   # -H
       h2 "-HashicorpVault being used ..."
@@ -1805,6 +1912,7 @@ if [ "${USE_VAULT}" = true ]; then   # -H
    fi
 
 
+
    if [ -n "${VAULT_HOST}" ]; then  # filled
          # use production ADDR from secrets
          # note "VAULT_USERNAME=${VAULT_USERNAME}"
@@ -1829,7 +1937,7 @@ if [ "${USE_VAULT}" = true ]; then   # -H
       # If vault process is already running, use it:
       PS_NAME="vault"
       PSID=$( pgrep -l vault )
-echo "PSID=$PSID"; exit
+      note "Test PSID=$PSID"
 
       if [ -n "${PSID}" ]; then  # does not exist:
          h2 "Start up local Vault ..."
@@ -1863,6 +1971,7 @@ echo "PSID=$PSID"; exit
       else  # USE_TEST_ENV}" = true
          h2 "Making use of \"${PS_NAME}\" as PSID=${PSID} ..."
          # See https://www.vaultproject.io/docs/secrets/ssh/signed-ssh-certificates.html
+         # And https://grantorchard.com/securing-github-access-with-hashicorp-vault/
          # From -secrets opening ~/.secrets.sh :
          note "$( VAULT_HOST=$VAULT_HOST )"
          note "$( VAULT_TLS_SERVER=$VAULT_TLS_SERVER )"
@@ -1871,14 +1980,14 @@ echo "PSID=$PSID"; exit
 
          ## With Admin access:
 
-         SSH_CLIENT_SIGNER_PATH="ssh-client-signer"
+         export SSH_CLIENT_SIGNER_PATH="ssh-client-signer"
          # Assuming Vault was enabled earlier in this script.
          h2 "Create SSH CA ..."
          vault secrets enable -path="${SSH_CLIENT_SIGNER_PATH}"  ssh
          vault write "${SSH_CLIENT_SIGNER_PATH}/config/ca"  generate_signing_key=true
 
 
-         SSH_USER_ROLE="${GitHub_USER_EMAIL}"
+         export SSH_USER_ROLE="${GitHub_USER_EMAIL}"
          SSH_ROLE_FILENAME="myrole.json"  # reuse for every user
          echo -e "{" >"${SSH_ROLE_FILENAME}"
          echo -e "  \"allow_user_certificates\": true," >>"${SSH_ROLE_FILENAME}"
@@ -1903,11 +2012,12 @@ echo "PSID=$PSID"; exit
 
    fi  # USE_TEST_ENV
 
+
    if [ -n "${VAULT_ADDR}" ]; then  # filled
             # Output to JSON instead & use jq to parse?
             # See https://stackoverflow.com/questions/2990414/echo-that-outputs-to-stderr
-            note "vault status ${VAULT_ADDR} ..."
-            RESPONSE="$( vault status 2>&2)"  # capture STDERR output to &1 (STDOUT)
+         note "vault status ${VAULT_ADDR} ..."
+         RESPONSE="$( vault status 2>&2)"  # capture STDERR output to &1 (STDOUT)
             # Key                    Value
             # ---                    -----
             # Seal Type              shamir
@@ -1922,23 +2032,24 @@ echo "PSID=$PSID"; exit
             # HA Cluster             https://10.42.4.34:8201
             # HA Mode                standby
             # Active Node Address    http://10.42.4.34:8200
-            ERR_RESPONSE="$( echo "${RESPONSE}" | awk '{print $1;}' )"
+         ERR_RESPONSE="$( echo "${RESPONSE}" | awk '{print $1;}' )"
             # TODO: Check error code.
-            if [ "Error" = "${ERR_RESPONSE}" ]; then
-               fatal "${ERR_RESPONSE}"
-               exit
-            else
-               note -e "${RESPONSE}"
-            fi
+         if [ "Error" = "${ERR_RESPONSE}" ]; then
+            fatal "${ERR_RESPONSE}"
+            exit
+         else
+            note -e "${RESPONSE}"
+         fi
 
    fi  # VAULT_ADDR
 
+
    # on either test or prod Vault instance:
    if [ -n "${VAULT_USERNAME}" ]; then  # is not empty
-      if [ -z "${VAULT_PASSCODE}" ]; then
-          h2 "Vault login using Vault token ..."
-          vault login -format json -method=ldap \
-             username="${VAULT_USERNAME}" passcode="${VAULT_PASSCODE}" | \
+      if [ -n "${VAULT_USER_TOKEN}" ]; then
+          h2 "Vault login using VAULT_USER_TOKEN ..."
+          vault login -format json -method=okta \
+             username="${VAULT_USERNAME}" passcode="${VAULT_USER_TOKEN}" | \
              jq -r '"\tUsername: " + .auth.metadata.username + "\n\tPolicies: " + .auth.metadata.policies + "\n\tLease time: " + (.auth.lease_duration|tostring)'
       else
          h2 "Vault okta login as \"${VAULT_USERNAME}\" (manually confirm on Duo) ..."
@@ -1947,10 +2058,13 @@ spawn vault login -method=okta username="${VAULT_USERNAME}"
 expect "Password (will be hidden):"
 send "${VAULT_PASSWORD}\n"
 EOD
-       fi
-echo "DEBUGGING";exit
-echo -e "\n"  # add return
+   echo -e "\n"  # force line break exiting program.
 
+      # Get token: https://www.idkrtm.com/hashicorp-vault-managing-tokens/
+      #h2 "Create token and set current session to use that token ..."
+      #VAULT_USER_TOKEN=$(vault token-create -ttl="1h" -format=json | jq -r '.auth' | jq -r '.client_token')
+
+      fi   # VAULT_USER_TOKEN
    fi  # VAULT_USERNAME
 
          # Success! You are now authenticated. The token information displayed below
@@ -1995,7 +2109,20 @@ echo -e "\n"  # add return
          note "Using ${LOCAL_SSH_KEYFILE}.pub in $HOME/.ssh ..."
       fi
 
+
+      rm -f "$HOME/.ssh/${LOCAL_SSH_KEYFILE}-cert.pub"
+
       h2 "Sign user public certificate ..."
+      export SSH_CLIENT_SIGNER_PATH="github/ssh"
+      echo "SSH_CLIENT_SIGNER_PATH=${SSH_CLIENT_SIGNER_PATH}"
+      echo "VAULT_USERNAME=${VAULT_USERNAME}"
+
+      echo "LOCAL_SSH_KEYFILE=${LOCAL_SSH_KEYFILE}"
+      vault write -field=signed_key "${SSH_CLIENT_SIGNER_PATH}/sign/${VAULT_USERNAME}" \
+         public_key="@$HOME/.ssh/${LOCAL_SSH_KEYFILE}.pub" > "$HOME/.ssh/${LOCAL_SSH_KEYFILE}-cert.pub"
+exit
+#      vault write -field=signed_key $ENGINE/sign/$GITHUB_NAME public_key=@$HOME/.ssh/id_rsa.pub > ~/.ssh/id_rsa-cert.pub
+
       vault write -field=signed_key "${SSH_CLIENT_SIGNER_PATH}/roles/${SSH_USER_ROLE}" \
          "public_key=@./${LOCAL_SSH_KEYFILE}.pub" \
          | tee "${SSH_CERT_PUB_KEYFILE}.pub"
@@ -2012,106 +2139,6 @@ echo -e "\n"  # add return
    h2 "Back into $( $PWD ) ..."
 
 fi  # USE_VAULT
-
-
-if [ "${MOVE_SECURELY}" = true ]; then   # -m
-   # See https://github.com/settings/keys 
-   # See https://github.blog/2019-08-14-ssh-certificate-authentication-for-github-enterprise-cloud/
-
-echo "here: " #${LOCAL_SSH_KEYFILE}"
-   pushd  "$HOME/.ssh"
-   h2 "At temporary $( $PWD ) ..."
-
-   ## STEP: Generate local SSH key pair:
-echo "Local: " #${LOCAL_SSH_KEYFILE}"
-   if [ -n "${LOCAL_SSH_KEYFILE}" ]; then  # is not empty
-      if [ ! -f "${LOCAL_SSH_KEYFILE}" ]; then  # not exists
-         h2 "Generating SSH key pair \"${LOCAL_SSH_KEYFILE}\" ..."
-         ssh-keygen -t rsa -f "${LOCAL_SSH_KEYFILE}" -N ""
-      else
-         h2 "Using existing SSH key pair \"${LOCAL_SSH_KEYFILE}\" "
-      fi
-      note "$( ls -al "${LOCAL_SSH_KEYFILE}" )"
-   fi  # LOCAL_SSH_KEYFILE
-
-
-   if [ "${USE_VAULT}" = false ]; then   # -H
-
-      ### STEP: Paste locally generated public key in GitHub UI:
-      if [ ! -f "${CA_KEY_FULLPATH}" ]; then  # not exists
-         h2 "CA key file $CA_KEY_FULLPATH not found, so generating for ADMIN ..."
-         ssh-keygen -t rsa -f "${CA_KEY_FULLPATH}" -N ""
-            # -N bypasses the passphrase
-            # see https://unix.stackexchange.com/questions/69314/automated-ssh-keygen-without-passphrase-how
-
-         h2 "ADMIN: In GitHub.com GUI SSH Certificate Authorities, manually click New CA and paste CA cert. ..."
-         # On macOS
-            pbcopy <"${CA_KEY_FULLPATH}.pub"
-            open "https://github.com/${GITHUB_ORG}/settings/security"
-         # TODO: On Windows after cinst pasteboard
-            ## clip < ~/.ssh/id_rsa.pub
-         # TODO: On Debian sudo apt-get install xclip
-            ## xclip -sel clip < ~/.ssh/id_rsa.pub
-         # Linux: See https://www.ostechnix.com/how-to-use-pbcopy-and-pbpaste-commands-on-linux/
-         read -r -t 30 -p "Pausing -t 30 seconds to import ${LOCAL_SSH_KEYFILE} in GitHub.com GUI ..."
-         # TODO: Replace with Selenium automation?
-      else
-         info "Using existing CA key file $CA_KEY_FULLPATH ..."
-      fi  # CA_KEY_FULLPATH
-      note "$( ls -al "${CA_KEY_FULLPATH}" )"
-
-  else  # USE_VAULT = true
-
-      # Instead of pbcopy and paste in GitHub.com GUI, obtain and use SSH certificate from a SSH CA:
-      if [ -z "${CA_KEY_FULLPATH}" ]; then  # is not empty
-         CA_KEY_FULLPATH="./ca_key"  # "~/.ssh/ca_key"  # "./ca_key" for current (project) folder  
-      fi
-      
-      ### STEP: Call Vault to sign public key and return it as a cert:
-      h2 "Signing user ${GitHub_ACCOUNT} public key file ${LOCAL_SSH_KEYFILE} ..."
-      ssh-keygen -s "${CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
-         -O "extension:login@github.com=${GitHub_ACCOUNT}" "${LOCAL_SSH_KEYFILE}.pub"
-         # RESPONSE: Signed user key test-ssh-cert.pub: id "wilson-mar" serial 0 valid forever
-
-      SSH_CERT_PUB_KEYFILE="${LOCAL_SSH_KEYFILE}-cert.pub"
-      if [ ! -f "${SSH_CERT_PUB_KEYFILE}" ]; then  # not exists
-         error "File ${SSH_CERT_PUB_KEYFILE} not found ..."
-      else
-         note "File ${SSH_CERT_PUB_KEYFILE} found ..."
-         note "$( ls -al ${SSH_CERT_PUB_KEYFILE} )"
-      fi
-      # According to https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/about-ssh-certificate-authorities
-      # To issue a certificate for someone who has different usernames for GitHub Enterprise Server and GitHub Enterprise Cloud, 
-      # you can include two login extensions:
-      # ssh-keygen -s ./ca-key -I KEY-IDENTITY \
-      #    -O extension:login@github.com=CLOUD-USERNAME extension:login@
-   fi  # USE_VAULT
-
-   if [ "${USE_VAULT}" = false ]; then   # -H
-      h2 "Use GitHub extension to sign user public key with 1d Validity for ${GitHub_ACCOUNT} ..."
-      ssh-keygen -s "${CA_KEY_FULLPATH}" -I "${GitHub_ACCOUNT}" \
-         -O "extension:login@github.com=${GitHub_ACCOUNT}" -V '+1d' "${LOCAL_SSH_KEYFILE}.pub"
-         # 1m = 1minute, 1d = 1day
-         # -n user1 user1.pub
-         # RESPONSE: Signed user key test-ssh-cert.pub: id "wilsonmar" serial 0 valid from 2020-05-23T12:59:00 to 2020-05-24T13:00:46
-   fi
-
-   popd  # from "$HOME/.ssh"
-   h2 "Back into $( $PWD ) ..."
-
-   if [ "${OPEN_APP}" = true ]; then   # -o
-      h2 "Verify access to GitHub.com using SSH ..."
-      # To avoid RESPONSE: PTY allocation request failed on channel 0
-      # Ensure that "PermitTTY no" is in ~/.ssh/authorized_keys (on servers to contain id_rsa.pub)
-      # See https://bobcares.com/blog/pty-allocation-request-failed-on-channel-0/
-
-      h2 "Verify use of Vault SSH cert ..."
-      ssh git@github.com  # -vvv  (ssh automatically uses `test-ssh-cert.pub` file)
-      # RESPONSE: Hi wilsonmar! You've successfully authenticated, but GitHub does not provide shell access.
-             # Connection to github.com closed.
-   fi
-
-fi  # MOVE_SECURELY
 
 
 ## TODO: 
@@ -3244,6 +3271,12 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
       if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
          h2 "Building docker images ..."
          docker build  #Dockerfile
+
+         h2 "node-prune to removeg unnecessary files from the node_modules folder"
+         # Test files, markdown files, typing files and *.map files in Npm packages are not required in prod.
+         # See https://itsopensource.com/how-to-reduce-node-docker-image-size-by-ten-times/
+         npm prune --production
+
       fi    # BUILD_DOCKER_IMAGE
 
       if [ "${MY_FILE}" == "docker-compose.yml" ]; then
@@ -3367,6 +3400,9 @@ if [ "${UPDATE_GITHUB}" = true ]; then  # -u
          # See https://github.com/awslabs/git-secrets has 7,800 stars.
          note "git secrets --install"
          git secrets --install
+            # ✓ Installed commit-msg hook to .git/hooks/commit-msg
+            # ✓ Installed pre-commit hook to .git/hooks/pre-commit
+            # ✓ Installed prepare-commit-msg hook to .git/hooks/prepare-commit-msg         
       fi
       
       if [ "${USE_AWS_CLOUD}" = true ]; then   # -w
