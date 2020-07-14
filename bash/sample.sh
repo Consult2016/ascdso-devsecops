@@ -282,9 +282,9 @@ while test $# -gt 0; do
     -H)
       USE_VAULT=true
       PROJECT_FOLDER_NAME="vault-ssh-ca"
-      VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
+      #VAULT_HOST=" "
       export VAULT_ADDR="https://${VAULT_HOST}" 
-      VAULT_USERNAME="wilson_mar@mckinsey.com"
+      # VAULT_USERNAME=""
       #VAULT_RSA_FILENAME="mck2"
       shift
       ;;
@@ -1916,12 +1916,10 @@ if [ "${USE_VAULT}" = true ]; then   # -H
    if [ -n "${VAULT_HOST}" ]; then  # filled
          # use production ADDR from secrets
          # note "VAULT_USERNAME=${VAULT_USERNAME}"
-         #export VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
          if [ -z "${VAULT_HOST}" ]; then  # it's blank:
             error "VAULT_HOST is not defined (within secrets file) ..."
          else
             if ping -c 1 "${VAULT_HOST}" &> /dev/null ; then 
-               # PING vault.prod.init.ak8s.mckinsey.com (10.191.78.38): 56 data bytes
                note "ping of ${VAULT_HOST} went fine."
             else
                error "${VAULT_HOST} ICMP ping failed. Aborting ..."
@@ -2072,15 +2070,15 @@ EOD
          # again. Future Vault requests will automatically use this token.
          # Key                    Value
          # ---                    -----
-         # token                  s.jGbeKRBJaWjui3cKCc5Y8Rj6
-         # token_accessor         jnrfN3Iu9o6JBvNYX4huZPqv
+         # token                  xxxxxeKRBJaWjui3cKCc5Y8Rj6
+         # token_accessor         xxxxfN3Iu9o6JBvNYX4huZPqv
          # token_duration         768h / 24 = 32 days
          # token_renewable        true
-         # token_policies         ["default" "team/github-one" "vault/pki"]
+         # token_policies         ["default" "team/githu" "vault/pki"]
          # identity_policies      []
-         # policies               ["default" "team/github-one" "vault/pki"]
-         # token_meta_policies    vault/pki,team/github-one
-         # token_meta_username    wilson_mar@mckinsey.com
+         # policies               ["default" "team/gihubne" "vault/pki"]
+         # token_meta_policies    
+         # token_meta_username    xxx.com
          # https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/managing-your-organizations-ssh-certificate-authorities
          # https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/about-ssh-certificate-authorities
 
