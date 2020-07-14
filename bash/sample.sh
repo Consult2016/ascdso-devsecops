@@ -243,6 +243,7 @@ while test $# -gt 0; do
       RUN_EGGPLANT=true
       GitHub_REPO_URL="https://github.com/wilsonmar/Eggplant.git"
       PROJECT_FOLDER_NAME="eggplant-demo"
+      MY_FOLDER="docker-test.suite/Scripts"
       MY_FILE="openurl.script"
       APP1_PORT="80"
       shift
@@ -282,9 +283,9 @@ while test $# -gt 0; do
     -H)
       USE_VAULT=true
       PROJECT_FOLDER_NAME="vault-ssh-ca"
-      VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
+      #VAULT_HOST=
       export VAULT_ADDR="https://${VAULT_HOST}" 
-      VAULT_USERNAME="wilson_mar@mckinsey.com"
+      # VAULT_USERNAME=""
       #VAULT_RSA_FILENAME="mck2"
       shift
       ;;
@@ -585,11 +586,13 @@ BASH_VERSION=$( bash --version | grep bash | cut -d' ' -f4 | head -c 1 )
 
 
 ### 8. Set traps to display information if script is interrupted.
+# See https://github.com/MikeMcQuaid/strap/blob/master/bin/strap.sh
 trap this_ending EXIT
 trap this_ending INT QUIT TERM
 this_ending() {
    EPOCH_END=$(date -u +%s);
    EPOCH_DIFF=$((EPOCH_END-EPOCH_START))
+   sudo --reset-timestamp  # prompt for password for sudo session
    # Using BASH_VERSION identified above:
    if [ "${BASH_VERSION}" -lt "4" ]; then
       FREE_DISKBLOCKS_END="0"
@@ -597,7 +600,7 @@ this_ending() {
       FREE_DISKBLOCKS_END=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
    fi
    FREE_DIFF=$(((FREE_DISKBLOCKS_END-FREE_DISKBLOCKS_START)))
-   MSG="End of script $SCRIPT_VERSION after $((EPOCH_DIFF/360)) seconds and $((FREE_DIFF*512)) bytes on disk."
+   MSG="End of script $SCRIPT_VERSION after $((EPOCH_DIFF/360)) seconds. and $((FREE_DIFF*512)) bytes on disk"
    # echo 'Elapsed HH:MM:SS: ' $( awk -v t=$beg-seconds 'BEGIN{t=int(t*1000); printf "%d:%02d:%02d\n", t/3600000, t/60000%60, t/1000%60}' )
    success "$MSG"
    # note "Disk $FREE_DISKBLOCKS_START to $FREE_DISKBLOCKS_END"
@@ -1750,8 +1753,9 @@ if [ "${MOVE_SECURELY}" = true ]; then   # -m
       rm -f "${LOCAL_SSH_KEYFILE}.pub"
 #      if [ ! -f "${LOCAL_SSH_KEYFILE}" ]; then  # not exists
          h2 "ssh-keygen -t rsa -f \"${LOCAL_SSH_KEYFILE}\" -C \"${VAULT_USERNAME}\" ..."
-         ssh-keygen -t rsa -f "${LOCAL_SSH_KEYFILE}" -C "${VAULT_USERNAME}" -N ""
-#      else
+         ssh-keygen -t rsa -f "${LOCAL_SSH_KEYFILE}" -N ""
+             #  -C "${VAULT_USERNAME}" 
+#      else 
 #         h2 "Using existing SSH key pair \"${LOCAL_SSH_KEYFILE}\" "
 #      fi
       note "$( ls -al "${LOCAL_SSH_KEYFILE}" )"
@@ -1916,12 +1920,10 @@ if [ "${USE_VAULT}" = true ]; then   # -H
    if [ -n "${VAULT_HOST}" ]; then  # filled
          # use production ADDR from secrets
          # note "VAULT_USERNAME=${VAULT_USERNAME}"
-         #export VAULT_HOST="vault.prod.init.ak8s.mckinsey.com"
          if [ -z "${VAULT_HOST}" ]; then  # it's blank:
             error "VAULT_HOST is not defined (within secrets file) ..."
          else
             if ping -c 1 "${VAULT_HOST}" &> /dev/null ; then 
-               # PING vault.prod.init.ak8s.mckinsey.com (10.191.78.38): 56 data bytes
                note "ping of ${VAULT_HOST} went fine."
             else
                error "${VAULT_HOST} ICMP ping failed. Aborting ..."
@@ -2072,15 +2074,15 @@ EOD
          # again. Future Vault requests will automatically use this token.
          # Key                    Value
          # ---                    -----
-         # token                  s.jGbeKRBJaWjui3cKCc5Y8Rj6
-         # token_accessor         jnrfN3Iu9o6JBvNYX4huZPqv
+         # token                  xxxxeKRBJaWjui3cKCc5Y8Rj6
+         # token_accessor         zzzzzu9o6JBvNYX4huZPqv
          # token_duration         768h / 24 = 32 days
          # token_renewable        true
          # token_policies         ["default" "team/github-one" "vault/pki"]
          # identity_policies      []
          # policies               ["default" "team/github-one" "vault/pki"]
          # token_meta_policies    vault/pki,team/github-one
-         # token_meta_username    wilson_mar@mckinsey.com
+         # token_meta_username    ....
          # https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/managing-your-organizations-ssh-certificate-authorities
          # https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/about-ssh-certificate-authorities
 
@@ -2114,8 +2116,8 @@ EOD
 
       h2 "Sign user public certificate ..."
       export SSH_CLIENT_SIGNER_PATH="github/ssh"
-      echo "SSH_CLIENT_SIGNER_PATH=${SSH_CLIENT_SIGNER_PATH}"
-      echo "VAULT_USERNAME=${VAULT_USERNAME}"
+      #echo "SSH_CLIENT_SIGNER_PATH=${SSH_CLIENT_SIGNER_PATH}"
+      #echo "VAULT_USERNAME=${VAULT_USERNAME}"
 
       echo "LOCAL_SSH_KEYFILE=${LOCAL_SSH_KEYFILE}"
       vault write -field=signed_key "${SSH_CLIENT_SIGNER_PATH}/sign/${VAULT_USERNAME}" \
@@ -3268,11 +3270,11 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
       fi
 
 
-      if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
-         h2 "Building docker images ..."
-         docker build  #Dockerfile
+   if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
+      h2 "Building docker images ..."
+      docker build  #Dockerfile
 
-         h2 "node-prune to removeg unnecessary files from the node_modules folder"
+      h2 "node-prune to removeg unnecessary files from the node_modules folder"
          # Test files, markdown files, typing files and *.map files in Npm packages are not required in prod.
          # See https://itsopensource.com/how-to-reduce-node-docker-image-size-by-ten-times/
          npm prune --production
@@ -3337,11 +3339,12 @@ if [ "${RUN_ACTUAL}" = true ]; then   # -a
       EGGPLANT_SUT_IP=$( ipconfig getifaddr en0 )  # "192.168.1.10"
       EGGPLANT_SUT_PORT="9001"  # for chrome, 9002 for firefox, 9003 for opera 
 
-      note "EGGPLANT_SUT_IP=${EGGPLANT_SUT_IP} EGGPLANT_SUT_PORT=${EGGPLANT_SUT_PORT}"
+      note "EGGPLANT_SUT_IP=${EGGPLANT_SUT_IP}, EGGPLANT_SUT_PORT=${EGGPLANT_SUT_PORT}"
 
+#            "${MY_FOLDER}/${MY_FILE}" \
       if [ "${OS_TYPE}" == "macOS" ]; then  # it's on a Mac:
          "/Applications/Eggplant.app/Contents/MacOS/runscript" \
-            "docker-test.suite/Scripts/${MY_FILE}" \
+            "${MY_FILE}" \
             -LicenserHost "${EGGPLANT_HOST}" -host "${EGGPLANT_SUT_IP}" -port "${EGGPLANT_SUT_PORT}" \
             -password "secret" \
             -username "${EGGPLANT_USERNAME}" \
@@ -3372,6 +3375,7 @@ fi  # RUN_ACTUAL
 
 
 ### 38. Update GitHub
+# Alternative: https://github.com/anshumanbh/git-all-secrets
 if [ "${UPDATE_GITHUB}" = true ]; then  # -u
    if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
       if [ "${PACKAGE_MANAGER}" == "brew" ]; then
