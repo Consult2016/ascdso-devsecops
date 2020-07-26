@@ -287,8 +287,7 @@ while test $# -gt 0; do
       ;;
     -H)
       USE_VAULT=true
-      PROJECT_FOLDER_NAME="vault-ssh-ca"
-      #VAULT_HOST=
+      #VAULT_HOST=" "
       export VAULT_ADDR="https://${VAULT_HOST}" 
       # VAULT_USERNAME=""
       #VAULT_RSA_FILENAME="mck2"
@@ -2080,15 +2079,15 @@ EOD
          # again. Future Vault requests will automatically use this token.
          # Key                    Value
          # ---                    -----
-         # token                  xxxxeKRBJaWjui3cKCc5Y8Rj6
-         # token_accessor         zzzzzu9o6JBvNYX4huZPqv
+         # token                  xxxxxeKRBJaWjui3cKCc5Y8Rj6
+         # token_accessor         xxxxfN3Iu9o6JBvNYX4huZPqv
          # token_duration         768h / 24 = 32 days
          # token_renewable        true
-         # token_policies         ["default" "team/github-one" "vault/pki"]
+         # token_policies         ["default" "team/githu" "vault/pki"]
          # identity_policies      []
-         # policies               ["default" "team/github-one" "vault/pki"]
-         # token_meta_policies    vault/pki,team/github-one
-         # token_meta_username    ....
+         # policies               ["default" "team/gihubne" "vault/pki"]
+         # token_meta_policies    
+         # token_meta_username    xxx.com
          # https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/managing-your-organizations-ssh-certificate-authorities
          # https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/about-ssh-certificate-authorities
 
