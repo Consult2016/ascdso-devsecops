@@ -76,12 +76,12 @@ args_prompt() {
    echo "   -o           -open/view app or web page in default browser"
    echo " "
    echo "   -C           remove -Cloned files after run (to save disk space)"
-   echo "   -K           stop OS processes at end of run (to save CPU)"
+   echo "   -K           -Keep OS processes running at end of run (instead of killing them)"
    echo "   -D           -Delete containers and other files after run (to save disk space)"
    echo "   -M           remove Docker iMages pulled from DockerHub (to save disk space)"
    echo "USAGE EXAMPLES:"
    echo "./sample.sh -v -W -r -k -a -o -K -D  # WebGoat Docker with Contrast agent"
-   echo "./sample.sh -v -s -eggplant -k -a -K -D  # eggplant use docker-compose of selenium-hub images"
+   echo "./sample.sh -v -s -eggplant -k -a -console -dc -K -D  # eggplant use docker-compose of selenium-hub images"
    echo "./sample.sh -v -S \"\$HOME/.mck-secrets.sh\" -eks -D "
    echo "./sample.sh -v -S \"\$HOME/.mck-secrets.sh\" -H -m -t    # Use SSH-CA certs with -H Hashicorp Vault -test actual server"
    echo "./sample.sh -v -g \"abcdef...89\" -p \"cp100-1094\"  # Google API call"
@@ -113,6 +113,7 @@ exit_abnormal() {            # Function: Exit with error.
    CONTINUE_ON_ERR=false        # -E
    SET_TRACE=false              # -x
    RUN_VERBOSE=false            # -v
+   OPEN_CONSOLE=false           # -console
    RUN_DEBUG=false              # -vv
    USE_TEST_ENV=false              # -t
    RUN_VIRTUALENV=false         # -V
@@ -165,7 +166,6 @@ exit_abnormal() {            # Function: Exit with error.
    MY_FILE=""
      #MY_FILE="2-3.ipynb"
    RUN_EGGPLANT=false           # -eggplant
-       EGGPLANT_HOST="10.190.70.30"
 
    RUN_WEBGOAT=false            # -W
    RUN_QUIET=false              # -q
@@ -187,7 +187,7 @@ exit_abnormal() {            # Function: Exit with error.
 
    REMOVE_DOCKER_IMAGES=false   # -M
    REMOVE_GITHUB_AFTER=false    # -R
-   KILL_PROCESSES=false         # -K
+   KEEP_PROCESSES=false         # -K
 
 PROJECT_FOLDER_PATH="$HOME/projects"  # -P
 PROJECT_FOLDER_NAME=""
@@ -212,6 +212,10 @@ while test $# -gt 0; do
       ;;
     -b)
       export BUILD_DOCKER_IMAGE=true
+      shift
+      ;;
+    -console)
+      export OPEN_CONSOLE=true
       shift
       ;;
     -c)
@@ -243,6 +247,8 @@ while test $# -gt 0; do
       RUN_EGGPLANT=true
       GitHub_REPO_URL="https://github.com/wilsonmar/Eggplant.git"
       PROJECT_FOLDER_NAME="eggplant-demo"
+      EGGPLANT_HOST="10.190.70.30"
+      MY_FOLDER="docker-test.suite/Scripts"
       MY_FILE="openurl.script"
       APP1_PORT="80"
       shift
@@ -281,7 +287,6 @@ while test $# -gt 0; do
       ;;
     -H)
       USE_VAULT=true
-      PROJECT_FOLDER_NAME="vault-ssh-ca"
       #VAULT_HOST=" "
       export VAULT_ADDR="https://${VAULT_HOST}" 
       # VAULT_USERNAME=""
@@ -318,7 +323,7 @@ while test $# -gt 0; do
       shift
       ;;
     -K)
-      export KILL_PROCESSES=true
+      export KEEP_PROCESSES=true
       shift
       ;;
     -L)
@@ -585,11 +590,13 @@ BASH_VERSION=$( bash --version | grep bash | cut -d' ' -f4 | head -c 1 )
 
 
 ### 8. Set traps to display information if script is interrupted.
+# See https://github.com/MikeMcQuaid/strap/blob/master/bin/strap.sh
 trap this_ending EXIT
 trap this_ending INT QUIT TERM
 this_ending() {
    EPOCH_END=$(date -u +%s);
    EPOCH_DIFF=$((EPOCH_END-EPOCH_START))
+   sudo --reset-timestamp  # prompt for password for sudo session
    # Using BASH_VERSION identified above:
    if [ "${BASH_VERSION}" -lt "4" ]; then
       FREE_DISKBLOCKS_END="0"
@@ -597,7 +604,7 @@ this_ending() {
       FREE_DISKBLOCKS_END=$(read -d '' -ra df_arr < <(LC_ALL=C df -P /); echo "${df_arr[10]}" )
    fi
    FREE_DIFF=$(((FREE_DISKBLOCKS_END-FREE_DISKBLOCKS_START)))
-   MSG="End of script $SCRIPT_VERSION after $((EPOCH_DIFF/360)) seconds and $((FREE_DIFF*512)) bytes on disk."
+   MSG="End of script $SCRIPT_VERSION after $((EPOCH_DIFF/360)) seconds. and $((FREE_DIFF*512)) bytes on disk"
    # echo 'Elapsed HH:MM:SS: ' $( awk -v t=$beg-seconds 'BEGIN{t=int(t*1000); printf "%d:%02d:%02d\n", t/3600000, t/60000%60, t/1000%60}' )
    success "$MSG"
    # note "Disk $FREE_DISKBLOCKS_START to $FREE_DISKBLOCKS_END"
@@ -857,6 +864,7 @@ else
          fatal "Please edit CIRCLECI_API_TOKEN in file \$HOME/.secrets.sh and run again ..."
          exit 9
       fi
+      # VPN_GATEWAY_IP & user cert
    fi
 
    # TODO: Capture password manual input once for multiple shares 
@@ -1750,8 +1758,9 @@ if [ "${MOVE_SECURELY}" = true ]; then   # -m
       rm -f "${LOCAL_SSH_KEYFILE}.pub"
 #      if [ ! -f "${LOCAL_SSH_KEYFILE}" ]; then  # not exists
          h2 "ssh-keygen -t rsa -f \"${LOCAL_SSH_KEYFILE}\" -C \"${VAULT_USERNAME}\" ..."
-         ssh-keygen -t rsa -f "${LOCAL_SSH_KEYFILE}" -C "${VAULT_USERNAME}" -N ""
-#      else
+         ssh-keygen -t rsa -f "${LOCAL_SSH_KEYFILE}" -N ""
+             #  -C "${VAULT_USERNAME}" 
+#      else 
 #         h2 "Using existing SSH key pair \"${LOCAL_SSH_KEYFILE}\" "
 #      fi
       note "$( ls -al "${LOCAL_SSH_KEYFILE}" )"
@@ -2112,8 +2121,8 @@ EOD
 
       h2 "Sign user public certificate ..."
       export SSH_CLIENT_SIGNER_PATH="github/ssh"
-      echo "SSH_CLIENT_SIGNER_PATH=${SSH_CLIENT_SIGNER_PATH}"
-      echo "VAULT_USERNAME=${VAULT_USERNAME}"
+      #echo "SSH_CLIENT_SIGNER_PATH=${SSH_CLIENT_SIGNER_PATH}"
+      #echo "VAULT_USERNAME=${VAULT_USERNAME}"
 
       echo "LOCAL_SSH_KEYFILE=${LOCAL_SSH_KEYFILE}"
       vault write -field=signed_key "${SSH_CLIENT_SIGNER_PATH}/sign/${VAULT_USERNAME}" \
@@ -2689,7 +2698,7 @@ if [ "${RUN_TENSORFLOW}" = true ]; then  # -tf
       # The Jupyter Notebook is running at:
       # http://localhost:8888/?token=7df8adf321965117234f22973419bb92ecab4e788537b90f
 
-   if [ "$KILL_PROCESSES" = true ]; then  # -K
+   if [ "$KEEP_PROCESSES" = false ]; then  # -K
       ps_kill 'tensorboard'   # bash function defined in this file.
    fi
 
@@ -2999,7 +3008,7 @@ fi # if [ "${RUBY_INSTALL}" = true ]; then  # -i
 
 
 ### 35. Use Eggplant
-if [ "${RUN_EGGPLANT}" = true ]; then  # -O
+if [ "${RUN_EGGPLANT}" = true ]; then  # -eggplant
 
    # As seen at https://www.youtube.com/watch?v=B64_4r0vGkA May 28, 2020
    # See http://docs.eggplantsoftware.com/ePF/gettingstarted/epf-getting-started-eggplant-functional.htm
@@ -3173,7 +3182,6 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
          sleep 3
    }
    Start_Docker(){   # function
-
       if [ "$OS_TYPE" == "macOS" ]; then  # it's on a Mac:
          note "Docker Desktop is starting on macOS ..."
          open "/Applications/Docker.app"  # 
@@ -3230,10 +3238,69 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
 
    # Error response from daemon: dial unix docker.raw.sock: connect: connection refused
 
-
    if [ "${RUN_ACTUAL}" = true ]; then  # -a for actual usage
 
       Remove_Dangling_Docker   # function defined above.
+
+      if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
+         h2 "Building docker images ..."
+         docker build  #Dockerfile
+      fi    # BUILD_DOCKER_IMAGE
+
+      #h2 "node-prune to remove unnecessary files from the node_modules folder"
+         # Test files, markdown files, typing files and *.map files in Npm packages are not required in prod.
+         # See https://itsopensource.com/how-to-reduce-node-docker-image-size-by-ten-times/
+      #npm prune --production
+
+      if [ "${USE_DOCKER_COMPOSE}" == true ]; then  # -dc
+
+         if [ ! -f "docker-compose.yml" ]; then
+            error "docker-compose.yml file not found ..."
+            pwd
+            exit 9
+         else
+            # https://docs.docker.com/compose/reference/up/
+            docker-compose up --detach --build
+            # --build specifies rebuild of pip install image for changes in requirements.txt
+            STATUS=$?
+            if [ "${STATUS}" == "0" ]; then
+               warning "Docker run ended with no issues."
+            else
+               if [ "${CONTINUE_ON_ERR}" = true ]; then  # -E
+                  warning "Docker run exit ${STATUS} error, being ignored."
+               else
+                  fatal "Docker run found issues : ${STATUS} "
+                  # 217 = no license available.
+                  exit 9
+               fi
+            fi
+         # NOTE: detach with ^P^Q.
+         # Creating network "snakeeyes_default" with the default driver
+         # Creating volume "snakeeyes_redis" with default driver
+         # Status: Downloaded newer image for node:12.14.0-buster-slim
+
+         # runs scripts without launching "/Applications/Eggplant.app" functional GUI:
+         # /Applications/Eggplant.app/Contents/MacOS/runscript  docker-test.script
+         fi   # MY_FILE}" == "docker-compose.yml"
+      fi  # USE_DOCKER_COMPOSE
+   fi   # RUN_ACTUAL
+
+   h2 "docker container ls ..."
+   docker container ls
+   # CONTAINER ID        IMAGE                COMMAND                  CREATED             STATUS                    PORTS                    NAMES
+   # 3ee3e7ef6d75        snakeeyes_web        "/app/docker-entrypo…"   35 minutes ago      Up 35 minutes (healthy)   0.0.0.0:8000->8000/tcp   snakeeyes_web_1
+   # fb64e7c95865        snakeeyes_worker     "/app/docker-entrypo…"   35 minutes ago      Up 35 minutes             8000/tcp                 snakeeyes_worker_1
+   # bc68e7cb0f41        snakeeyes_webpack    "docker-entrypoint.s…"   About an hour ago   Up 35 minutes                                      snakeeyes_webpack_1
+   # 52df7a11b666        redis:5.0.7-buster   "docker-entrypoint.s…"   About an hour ago   Up 35 minutes             6379/tcp                 snakeeyes_redis_1
+   # 7b8aba1d860a        postgres             "docker-entrypoint.s…"   7 days ago          Up 7 days                 0.0.0.0:5432->5432/tcp   snoodle-postgres
+
+   # TODO: Add run in local Kubernetes.
+
+fi  # if [ "${USE_DOCKER}
+
+
+### 37. Run within Docker
+if [ "${RUN_ACTUAL}" = true ]; then   # -a
 
       if [ -z "${MY_FOLDER}" ]; then  # not defined:
          note "-Folder not specified. Working on root folder ..." 
@@ -3265,65 +3332,15 @@ if [ "${USE_DOCKER}" = true ]; then   # -k
          fi
       fi
 
-
-      if [ "${BUILD_DOCKER_IMAGE}" = true ]; then   # -b
-         h2 "Building docker images ..."
-         docker build  #Dockerfile
-
-         h2 "node-prune to removeg unnecessary files from the node_modules folder"
-         # Test files, markdown files, typing files and *.map files in Npm packages are not required in prod.
-         # See https://itsopensource.com/how-to-reduce-node-docker-image-size-by-ten-times/
-         npm prune --production
-
-      fi    # BUILD_DOCKER_IMAGE
-
-      if [ "${MY_FILE}" == "docker-compose.yml" ]; then
-
-         # https://docs.docker.com/compose/reference/up/
-         docker-compose up --detach --build
-         # --build specifies rebuild of pip install image for changes in requirements.txt
-         STATUS=$?
-         if [ "${STATUS}" == "0" ]; then
-            warning "Docker run ended with no issues."
-         else
-            if [ "${CONTINUE_ON_ERR}" = true ]; then  # -E
-               warning "Docker run exit ${STATUS} error, being ignored."
-            else
-               fatal "Docker run found issues : ${STATUS} "
-               # 217 = no license available.
-               exit 9
-            fi
-         fi
-         # NOTE: detach with ^P^Q.
-         # Creating network "snakeeyes_default" with the default driver
-         # Creating volume "snakeeyes_redis" with default driver
-         # Status: Downloaded newer image for node:12.14.0-buster-slim
-
-         # runs scripts without launching "/Applications/Eggplant.app" functional GUI:
-         # /Applications/Eggplant.app/Contents/MacOS/runscript  docker-test.script
-
-      # else use Dockerfile
-      fi
-   fi   # RUN_ACTUAL
-
-   h2 "docker container ls ..."
-   docker container ls
-   # CONTAINER ID        IMAGE                COMMAND                  CREATED             STATUS                    PORTS                    NAMES
-   # 3ee3e7ef6d75        snakeeyes_web        "/app/docker-entrypo…"   35 minutes ago      Up 35 minutes (healthy)   0.0.0.0:8000->8000/tcp   snakeeyes_web_1
-   # fb64e7c95865        snakeeyes_worker     "/app/docker-entrypo…"   35 minutes ago      Up 35 minutes             8000/tcp                 snakeeyes_worker_1
-   # bc68e7cb0f41        snakeeyes_webpack    "docker-entrypoint.s…"   About an hour ago   Up 35 minutes                                      snakeeyes_webpack_1
-   # 52df7a11b666        redis:5.0.7-buster   "docker-entrypoint.s…"   About an hour ago   Up 35 minutes             6379/tcp                 snakeeyes_redis_1
-   # 7b8aba1d860a        postgres             "docker-entrypoint.s…"   7 days ago          Up 7 days                 0.0.0.0:5432->5432/tcp   snoodle-postgres
-
-   # TODO: Add run in local Kubernetes.
-
-fi  # if [ "${USE_DOCKER}
-
-
-### 37. Run within Docker
-if [ "${RUN_ACTUAL}" = true ]; then   # -a
-
-   # docker exec -it eggplant-demo_chrome2_1 "/bin/bash"
+   # IMAGE                         PORTS                    NAMES
+   # selenium/node-chrome-debug    0.0.0.0:9001->5900/tcp   eggplant-demo_chrome1_1
+   # selenium/node-firefox-debug   0.0.0.0:9002->5900/tcp   eggplant-demo_chrome2_1
+   # selenium/node-opera-debug     0.0.0.0:9003->5900/tcp   eggplant-demo_chrome3_1
+   # selenium/hub                  0.0.0.0:4555->4444/tcp   eggplant-demo_hub_1
+   if [ "${OPEN_CONSOLE}" = true ]; then  # -console
+      docker exec -it eggplant-demo_chrome1_1 "/bin/bash"
+      exit
+   fi
 
    if [ "${RUN_EGGPLANT}" = true ]; then  # -O
       # Connect target browser to Eggplant license server: 
@@ -3335,11 +3352,12 @@ if [ "${RUN_ACTUAL}" = true ]; then   # -a
       EGGPLANT_SUT_IP=$( ipconfig getifaddr en0 )  # "192.168.1.10"
       EGGPLANT_SUT_PORT="9001"  # for chrome, 9002 for firefox, 9003 for opera 
 
-      note "EGGPLANT_SUT_IP=${EGGPLANT_SUT_IP} EGGPLANT_SUT_PORT=${EGGPLANT_SUT_PORT}"
+      note "EGGPLANT_SUT_IP=${EGGPLANT_SUT_IP}, EGGPLANT_SUT_PORT=${EGGPLANT_SUT_PORT}"
 
+#            "${MY_FOLDER}/${MY_FILE}" \
       if [ "${OS_TYPE}" == "macOS" ]; then  # it's on a Mac:
          "/Applications/Eggplant.app/Contents/MacOS/runscript" \
-            "docker-test.suite/Scripts/${MY_FILE}" \
+            "${MY_FILE}" \
             -LicenserHost "${EGGPLANT_HOST}" -host "${EGGPLANT_SUT_IP}" -port "${EGGPLANT_SUT_PORT}" \
             -password "secret" \
             -username "${EGGPLANT_USERNAME}" \
@@ -3370,6 +3388,7 @@ fi  # RUN_ACTUAL
 
 
 ### 38. Update GitHub
+# Alternative: https://github.com/anshumanbh/git-all-secrets
 if [ "${UPDATE_GITHUB}" = true ]; then  # -u
    if [ "${DOWNLOAD_INSTALL}" = true ]; then  # -I & -U
       if [ "${PACKAGE_MANAGER}" == "brew" ]; then
@@ -3433,7 +3452,7 @@ fi
 
 
 ### 40. Kill processes after run
-if [ "${KILL_PROCESSES}" = true ]; then  # -K
+if [ "${KEEP_PROCESSES}" = false ]; then  # -K
 
    if [ "${NODE_INSTALL}" = true ]; then  # -n
       if [ -n "${MONGO_PSID}" ]; then  # not found
@@ -3446,7 +3465,12 @@ fi
 
 if [ "${USE_DOCKER}" = true ]; then   # -k
 
-   if [ "${KILL_PROCESSES}" = true ]; then  # -K
+   if [ "${KEEP_PROCESSES}" = true ]; then  # -K
+      RESPONSE="$( docker images -qf dangling=true )"
+      if [ -z "${RESPONSE}" ]; then
+         docker rmi -f "${RESPONSE}"
+      fi      
+
       Stop_Docker   # function defined in this file above.
    fi
 
